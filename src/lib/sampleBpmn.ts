@@ -1,0 +1,69 @@
+// Inline sample BPMN – avoids fetch issues in preview environments
+export const EMAIL_FETCHER_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+             targetNamespace="http://email-fetcher.bpmn">
+  <process id="EmailFetcherProcess" name="Email Fetcher Process" isExecutable="true">
+    <startEvent id="start_event" name="Timer Start">
+      <timerEventDefinition>
+        <timeCycle>0 */15 * * * ?</timeCycle>
+      </timerEventDefinition>
+    </startEvent>
+    <subProcess id="stage_fetch" name="Fetch Emails">
+      <startEvent id="fetch_start" />
+      <serviceTask id="task_connect_imap" name="Connect to IMAP Server" camunda:topic="connect-imap" camunda:asyncBefore="true" />
+      <serviceTask id="task_fetch_emails" name="Fetch Unread Emails" camunda:topic="fetch-unread-emails" camunda:asyncAfter="true" />
+      <serviceTask id="task_parse_headers" name="Parse Email Headers" camunda:topic="parse-headers" />
+      <endEvent id="fetch_end" />
+      <sequenceFlow id="sf_fetch_1" sourceRef="fetch_start" targetRef="task_connect_imap" />
+      <sequenceFlow id="sf_fetch_2" sourceRef="task_connect_imap" targetRef="task_fetch_emails" />
+      <sequenceFlow id="sf_fetch_3" sourceRef="task_fetch_emails" targetRef="task_parse_headers" />
+      <sequenceFlow id="sf_fetch_4" sourceRef="task_parse_headers" targetRef="fetch_end" />
+    </subProcess>
+    <subProcess id="stage_process" name="Process Each Email">
+      <startEvent id="process_start" />
+      <subProcess id="task_foreach_emails" name="For Each Email">
+        <multiInstanceLoopCharacteristics isSequential="false" camunda:collection="\${emails}" camunda:elementVariable="email" />
+        <startEvent id="loop_start" />
+        <serviceTask id="task_classify" name="Classify Email" camunda:topic="classify-email" />
+        <exclusiveGateway id="gw_classify" name="Is Spam?" />
+        <serviceTask id="task_mark_spam" name="Mark as Spam" camunda:topic="mark-spam" />
+        <userTask id="task_review" name="Review Email" camunda:assignee="\${assignee}" camunda:candidateGroups="email-reviewers" />
+        <endEvent id="loop_end" />
+        <sequenceFlow id="sf_loop_1" sourceRef="loop_start" targetRef="task_classify" />
+        <sequenceFlow id="sf_loop_2" sourceRef="task_classify" targetRef="gw_classify" />
+        <sequenceFlow id="sf_loop_3" name="Yes" sourceRef="gw_classify" targetRef="task_mark_spam">
+          <conditionExpression xsi:type="tFormalExpression">\${email.spamScore &gt; 0.8}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="sf_loop_4" name="No" sourceRef="gw_classify" targetRef="task_review">
+          <conditionExpression xsi:type="tFormalExpression">\${email.spamScore &lt;= 0.8}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="sf_loop_5" sourceRef="task_mark_spam" targetRef="loop_end" />
+        <sequenceFlow id="sf_loop_6" sourceRef="task_review" targetRef="loop_end" />
+      </subProcess>
+      <endEvent id="process_end" />
+      <sequenceFlow id="sf_process_1" sourceRef="process_start" targetRef="task_foreach_emails" />
+      <sequenceFlow id="sf_process_2" sourceRef="task_foreach_emails" targetRef="process_end" />
+    </subProcess>
+    <subProcess id="stage_notify" name="Notify and Archive">
+      <startEvent id="notify_start" />
+      <callActivity id="task_send_report" name="Send Summary Report" calledElement="SendEmailProcess">
+        <extensionElements>
+          <camunda:in source="processedCount" target="emailCount" />
+          <camunda:out source="reportId" target="sentReportId" />
+        </extensionElements>
+      </callActivity>
+      <serviceTask id="task_archive" name="Archive Emails" camunda:topic="archive-emails" camunda:asyncBefore="true" />
+      <endEvent id="notify_end" />
+      <sequenceFlow id="sf_notify_1" sourceRef="notify_start" targetRef="task_send_report" />
+      <sequenceFlow id="sf_notify_2" sourceRef="task_send_report" targetRef="task_archive" />
+      <sequenceFlow id="sf_notify_3" sourceRef="task_archive" targetRef="notify_end" />
+    </subProcess>
+    <sequenceFlow id="sf_main_1" sourceRef="start_event" targetRef="stage_fetch" />
+    <sequenceFlow id="sf_main_2" sourceRef="stage_fetch" targetRef="stage_process" />
+    <sequenceFlow id="sf_main_3" sourceRef="stage_process" targetRef="stage_notify" />
+    <endEvent id="end_event" name="Process Complete" />
+    <sequenceFlow id="sf_main_4" sourceRef="stage_notify" targetRef="end_event" />
+  </process>
+</definitions>`;
