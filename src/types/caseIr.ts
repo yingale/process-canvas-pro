@@ -20,25 +20,75 @@ export interface IoParam {
   value: string;   // FEEL expression or literal
 }
 
-// Camunda 7 technical extensions
+// Camunda 7 technical extensions – covers the full camunda-bpmn-moddle schema
 export interface Camunda7Tech {
-  topic?: string;
+  // ── Async / Job ────────────────────────────────────────────────────────────
+  async?: boolean;
   asyncBefore?: boolean;
   asyncAfter?: boolean;
-  /** Input parameters from camunda:inputOutput/camunda:inputParameter */
+  exclusive?: boolean;
+  jobPriority?: string;
+  taskPriority?: string;
+
+  // ── Service / External Task (ServiceTaskLike + ExternalCapable) ───────────
+  implementationType?: "external" | "class" | "expression" | "delegateExpression" | "connector";
+  topic?: string;
+  class?: string;
+  expression?: string;
+  delegateExpression?: string;
+  resultVariable?: string;
+  connectorId?: string;
+
+  // ── Script Task ────────────────────────────────────────────────────────────
+  scriptFormat?: string;
+  script?: string;
+  resource?: string;
+
+  // ── User Task (Assignable) ─────────────────────────────────────────────────
+  assignee?: string;
+  candidateUsers?: string;
+  candidateGroups?: string;
+  dueDate?: string;
+  followUpDate?: string;
+  priority?: string;
+
+  // ── User Task Form ─────────────────────────────────────────────────────────
+  formHandlerClass?: string;
+  formKey?: string;
+  formRef?: string;
+  formRefBinding?: "latest" | "version" | "versionTag";
+  formRefVersion?: string;
+
+  // ── Call Activity ──────────────────────────────────────────────────────────
+  calledElementBinding?: "latest" | "version" | "versionTag" | "deployment";
+  calledElementVersion?: string;
+  calledElementVersionTag?: string;
+  calledElementTenantId?: string;
+  variableMappingClass?: string;
+  variableMappingDelegateExpression?: string;
+
+  // ── Business Rule Task (DMN) ───────────────────────────────────────────────
+  decisionRef?: string;
+  decisionRefBinding?: "latest" | "version" | "versionTag";
+  decisionRefVersion?: string;
+  mapDecisionResult?: string;
+  decisionRefTenantId?: string;
+
+  // ── Error / Escalation Events ──────────────────────────────────────────────
+  errorCodeVariable?: string;
+  errorMessageVariable?: string;
+  escalationCodeVariable?: string;
+
+  // ── I/O Parameters ────────────────────────────────────────────────────────
   inputParameters?: IoParam[];
-  /** Output parameters from camunda:inputOutput/camunda:outputParameter */
   outputParameters?: IoParam[];
+
+  // ── Multi-instance ────────────────────────────────────────────────────────
   multiInstance?: {
     isSequential: boolean;
     collectionExpression: string;
     elementVariable: string;
     completionCondition?: string;
-  };
-  callActivity?: {
-    calledElement: string;
-    inMappings: Array<{ source: string; target: string }>;
-    outMappings: Array<{ source: string; target: string }>;
   };
 }
 
