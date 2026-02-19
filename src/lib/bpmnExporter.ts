@@ -2,9 +2,8 @@
  * BPMN Exporter – Case IR → Camunda 7 BPMN 2.0 XML
  *
  * Strategy (priority order):
- * 1. If original diagram XML was captured on import, emit it verbatim → perfect round-trip.
- * 2. For new elements not in the original diagram, auto-generate layout positions.
- * 3. If no diagram at all (manually-built IR), generate a full auto-layout diagram.
+ * 1. If original BPMN XML was captured on import → re-emit verbatim (perfect lossless round-trip).
+ * 2. If no original XML (manually-built IR) → generate full XML with auto-layout diagram.
  */
 import type { CaseIR, Stage, Step, DecisionStep, ForeachStep, CallActivityStep } from "@/types/caseIr";
 
@@ -23,7 +22,7 @@ function flattenSteps(stage: Stage): Step[] {
   return stage.groups.flatMap(g => g.steps);
 }
 
-// ─── Process XML renderers ────────────────────────────────────────────────────
+// ─── Process XML renderers (used only for newly-built IRs, not round-trips) ──
 
 function camundaAttrs(step: Step): string {
   const tech = step.tech ?? {};
@@ -148,7 +147,6 @@ function renderStageAsSubProcess(stage: Stage, preIds?: ChainIds): string {
   const asyncAttr = (stage as any).asyncBefore ? ` camunda:asyncBefore="true"` : "";
   const allSteps = flattenSteps(stage);
 
-  // multi-instance (stored in tech of first group's first step or on stage itself)
   const miAttr = (stage as any).collectionExpression
     ? `\n      <multiInstanceLoopCharacteristics isSequential="${(stage as any).isSequential ?? false}" camunda:collection="${escapeXml((stage as any).collectionExpression)}" camunda:elementVariable="${escapeXml((stage as any).elementVariable ?? "item")}" />`
     : "";
@@ -158,7 +156,6 @@ function renderStageAsSubProcess(stage: Stage, preIds?: ChainIds): string {
 }
 
 function renderTrigger(ir: CaseIR): { xml: string; id: string } {
-  // Prefer the original start event ID captured during import for perfect round-trip
   const id = ir.metadata.originalStartEventId ?? `start_${ir.id}`;
   const name = ir.trigger.name ? ` name="${escapeXml(ir.trigger.name)}"` : "";
   switch (ir.trigger.type) {
@@ -176,7 +173,7 @@ function isFlatStage(stage: Stage): boolean {
   return stage.source?.bpmnElementType === "synthetic";
 }
 
-// ─── Auto-layout (fallback when no original diagram) ─────────────────────────
+// ─── Auto-layout (used only for manually-built IRs with no original XML) ──────
 
 const AL_START_W = 36; const AL_START_H = 36;
 const AL_TASK_W = 120; const AL_TASK_H = 60;
@@ -193,10 +190,8 @@ function autoLayoutDiagram(ir: CaseIR, triggerId: string, topFlowIds: string[], 
   const shapes: AutoRect[] = [];
   const edges: AutoEdge[] = [];
   let cx = 60;
-
   const mainChain: AutoRect[] = [];
 
-  // trigger
   const ts: AutoRect = { id: triggerId, x: cx, y: AL_MID_Y - AL_START_H / 2, w: AL_START_W, h: AL_START_H };
   shapes.push(ts); mainChain.push(ts); cx += AL_START_W + AL_GAP;
 
@@ -214,8 +209,6 @@ function autoLayoutDiagram(ir: CaseIR, triggerId: string, topFlowIds: string[], 
     } else {
       const stageId = stage.source?.bpmnElementId ?? stage.id;
       const preIds = stagePreIds.get(stage.id);
-
-      // inner width
       let iw = AL_SP_PAD + AL_START_W + AL_GAP;
       for (const step of allSteps) {
         iw += (step.type === "intermediateEvent" ? AL_EVT_W : AL_TASK_W) + AL_GAP;
@@ -223,19 +216,15 @@ function autoLayoutDiagram(ir: CaseIR, triggerId: string, topFlowIds: string[], 
       iw += AL_START_W + AL_SP_PAD;
       const spW = Math.max(iw, 260);
       const spY = AL_MID_Y - AL_SP_H / 2;
-
       const sp: AutoRect = { id: stageId, x: cx, y: spY, w: spW, h: AL_SP_H, expanded: true };
       shapes.push(sp); mainChain.push(sp);
 
-      // inner shapes
       if (preIds) {
         let icx = cx + AL_SP_PAD;
         const imid = spY + AL_SP_PAD + (AL_SP_H - AL_SP_PAD * 2) / 2;
         const innerChain: AutoRect[] = [];
-
         const is: AutoRect = { id: preIds.startId, x: icx, y: imid - AL_START_H / 2, w: AL_START_W, h: AL_START_H };
         shapes.push(is); innerChain.push(is); icx += AL_START_W + AL_GAP;
-
         for (const step of allSteps) {
           const sid = step.source?.bpmnElementId ?? step.id;
           const isEvt = step.type === "intermediateEvent";
@@ -243,10 +232,8 @@ function autoLayoutDiagram(ir: CaseIR, triggerId: string, topFlowIds: string[], 
           const s: AutoRect = { id: sid, x: icx, y: imid - h / 2, w, h };
           shapes.push(s); innerChain.push(s); icx += w + AL_GAP;
         }
-
         const ie: AutoRect = { id: preIds.endId, x: icx, y: imid - AL_START_H / 2, w: AL_START_W, h: AL_START_H };
         shapes.push(ie); innerChain.push(ie);
-
         for (let i = 0; i < innerChain.length - 1; i++) {
           const src = innerChain[i]; const tgt = innerChain[i + 1];
           edges.push({ flowId: preIds.flowIds[i] ?? uid("sf"), points: [{ x: src.x + src.w, y: src.y + src.h / 2 }, { x: tgt.x, y: tgt.y + tgt.h / 2 }] });
@@ -256,11 +243,9 @@ function autoLayoutDiagram(ir: CaseIR, triggerId: string, topFlowIds: string[], 
     }
   }
 
-  // end event
   const es: AutoRect = { id: endId, x: cx, y: AL_MID_Y - AL_START_H / 2, w: AL_START_W, h: AL_START_H };
   shapes.push(es); mainChain.push(es);
 
-  // main lane edges
   for (let i = 0; i < mainChain.length - 1; i++) {
     const src = mainChain[i]; const tgt = mainChain[i + 1];
     edges.push({ flowId: topFlowIds[i] ?? uid("sf"), points: [{ x: src.x + src.w, y: src.y + src.h / 2 }, { x: tgt.x, y: tgt.y + tgt.h / 2 }] });
@@ -281,13 +266,9 @@ function renderAutoLayoutDiagram(processId: string, shapes: AutoRect[], edges: A
   return `  <bpmndi:BPMNDiagram id="BPMNDiagram_1">\n    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="${processId}">\n${shapeXmls.join("\n")}\n${edgeXmls.join("\n")}\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>`;
 }
 
-// ─── Definitions attributes builder ──────────────────────────────────────────
-
 function buildDefinitionsTag(ir: CaseIR, processId: string): string {
   const orig = ir.metadata.originalDefinitionsAttrs;
   if (orig && Object.keys(orig).length > 0) {
-    // Re-emit original attributes (preserves targetNamespace, id, etc.)
-    // Always ensure required namespaces are present
     const required: Record<string, string> = {
       "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
       "xmlns:bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
@@ -297,7 +278,6 @@ function buildDefinitionsTag(ir: CaseIR, processId: string): string {
       "xmlns:camunda": "http://camunda.org/schema/1.0/bpmn",
     };
     const merged = { ...required, ...orig };
-    // Remove the default xmlns if present (it conflicts with bpmn: prefix)
     delete merged["xmlns"];
     const attrStr = Object.entries(merged).map(([k, v]) => `\n                  ${k}="${escapeXml(v)}"`).join("");
     return `<bpmn:definitions${attrStr}>`;
@@ -316,15 +296,20 @@ function buildDefinitionsTag(ir: CaseIR, processId: string): string {
 
 export function exportBpmn(ir: CaseIR): string {
   _uidCounter = 0;
+
+  // ── STRATEGY 1: Verbatim round-trip ─────────────────────────────────────────
+  // If we have the original full XML, re-emit it exactly as-is.
+  // This guarantees 100% fidelity for imported BPMN files.
+  if (ir.metadata.originalBpmnXml) {
+    return ir.metadata.originalBpmnXml;
+  }
+
+  // ── STRATEGY 2: Reconstruct from IR (new/manually-built workflows) ───────────
   const processId = ir.id;
   const processName = escapeXml(ir.name);
-
-  // Use original IDs if available (import round-trip) else generate stable new ones
   const endId = ir.metadata.originalEndEventId ?? `end_${processId}`;
   const trigger = renderTrigger(ir);
 
-  // Pre-generate inner chain IDs for subProcess stages
-  // Prefer original IDs captured during import
   const stagePreIds = new Map<string, ChainIds>();
   for (const stage of ir.stages) {
     if (!isFlatStage(stage)) {
@@ -339,7 +324,6 @@ export function exportBpmn(ir: CaseIR): string {
     }
   }
 
-  // Build top-level element chain IDs
   const chainIds: string[] = [trigger.id];
   for (const stage of ir.stages) {
     const allSteps = flattenSteps(stage);
@@ -351,13 +335,11 @@ export function exportBpmn(ir: CaseIR): string {
   }
   chainIds.push(endId);
 
-  // Use original top-level flow IDs if available (perfect round-trip), else generate new ones
   const origTopFlows = ir.metadata.originalTopLevelFlowIds;
   const topFlowIds = origTopFlows && origTopFlows.length >= chainIds.length - 1
     ? origTopFlows
     : Array.from({ length: chainIds.length - 1 }, () => uid("sf"));
 
-  // Build process body XML
   const bodyXmlParts: string[] = [];
   for (const stage of ir.stages) {
     const allSteps = flattenSteps(stage);
@@ -369,24 +351,19 @@ export function exportBpmn(ir: CaseIR): string {
     }
   }
 
-  // Build top-level sequence flows preserving original source/target refs
   const origFlowRefs = ir.metadata.originalSequenceFlowIds ?? {};
   const topFlowXmls = chainIds.slice(0, -1).map((srcId, i) => {
     const flowId = topFlowIds[i];
-    // If this flow ID existed in the original, use original source/target refs
     const origRef = origFlowRefs[flowId];
     const src = origRef?.sourceRef ?? srcId;
     const tgt = origRef?.targetRef ?? chainIds[i + 1];
     return `    <sequenceFlow id="${flowId}" sourceRef="${src}" targetRef="${tgt}" />`;
   });
 
-  // ── Diagram section: use original if available, else auto-layout ────────────
   let diagramXml: string;
   if (ir.metadata.originalDiagramXml) {
-    // Verbatim round-trip: the original diagram coordinates are preserved exactly
     diagramXml = `  ${ir.metadata.originalDiagramXml.trim()}`;
   } else {
-    // Auto-generate layout for manually-built IRs
     const { shapes, edges } = autoLayoutDiagram(ir, trigger.id, topFlowIds, endId, stagePreIds);
     diagramXml = renderAutoLayoutDiagram(processId, shapes, edges);
   }

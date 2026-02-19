@@ -332,6 +332,8 @@ export async function importBpmn(bpmnXml: string, fileName?: string): Promise<Im
     id: processId, name: processName, version: "1.0.0", trigger, stages,
     metadata: {
       createdAt: now(), updatedAt: now(), sourceFile: fileName, exportedFrom: "bpmn",
+      // Store the complete original XML for lossless verbatim round-trip export
+      originalBpmnXml: bpmnXml,
       originalDiagramXml,
       originalDefinitionsAttrs,
       originalSequenceFlowIds,
