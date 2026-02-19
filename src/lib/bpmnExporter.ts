@@ -1,6 +1,10 @@
 /**
  * BPMN Exporter – Case IR → Camunda 7 BPMN 2.0 XML
- * Two-pass approach: collect layout model first, then emit process XML + bpmndi diagram.
+ *
+ * Strategy (priority order):
+ * 1. If original diagram XML was captured on import, emit it verbatim → perfect round-trip.
+ * 2. For new elements not in the original diagram, auto-generate layout positions.
+ * 3. If no diagram at all (manually-built IR), generate a full auto-layout diagram.
  */
 import type { CaseIR, Stage, Step, DecisionStep, ForeachStep, CallActivityStep } from "@/types/caseIr";
 
@@ -19,117 +23,6 @@ function flattenSteps(stage: Stage): Step[] {
   return stage.groups.flatMap(g => g.steps);
 }
 
-// ─── Layout types ─────────────────────────────────────────────────────────────
-
-interface Pt { x: number; y: number; }
-interface ShapeInfo {
-  bpmnElementId: string;
-  x: number; y: number; w: number; h: number;
-  isExpanded?: boolean;
-}
-interface EdgeInfo {
-  sequenceFlowId: string;    // matches the <sequenceFlow id="..."> in process XML
-  waypoints: Pt[];
-}
-interface ChainNode {
-  id: string;                // bpmnElement id
-  x: number; y: number;
-  w: number; h: number;
-}
-
-// ─── Layout constants ─────────────────────────────────────────────────────────
-
-const START_W = 36; const START_H = 36;
-const TASK_W = 120; const TASK_H = 60;
-const EVT_W = 36;   const EVT_H = 36;
-const GW_W = 50;    const GW_H = 50;
-const H_GAP = 40;
-const MAIN_MID_Y = 168;      // vertical centre of the top-level process lane
-
-// padding inside an expanded subProcess shape
-const SP_PAD_LEFT = 40;
-const SP_PAD_RIGHT = 40;
-const SP_PAD_TOP = 40;
-const SP_PAD_BOTTOM = 40;
-const SP_MIN_W = 260;
-const SP_MIN_H = 160;
-
-// ─── Step element dimensions ──────────────────────────────────────────────────
-
-function stepDims(step: Step): { w: number; h: number } {
-  switch (step.type) {
-    case "decision": return { w: GW_W, h: GW_H };
-    case "intermediateEvent": return { w: EVT_W, h: EVT_H };
-    default: return { w: TASK_W, h: TASK_H };
-  }
-}
-
-// ─── Layout builder ───────────────────────────────────────────────────────────
-
-interface LayoutResult {
-  shapes: ShapeInfo[];
-  edges: EdgeInfo[];
-}
-
-/**
- * Layout a linear chain of steps inside a container.
- * Returns shapes for inner start/end events and all steps, plus edges.
- * The caller owns the allocated pre-generated flow IDs.
- */
-function layoutChain(
-  steps: Step[],
-  containerX: number,
-  containerY: number,
-  containerH: number,
-  /** pre-generated sequenceFlow IDs for: start→steps[0], steps[0]→steps[1], ..., steps[n-1]→end */
-  flowIds: string[],
-  /** pre-generated element IDs for inner start and end events */
-  innerStartId: string,
-  innerEndId: string,
-): LayoutResult {
-  const shapes: ShapeInfo[] = [];
-  const edges: EdgeInfo[] = [];
-
-  const midY = containerY + SP_PAD_TOP + (containerH - SP_PAD_TOP - SP_PAD_BOTTOM) / 2;
-  let cx = containerX + SP_PAD_LEFT;
-
-  // inner start
-  shapes.push({ bpmnElementId: innerStartId, x: cx, y: midY - START_H / 2, w: START_W, h: START_H });
-  cx += START_W + H_GAP;
-
-  const nodeChain: ChainNode[] = [{ id: innerStartId, x: shapes[0].x, y: midY - START_H / 2, w: START_W, h: START_H }];
-
-  for (const step of steps) {
-    const sid = step.source?.bpmnElementId ?? step.id;
-    const { w, h } = stepDims(step);
-    const sy = midY - h / 2;
-    shapes.push({ bpmnElementId: sid, x: cx, y: sy, w, h });
-    nodeChain.push({ id: sid, x: cx, y: sy, w, h });
-    cx += w + H_GAP;
-  }
-
-  // inner end
-  shapes.push({ bpmnElementId: innerEndId, x: cx, y: midY - START_H / 2, w: START_W, h: START_H });
-  nodeChain.push({ id: innerEndId, x: cx, y: midY - START_H / 2, w: START_W, h: START_H });
-
-  // edges between chain nodes
-  for (let i = 0; i < nodeChain.length - 1; i++) {
-    const src = nodeChain[i];
-    const tgt = nodeChain[i + 1];
-    const srcMid = src.y + src.h / 2;
-    const tgtMid = tgt.y + tgt.h / 2;
-    edges.push({
-      sequenceFlowId: flowIds[i],
-      waypoints: [
-        { x: src.x + src.w, y: srcMid },
-        { x: tgt.x, y: tgtMid },
-      ],
-    });
-  }
-
-  return { shapes, edges };
-}
-
 // ─── Process XML renderers ────────────────────────────────────────────────────
 
 function camundaAttrs(step: Step): string {
@@ -142,11 +35,11 @@ function camundaAttrs(step: Step): string {
 }
 
 function camundaIoXml(step: Step, ind: string): string {
-  const params = (step as any).inputParameters ?? [];
-  const outParams = (step as any).outputParameters ?? [];
+  const params = step.tech?.inputParameters ?? [];
+  const outParams = step.tech?.outputParameters ?? [];
   if (!params.length && !outParams.length) return "";
-  const ins = params.map((p: any) => `${ind}      <camunda:inputParameter name="${escapeXml(p.name)}">${escapeXml(p.value ?? "")}</camunda:inputParameter>`).join("\n");
-  const outs = outParams.map((p: any) => `${ind}      <camunda:outputParameter name="${escapeXml(p.name)}">${escapeXml(p.value ?? "")}</camunda:outputParameter>`).join("\n");
+  const ins = params.map(p => `${ind}      <camunda:inputParameter name="${escapeXml(p.name)}">${escapeXml(p.value ?? "")}</camunda:inputParameter>`).join("\n");
+  const outs = outParams.map(p => `${ind}      <camunda:outputParameter name="${escapeXml(p.name)}">${escapeXml(p.value ?? "")}</camunda:outputParameter>`).join("\n");
   return `${ind}    <camunda:inputOutput>\n${[ins, outs].filter(Boolean).join("\n")}\n${ind}    </camunda:inputOutput>`;
 }
 
@@ -154,19 +47,20 @@ function renderStepElement(step: Step, ind: string): string {
   const id = step.source?.bpmnElementId ?? step.id;
   const name = escapeXml(step.name);
   const io = camundaIoXml(step, ind);
+  const docXml = step.description ? `${ind}  <documentation>${escapeXml(step.description)}</documentation>\n` : "";
 
   switch (step.type) {
     case "automation": {
-      if (io) {
-        return `${ind}<serviceTask id="${id}" name="${name}"${camundaAttrs(step)}>\n${ind}  <extensionElements>\n${io}\n${ind}  </extensionElements>\n${ind}</serviceTask>`;
+      if (io || docXml) {
+        return `${ind}<serviceTask id="${id}" name="${name}"${camundaAttrs(step)}>\n${docXml}${io ? `${ind}  <extensionElements>\n${io}\n${ind}  </extensionElements>\n` : ""}${ind}</serviceTask>`;
       }
       return `${ind}<serviceTask id="${id}" name="${name}"${camundaAttrs(step)} />`;
     }
     case "user": {
       const assignee = step.assignee ? ` camunda:assignee="${escapeXml(step.assignee)}"` : "";
       const grps = step.candidateGroups?.length ? ` camunda:candidateGroups="${step.candidateGroups.map(escapeXml).join(",")}"` : "";
-      if (io) {
-        return `${ind}<userTask id="${id}" name="${name}"${assignee}${grps}>\n${ind}  <extensionElements>\n${io}\n${ind}  </extensionElements>\n${ind}</userTask>`;
+      if (io || docXml) {
+        return `${ind}<userTask id="${id}" name="${name}"${assignee}${grps}>\n${docXml}${io ? `${ind}  <extensionElements>\n${io}\n${ind}  </extensionElements>\n` : ""}${ind}</userTask>`;
       }
       return `${ind}<userTask id="${id}" name="${name}"${assignee}${grps} />`;
     }
@@ -189,11 +83,15 @@ function renderStepElement(step: Step, ind: string): string {
     }
     case "intermediateEvent": {
       const evtId = step.source?.bpmnElementId ?? step.id;
+      const doc = step.description ? `\n${ind}  <documentation>${escapeXml(step.description)}</documentation>` : "";
       if (step.eventSubType === "message") {
         const msgId = uid("msg");
-        return `${ind}<intermediateCatchEvent id="${evtId}" name="${name}">\n${ind}  <messageEventDefinition id="${msgId}" messageRef="${msgId}_ref" />\n${ind}</intermediateCatchEvent>`;
+        return `${ind}<intermediateCatchEvent id="${evtId}" name="${name}">${doc}\n${ind}  <messageEventDefinition id="${msgId}" messageRef="${msgId}_ref" />\n${ind}</intermediateCatchEvent>`;
       }
-      return `${ind}<intermediateCatchEvent id="${evtId}" name="${name}" />`;
+      if (step.eventSubType === "timer" && step.timerExpression) {
+        return `${ind}<intermediateCatchEvent id="${evtId}" name="${name}">${doc}\n${ind}  <timerEventDefinition>\n${ind}    <timeCycle xsi:type="tFormalExpression">${escapeXml(step.timerExpression)}</timeCycle>\n${ind}  </timerEventDefinition>\n${ind}</intermediateCatchEvent>`;
+      }
+      return `${ind}<intermediateCatchEvent id="${evtId}" name="${name}" />${doc ? `\n${ind}  ${doc.trim()}` : ""}`;
     }
     default:
       return `${ind}<serviceTask id="${id}" name="${name}" />`;
@@ -213,13 +111,9 @@ function renderDecisionFlows(step: Step, nextId: string | null, endId: string, i
   }).join("\n");
 }
 
-/**
- * Render a linear steps chain as process XML.
- * Uses pre-generated IDs so layout pass can reuse the same IDs.
- */
-function renderStepsChainXml(steps: Step[], ind: string,
-  preIds?: { startId: string; endId: string; flowIds: string[] }
-): string {
+interface ChainIds { startId: string; endId: string; flowIds: string[]; }
+
+function renderStepsChainXml(steps: Step[], ind: string, preIds?: ChainIds): string {
   const ids = preIds ?? {
     startId: uid("start"),
     endId: uid("end"),
@@ -231,7 +125,6 @@ function renderStepsChainXml(steps: Step[], ind: string,
   steps.forEach(step => lines.push(renderStepElement(step, ind)));
   lines.push(`${ind}<endEvent id="${endId}" />`);
 
-  // start → first (or end)
   const firstId = steps.length > 0 ? (steps[0].source?.bpmnElementId ?? steps[0].id) : endId;
   lines.push(`${ind}<sequenceFlow id="${flowIds[0]}" sourceRef="${startId}" targetRef="${firstId}" />`);
 
@@ -249,14 +142,13 @@ function renderStepsChainXml(steps: Step[], ind: string,
   return lines.join("\n");
 }
 
-function renderStageAsSubProcess(stage: Stage,
-  preIds?: { startId: string; endId: string; flowIds: string[] }
-): string {
+function renderStageAsSubProcess(stage: Stage, preIds?: ChainIds): string {
   const id = stage.source?.bpmnElementId ?? stage.id;
   const name = escapeXml(stage.name);
   const asyncAttr = (stage as any).asyncBefore ? ` camunda:asyncBefore="true"` : "";
   const allSteps = flattenSteps(stage);
 
+  // multi-instance (stored in tech of first group's first step or on stage itself)
   const miAttr = (stage as any).collectionExpression
     ? `\n      <multiInstanceLoopCharacteristics isSequential="${(stage as any).isSequential ?? false}" camunda:collection="${escapeXml((stage as any).collectionExpression)}" camunda:elementVariable="${escapeXml((stage as any).elementVariable ?? "item")}" />`
     : "";
@@ -266,6 +158,13 @@ function renderStageAsSubProcess(stage: Stage,
 }
 
 function renderTrigger(ir: CaseIR): { xml: string; id: string } {
+  // Try to use original start event ID from the source
+  const origStart = ir.metadata.originalSequenceFlowIds
+    ? Object.values(ir.metadata.originalSequenceFlowIds).length === 0
+      ? null
+      : null
+    : null;
+  // Use the process-derived ID convention
   const id = `start_${ir.id}`;
   const name = ir.trigger.name ? ` name="${escapeXml(ir.trigger.name)}"` : "";
   switch (ir.trigger.type) {
@@ -283,6 +182,142 @@ function isFlatStage(stage: Stage): boolean {
   return stage.source?.bpmnElementType === "synthetic";
 }
 
+// ─── Auto-layout (fallback when no original diagram) ─────────────────────────
+
+const AL_START_W = 36; const AL_START_H = 36;
+const AL_TASK_W = 120; const AL_TASK_H = 60;
+const AL_EVT_W = 36;   const AL_EVT_H = 36;
+const AL_GAP = 40;
+const AL_MID_Y = 168;
+const AL_SP_PAD = 40;
+const AL_SP_H = 240;
+
+interface AutoRect { id: string; x: number; y: number; w: number; h: number; expanded?: boolean; }
+interface AutoEdge { flowId: string; points: { x: number; y: number }[]; }
+
+function autoLayoutDiagram(ir: CaseIR, triggerId: string, topFlowIds: string[], endId: string, stagePreIds: Map<string, ChainIds>): { shapes: AutoRect[]; edges: AutoEdge[] } {
+  const shapes: AutoRect[] = [];
+  const edges: AutoEdge[] = [];
+  let cx = 60;
+
+  const mainChain: AutoRect[] = [];
+
+  // trigger
+  const ts: AutoRect = { id: triggerId, x: cx, y: AL_MID_Y - AL_START_H / 2, w: AL_START_W, h: AL_START_H };
+  shapes.push(ts); mainChain.push(ts); cx += AL_START_W + AL_GAP;
+
+  for (const stage of ir.stages) {
+    const allSteps = flattenSteps(stage);
+    if (isFlatStage(stage)) {
+      for (const step of allSteps) {
+        const sid = step.source?.bpmnElementId ?? step.id;
+        const isEvt = step.type === "intermediateEvent";
+        const w = isEvt ? AL_EVT_W : AL_TASK_W;
+        const h = isEvt ? AL_EVT_H : AL_TASK_H;
+        const s: AutoRect = { id: sid, x: cx, y: AL_MID_Y - h / 2, w, h };
+        shapes.push(s); mainChain.push(s); cx += w + AL_GAP;
+      }
+    } else {
+      const stageId = stage.source?.bpmnElementId ?? stage.id;
+      const preIds = stagePreIds.get(stage.id);
+
+      // inner width
+      let iw = AL_SP_PAD + AL_START_W + AL_GAP;
+      for (const step of allSteps) {
+        iw += (step.type === "intermediateEvent" ? AL_EVT_W : AL_TASK_W) + AL_GAP;
+      }
+      iw += AL_START_W + AL_SP_PAD;
+      const spW = Math.max(iw, 260);
+      const spY = AL_MID_Y - AL_SP_H / 2;
+
+      const sp: AutoRect = { id: stageId, x: cx, y: spY, w: spW, h: AL_SP_H, expanded: true };
+      shapes.push(sp); mainChain.push(sp);
+
+      // inner shapes
+      if (preIds) {
+        let icx = cx + AL_SP_PAD;
+        const imid = spY + AL_SP_PAD + (AL_SP_H - AL_SP_PAD * 2) / 2;
+        const innerChain: AutoRect[] = [];
+
+        const is: AutoRect = { id: preIds.startId, x: icx, y: imid - AL_START_H / 2, w: AL_START_W, h: AL_START_H };
+        shapes.push(is); innerChain.push(is); icx += AL_START_W + AL_GAP;
+
+        for (const step of allSteps) {
+          const sid = step.source?.bpmnElementId ?? step.id;
+          const isEvt = step.type === "intermediateEvent";
+          const w = isEvt ? AL_EVT_W : AL_TASK_W; const h = isEvt ? AL_EVT_H : AL_TASK_H;
+          const s: AutoRect = { id: sid, x: icx, y: imid - h / 2, w, h };
+          shapes.push(s); innerChain.push(s); icx += w + AL_GAP;
+        }
+
+        const ie: AutoRect = { id: preIds.endId, x: icx, y: imid - AL_START_H / 2, w: AL_START_W, h: AL_START_H };
+        shapes.push(ie); innerChain.push(ie);
+
+        for (let i = 0; i < innerChain.length - 1; i++) {
+          const src = innerChain[i]; const tgt = innerChain[i + 1];
+          edges.push({ flowId: preIds.flowIds[i] ?? uid("sf"), points: [{ x: src.x + src.w, y: src.y + src.h / 2 }, { x: tgt.x, y: tgt.y + tgt.h / 2 }] });
+        }
+      }
+      cx += spW + AL_GAP;
+    }
+  }
+
+  // end event
+  const es: AutoRect = { id: endId, x: cx, y: AL_MID_Y - AL_START_H / 2, w: AL_START_W, h: AL_START_H };
+  shapes.push(es); mainChain.push(es);
+
+  // main lane edges
+  for (let i = 0; i < mainChain.length - 1; i++) {
+    const src = mainChain[i]; const tgt = mainChain[i + 1];
+    edges.push({ flowId: topFlowIds[i] ?? uid("sf"), points: [{ x: src.x + src.w, y: src.y + src.h / 2 }, { x: tgt.x, y: tgt.y + tgt.h / 2 }] });
+  }
+
+  return { shapes, edges };
+}
+
+function renderAutoLayoutDiagram(processId: string, shapes: AutoRect[], edges: AutoEdge[]): string {
+  const shapeXmls = shapes.map(s => {
+    const exp = s.expanded ? ` isExpanded="true"` : "";
+    return `    <bpmndi:BPMNShape id="Shape_${s.id}" bpmnElement="${s.id}"${exp}>\n      <dc:Bounds x="${Math.round(s.x)}" y="${Math.round(s.y)}" width="${Math.round(s.w)}" height="${Math.round(s.h)}" />\n    </bpmndi:BPMNShape>`;
+  });
+  const edgeXmls = edges.map((e, i) => {
+    const wps = e.points.map(p => `      <di:waypoint x="${Math.round(p.x)}" y="${Math.round(p.y)}" />`).join("\n");
+    return `    <bpmndi:BPMNEdge id="Edge_${i}_di" bpmnElement="${e.flowId}">\n${wps}\n    </bpmndi:BPMNEdge>`;
+  });
+  return `  <bpmndi:BPMNDiagram id="BPMNDiagram_1">\n    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="${processId}">\n${shapeXmls.join("\n")}\n${edgeXmls.join("\n")}\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>`;
+}
+
+// ─── Definitions attributes builder ──────────────────────────────────────────
+
+function buildDefinitionsTag(ir: CaseIR, processId: string): string {
+  const orig = ir.metadata.originalDefinitionsAttrs;
+  if (orig && Object.keys(orig).length > 0) {
+    // Re-emit original attributes (preserves targetNamespace, id, etc.)
+    // Always ensure required namespaces are present
+    const required: Record<string, string> = {
+      "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+      "xmlns:bpmn": "http://www.omg.org/spec/BPMN/20100524/MODEL",
+      "xmlns:bpmndi": "http://www.omg.org/spec/BPMN/20100524/DI",
+      "xmlns:dc": "http://www.omg.org/spec/DD/20100524/DC",
+      "xmlns:di": "http://www.omg.org/spec/DD/20100524/DI",
+      "xmlns:camunda": "http://camunda.org/schema/1.0/bpmn",
+    };
+    const merged = { ...required, ...orig };
+    // Remove the default xmlns if present (it conflicts with bpmn: prefix)
+    delete merged["xmlns"];
+    const attrStr = Object.entries(merged).map(([k, v]) => `\n                  ${k}="${escapeXml(v)}"`).join("");
+    return `<bpmn:definitions${attrStr}>`;
+  }
+  return `<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_${processId}"
+                  targetNamespace="http://bpmn.io/schema/bpmn">`;
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export function exportBpmn(ir: CaseIR): string {
@@ -292,12 +327,8 @@ export function exportBpmn(ir: CaseIR): string {
   const endId = `end_${processId}`;
   const trigger = renderTrigger(ir);
 
-  // ── Step 1: Pre-generate IDs for all subProcess inner chains ─────────────
-  // For each non-synthetic stage, pre-allocate startId, endId, and flowIds
-  // so layout and XML emission share the same IDs.
-  interface SubProcessIds { startId: string; endId: string; flowIds: string[]; }
-  const stagePreIds = new Map<string, SubProcessIds>();
-
+  // Pre-generate inner chain IDs for subProcess stages
+  const stagePreIds = new Map<string, ChainIds>();
   for (const stage of ir.stages) {
     if (!isFlatStage(stage)) {
       const allSteps = flattenSteps(stage);
@@ -309,29 +340,20 @@ export function exportBpmn(ir: CaseIR): string {
     }
   }
 
-  // Pre-generate top-level flow IDs
-  // chain: trigger → (flat steps or subProcesses) → endEvent
-  const flatItems: { type: "flat" | "sub"; id: string; stageId?: string; stepIds?: string[] }[] = [];
+  // Build top-level chain IDs
+  const chainIds: string[] = [trigger.id];
   for (const stage of ir.stages) {
     const allSteps = flattenSteps(stage);
     if (isFlatStage(stage)) {
-      const stepIds = allSteps.map(s => s.source?.bpmnElementId ?? s.id);
-      if (stepIds.length > 0) flatItems.push({ type: "flat", id: stepIds[0], stepIds });
+      for (const step of allSteps) chainIds.push(step.source?.bpmnElementId ?? step.id);
     } else {
-      flatItems.push({ type: "sub", id: stage.source?.bpmnElementId ?? stage.id, stageId: stage.id });
+      chainIds.push(stage.source?.bpmnElementId ?? stage.id);
     }
   }
-
-  const chainIds: string[] = [trigger.id];
-  for (const item of flatItems) {
-    if (item.type === "flat" && item.stepIds) { for (const sid of item.stepIds) chainIds.push(sid); }
-    else chainIds.push(item.id);
-  }
   chainIds.push(endId);
+  const topFlowIds = Array.from({ length: chainIds.length - 1 }, () => uid("sf"));
 
-  const topFlowIds: string[] = Array.from({ length: chainIds.length - 1 }, () => uid("sf"));
-
-  // ── Step 2: Build process XML ──────────────────────────────────────────────
+  // Build process body XML
   const bodyXmlParts: string[] = [];
   for (const stage of ir.stages) {
     const allSteps = flattenSteps(stage);
@@ -343,121 +365,25 @@ export function exportBpmn(ir: CaseIR): string {
     }
   }
 
-  const topFlowXmls: string[] = [];
-  for (let i = 0; i < chainIds.length - 1; i++) {
-    topFlowXmls.push(`    <sequenceFlow id="${topFlowIds[i]}" sourceRef="${chainIds[i]}" targetRef="${chainIds[i + 1]}" />`);
+  const topFlowXmls = chainIds.slice(0, -1).map((srcId, i) =>
+    `    <sequenceFlow id="${topFlowIds[i]}" sourceRef="${srcId}" targetRef="${chainIds[i + 1]}" />`
+  );
+
+  // ── Diagram section: use original if available, else auto-layout ────────────
+  let diagramXml: string;
+  if (ir.metadata.originalDiagramXml) {
+    // Verbatim round-trip: the original diagram coordinates are preserved exactly
+    diagramXml = `  ${ir.metadata.originalDiagramXml.trim()}`;
+  } else {
+    // Auto-generate layout for manually-built IRs
+    const { shapes, edges } = autoLayoutDiagram(ir, trigger.id, topFlowIds, endId, stagePreIds);
+    diagramXml = renderAutoLayoutDiagram(processId, shapes, edges);
   }
 
-  // ── Step 3: Build layout / diagram data ───────────────────────────────────
-  const allShapes: ShapeInfo[] = [];
-  const allEdges: EdgeInfo[] = [];
-
-  let cx = 60;
-  const mainMidY = MAIN_MID_Y;
-
-  const mainChainNodes: { id: string; x: number; y: number; w: number; h: number }[] = [];
-
-  // trigger shape
-  const trigX = cx;
-  const trigShape: ShapeInfo = { bpmnElementId: trigger.id, x: trigX, y: mainMidY - START_H / 2, w: START_W, h: START_H };
-  allShapes.push(trigShape);
-  mainChainNodes.push({ id: trigger.id, x: trigX, y: mainMidY - START_H / 2, w: START_W, h: START_H });
-  cx += START_W + H_GAP;
-
-  for (const item of flatItems) {
-    if (item.type === "flat" && item.stepIds) {
-      // find steps
-      for (const stage of ir.stages) {
-        if (!isFlatStage(stage)) continue;
-        for (const g of stage.groups) {
-          for (const step of g.steps) {
-            const sid = step.source?.bpmnElementId ?? step.id;
-            if (!item.stepIds.includes(sid)) continue;
-            const { w, h } = stepDims(step);
-            const sy = mainMidY - h / 2;
-            allShapes.push({ bpmnElementId: sid, x: cx, y: sy, w, h });
-            mainChainNodes.push({ id: sid, x: cx, y: sy, w, h });
-            cx += w + H_GAP;
-          }
-        }
-      }
-    } else {
-      // subProcess
-      const stage = ir.stages.find(s => (s.source?.bpmnElementId ?? s.id) === item.id);
-      const allSteps = stage ? flattenSteps(stage) : [];
-      const preIds = item.stageId ? stagePreIds.get(item.stageId) : undefined;
-
-      // Calculate inner width
-      let innerW = SP_PAD_LEFT + START_W + H_GAP;
-      for (const step of allSteps) {
-        const { w } = stepDims(step);
-        innerW += w + H_GAP;
-      }
-      innerW += START_W + SP_PAD_RIGHT;
-
-      const subW = Math.max(innerW, SP_MIN_W);
-      const subH = SP_MIN_H + SP_PAD_TOP + SP_PAD_BOTTOM;
-      const subY = mainMidY - subH / 2;
-
-      allShapes.push({ bpmnElementId: item.id, x: cx, y: subY, w: subW, h: subH, isExpanded: true });
-      mainChainNodes.push({ id: item.id, x: cx, y: subY, w: subW, h: subH });
-
-      // inner content layout
-      if (preIds && stage) {
-        const innerFlowIds = preIds.flowIds;
-        const innerStartId = preIds.startId;
-        const innerEndId = preIds.endId;
-        const inner = layoutChain(allSteps, cx, subY, subH, innerFlowIds, innerStartId, innerEndId);
-        for (const s of inner.shapes) allShapes.push(s);
-        for (const e of inner.edges) allEdges.push(e);
-      }
-
-      cx += subW + H_GAP;
-    }
-  }
-
-  // end event shape
-  const endShape: ShapeInfo = { bpmnElementId: endId, x: cx, y: mainMidY - START_H / 2, w: START_W, h: START_H };
-  allShapes.push(endShape);
-  mainChainNodes.push({ id: endId, x: cx, y: mainMidY - START_H / 2, w: START_W, h: START_H });
-
-  // main lane edges (using pre-generated topFlowIds)
-  for (let i = 0; i < mainChainNodes.length - 1; i++) {
-    const src = mainChainNodes[i];
-    const tgt = mainChainNodes[i + 1];
-    const srcMidY = src.y + src.h / 2;
-    const tgtMidY = tgt.y + tgt.h / 2;
-    allEdges.push({
-      sequenceFlowId: topFlowIds[i],
-      waypoints: [
-        { x: src.x + src.w, y: srcMidY },
-        { x: tgt.x, y: tgtMidY },
-      ],
-    });
-  }
-
-  // ── Step 4: Render bpmndi XML ─────────────────────────────────────────────
-  const shapeXmls = allShapes.map(s => {
-    const expanded = s.isExpanded ? ` isExpanded="true"` : "";
-    return `    <bpmndi:BPMNShape id="Shape_${s.bpmnElementId}" bpmnElement="${s.bpmnElementId}"${expanded}>\n      <dc:Bounds x="${Math.round(s.x)}" y="${Math.round(s.y)}" width="${Math.round(s.w)}" height="${Math.round(s.h)}" />\n    </bpmndi:BPMNShape>`;
-  });
-
-  const edgeXmls = allEdges.map((e, i) => {
-    const wps = e.waypoints.map(p => `      <di:waypoint x="${Math.round(p.x)}" y="${Math.round(p.y)}" />`).join("\n");
-    return `    <bpmndi:BPMNEdge id="Edge_${i}_di" bpmnElement="${e.sequenceFlowId}">\n${wps}\n    </bpmndi:BPMNEdge>`;
-  });
-
-  const diagramXml = `  <bpmndi:BPMNDiagram id="BPMNDiagram_1">\n    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="${processId}">\n${shapeXmls.join("\n")}\n${edgeXmls.join("\n")}\n    </bpmndi:BPMNPlane>\n  </bpmndi:BPMNDiagram>`;
+  const defsTag = buildDefinitionsTag(ir, processId);
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
-                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
-                  id="Definitions_${processId}"
-                  targetNamespace="http://bpmn.io/schema/bpmn">
+${defsTag}
 
   <bpmn:process id="${processId}" name="${processName}" isExecutable="true">
 
