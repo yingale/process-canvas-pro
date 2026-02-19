@@ -1,7 +1,14 @@
 /**
  * BPMN Exporter – converts Case IR → valid Camunda 7 compatible BPMN 2.0 XML
- * Generates proper sequence flows: startEvent → stages → endEvent
- * Each stage is a subProcess with its own startEvent → steps → endEvent chain
+ *
+ * Export strategy:
+ *  - Stages whose source.bpmnElementType === "subProcess" are exported as <subProcess>
+ *  - Stages whose source.bpmnElementType === "synthetic" (came from flat top-level tasks)
+ *    are exported as individual top-level tasks (NOT wrapped in a subProcess).
+ *  - All other stages are exported as <subProcess>.
+ *
+ * Top-level flow: startEvent → [flat tasks or subProcesses in order] → endEvent
+ * Each subProcess stage gets its own inner startEvent → steps → endEvent chain.
  */
 
 import type { CaseIR, Stage, Step, DecisionStep, ForeachStep, CallActivityStep } from "@/types/caseIr";
@@ -56,7 +63,6 @@ function renderStepElement(step: Step, ind: string): string {
 
     case "foreach": {
       const fs = step as ForeachStep;
-      // Render nested steps inside the subProcess
       const nestedContent = renderStepsChain(fs.steps, ind + "  ");
       const mi = `${ind}  <multiInstanceLoopCharacteristics isSequential="${fs.isSequential ?? false}"
 ${ind}    camunda:collection="${escapeXml(fs.collectionExpression)}"
@@ -78,7 +84,7 @@ ${ind}</subProcess>`;
       const outs = outMaps.map(m => `${ind}    <camunda:out source="${escapeXml(m.source)}" target="${escapeXml(m.target)}" />`).join("\n");
       return `${ind}<callActivity id="${id}" name="${name}" calledElement="${escapeXml(cs.calledElement)}">
 ${ind}  <extensionElements>
-${ins}${outs}
+${ins}${outs ? "\n" + outs : ""}
 ${ind}  </extensionElements>
 ${ind}</callActivity>`;
     }
@@ -101,7 +107,6 @@ function renderDecisionFlows(step: Step, nextId: string | null, endId: string, i
 }
 
 // ─── Render a chain of steps with proper sequence flows ───────────────────────
-// Returns XML string with startEvent, step elements, endEvent, and all sequenceFlows
 
 function renderStepsChain(steps: Step[], ind: string): string {
   const startId = uid("start");
@@ -110,15 +115,12 @@ function renderStepsChain(steps: Step[], ind: string): string {
 
   lines.push(`${ind}<startEvent id="${startId}" />`);
 
-  // Step elements
   steps.forEach(step => {
     lines.push(renderStepElement(step, ind));
   });
 
   lines.push(`${ind}<endEvent id="${endId}" />`);
 
-  // Sequence flows
-  // startEvent → first step (or endEvent if no steps)
   const firstId = steps.length > 0 ? (steps[0].source?.bpmnElementId ?? steps[0].id) : endId;
   lines.push(`${ind}<sequenceFlow id="${uid("sf")}" sourceRef="${startId}" targetRef="${firstId}" />`);
 
@@ -129,12 +131,9 @@ function renderStepsChain(steps: Step[], ind: string): string {
     const nextId = nextStep ? (nextStep.source?.bpmnElementId ?? nextStep.id) : endId;
 
     if (step.type !== "decision") {
-      // Normal sequential flow to next step
       lines.push(`${ind}<sequenceFlow id="${uid("sf")}" sourceRef="${stepId}" targetRef="${nextId}" />`);
     } else {
-      // Decision gateway flows are generated from branches
       lines.push(renderDecisionFlows(step, nextId !== endId ? nextId : null, endId, ind));
-      // Also add a default flow if no branch covers the next step
     }
   }
 
@@ -143,12 +142,13 @@ function renderStepsChain(steps: Step[], ind: string): string {
 
 // ─── Render a stage as a subProcess ──────────────────────────────────────────
 
-function renderStage(stage: Stage): string {
+function renderStageAsSubProcess(stage: Stage, asyncBefore?: boolean): string {
   const id = stage.source?.bpmnElementId ?? stage.id;
   const name = escapeXml(stage.name);
+  const asyncAttr = asyncBefore ? ` camunda:asyncBefore="true"` : "";
   const innerContent = renderStepsChain(stage.steps, "      ");
 
-  return `    <subProcess id="${id}" name="${name}">
+  return `    <subProcess id="${id}" name="${name}"${asyncAttr}>
 ${innerContent}
     </subProcess>`;
 }
@@ -190,36 +190,99 @@ function renderTrigger(ir: CaseIR): { xml: string; id: string } {
   }
 }
 
+// ─── Determine if a stage should export as flat tasks ────────────────────────
+
+function isFlatStage(stage: Stage): boolean {
+  // Stages that came from flat top-level tasks (not a real subProcess)
+  return stage.source?.bpmnElementType === "synthetic";
+}
+
+// ─── Collect all top-level "flow elements" (each either a list of steps or a subProcess id) ──
+
+interface FlowItem {
+  type: "flat" | "subProcess";
+  id: string;           // element ID used in sequenceFlows
+  xml: string;          // rendered XML
+  stepIds?: string[];   // for flat: all step ids in order
+}
+
+function buildFlowItems(ir: CaseIR): FlowItem[] {
+  const items: FlowItem[] = [];
+
+  for (const stage of ir.stages) {
+    if (isFlatStage(stage)) {
+      // Render each step as a top-level element
+      const stepXmls: string[] = [];
+      const stepIds: string[] = [];
+      for (const step of stage.steps) {
+        stepXmls.push(renderStepElement(step, "    "));
+        stepIds.push(step.source?.bpmnElementId ?? step.id);
+      }
+      if (stepIds.length > 0) {
+        items.push({
+          type: "flat",
+          id: stepIds[0],          // first step's id for sequence flow chaining
+          xml: stepXmls.join("\n"),
+          stepIds,
+        });
+      }
+    } else {
+      // Export as subProcess
+      const id = stage.source?.bpmnElementId ?? stage.id;
+      items.push({
+        type: "subProcess",
+        id,
+        xml: renderStageAsSubProcess(stage),
+      });
+    }
+  }
+
+  return items;
+}
+
 // ─── Main export function ─────────────────────────────────────────────────────
 
 export function exportBpmn(ir: CaseIR): string {
-  _uidCounter = 0; // reset counter for deterministic IDs per export
+  _uidCounter = 0;
 
   const processId = ir.id;
   const processName = escapeXml(ir.name);
   const endId = `end_${processId}`;
 
   const trigger = renderTrigger(ir);
-  const stagesXml = ir.stages.map(renderStage).join("\n\n");
+  const flowItems = buildFlowItems(ir);
 
-  // Top-level sequence flows: startEvent → stage[0] → stage[1] → ... → endEvent
+  // Render all body elements
+  const bodyXmlParts: string[] = [];
+  for (const item of flowItems) {
+    bodyXmlParts.push(item.xml);
+  }
+
+  // Build top-level sequence flows
   const topFlows: string[] = [];
 
-  if (ir.stages.length > 0) {
-    const firstStageId = ir.stages[0].source?.bpmnElementId ?? ir.stages[0].id;
-    topFlows.push(`    <sequenceFlow id="${uid("sf")}" sourceRef="${trigger.id}" targetRef="${firstStageId}" />`);
+  if (flowItems.length === 0) {
+    topFlows.push(`    <sequenceFlow id="${uid("sf")}" sourceRef="${trigger.id}" targetRef="${endId}" />`);
+  } else {
+    // Flatten the chain: trigger.id → item[0].id → ... → item[n].id → endId
+    // For flat items, we need to chain through all their step ids
+    const chainIds: string[] = [trigger.id];
 
-    for (let i = 0; i < ir.stages.length - 1; i++) {
-      const src = ir.stages[i].source?.bpmnElementId ?? ir.stages[i].id;
-      const tgt = ir.stages[i + 1].source?.bpmnElementId ?? ir.stages[i + 1].id;
-      topFlows.push(`    <sequenceFlow id="${uid("sf")}" sourceRef="${src}" targetRef="${tgt}" />`);
+    for (const item of flowItems) {
+      if (item.type === "flat" && item.stepIds && item.stepIds.length > 0) {
+        for (const sid of item.stepIds) {
+          chainIds.push(sid);
+        }
+      } else {
+        chainIds.push(item.id);
+      }
     }
 
-    const lastStageId = ir.stages[ir.stages.length - 1].source?.bpmnElementId ?? ir.stages[ir.stages.length - 1].id;
-    topFlows.push(`    <sequenceFlow id="${uid("sf")}" sourceRef="${lastStageId}" targetRef="${endId}" />`);
-  } else {
-    // No stages — connect start directly to end
-    topFlows.push(`    <sequenceFlow id="${uid("sf")}" sourceRef="${trigger.id}" targetRef="${endId}" />`);
+    chainIds.push(endId);
+
+    for (let i = 0; i < chainIds.length - 1; i++) {
+      topFlows.push(`    <sequenceFlow id="${uid("sf")}" sourceRef="${chainIds[i]}" targetRef="${chainIds[i + 1]}" />`);
+    }
   }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -233,7 +296,7 @@ export function exportBpmn(ir: CaseIR): string {
 
 ${trigger.xml}
 
-${stagesXml}
+${bodyXmlParts.join("\n\n")}
 
     <endEvent id="${endId}" />
 
