@@ -4,7 +4,6 @@
 import ReactFlow, {
   Background,
   Controls,
-  MiniMap,
   BackgroundVariant,
   useNodesState,
   useEdgesState,
@@ -57,27 +56,18 @@ export default function ProcessDiagram({
         onEdgesChange={onEdgesChange}
         nodeTypes={NODE_TYPES}
         fitView
-        fitViewOptions={{ padding: 0.15, maxZoom: 1.2 }}
-        minZoom={0.3}
+        fitViewOptions={{ padding: 0.12, maxZoom: 1.0 }}
+        minZoom={0.2}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
       >
         <Background
           variant={BackgroundVariant.Dots}
-          gap={24}
-          size={1.5}
+          gap={20}
+          size={1.2}
           color="hsl(var(--canvas-dot))"
         />
         <Controls />
-        <MiniMap
-          nodeColor={(n) => {
-            if (n.type === "triggerNode") return "hsl(var(--primary))";
-            if (n.type === "endNode") return "hsl(var(--foreground-subtle))";
-            if (n.type === "stageHeader") return "hsl(var(--surface-overlay))";
-            return "hsl(var(--surface-raised))";
-          }}
-          maskColor="hsl(var(--canvas-bg) / 0.8)"
-        />
       </ReactFlow>
     </div>
   );

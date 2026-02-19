@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import type { CaseIR, Stage, Step, SelectionTarget, StepType } from "@/types/caseIr";
 import { STEP_TYPE_CONFIG } from "./FlowNodes";
+import { STAGE_COLORS } from "./flowBuilder";
 import type { JsonPatch } from "@/types/caseIr";
 
 interface StageListProps {
@@ -127,6 +128,7 @@ export default function StageList({ caseIr, selection, onSelect, onPatch }: Stag
         {caseIr.stages.map((stage, si) => {
           const isCollapsed = collapsedStages.has(stage.id);
           const isStageSelected = selection?.stageId === stage.id;
+          const stageColor = STAGE_COLORS[si % STAGE_COLORS.length];
 
           return (
             <div key={stage.id} className="mb-1">
@@ -135,7 +137,7 @@ export default function StageList({ caseIr, selection, onSelect, onPatch }: Stag
                 className="group flex items-center gap-1 px-3 py-2 cursor-pointer transition-colors"
                 style={{
                   background: isStageSelected && selection?.kind === "stage"
-                    ? "hsl(var(--primary-dim))"
+                    ? `${stageColor}18`
                     : "transparent",
                 }}
                 onMouseEnter={e => {
@@ -144,7 +146,8 @@ export default function StageList({ caseIr, selection, onSelect, onPatch }: Stag
                 }}
                 onMouseLeave={e => {
                   if (!(isStageSelected && selection?.kind === "stage"))
-                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.background =
+                      isStageSelected && selection?.kind === "stage" ? `${stageColor}18` : "transparent";
                 }}
                 onClick={() => onSelect({ kind: "stage", stageId: stage.id })}
               >
@@ -156,8 +159,8 @@ export default function StageList({ caseIr, selection, onSelect, onPatch }: Stag
                 </button>
 
                 <div
-                  className="flex-shrink-0 w-1.5 h-4 rounded-full"
-                  style={{ background: "hsl(var(--primary))", opacity: 0.7 }}
+                  className="flex-shrink-0 w-2 h-2 rounded-sm"
+                  style={{ background: stageColor }}
                 />
 
                 <span className="flex-1 text-[13px] font-medium text-foreground truncate">{stage.name}</span>

@@ -66,6 +66,14 @@ export default {
           foreach: "hsl(var(--step-foreach))",
           call: "hsl(var(--step-call))",
         },
+        stage: {
+          0: "hsl(var(--stage-color-0))",
+          1: "hsl(var(--stage-color-1))",
+          2: "hsl(var(--stage-color-2))",
+          3: "hsl(var(--stage-color-3))",
+          4: "hsl(var(--stage-color-4))",
+          5: "hsl(var(--stage-color-5))",
+        },
         canvas: {
           DEFAULT: "hsl(var(--canvas-bg))",
           dot: "hsl(var(--canvas-dot))",
