@@ -220,6 +220,11 @@ export interface CaseIR {
     originalSubProcessEventIds?: Record<string, { startId: string; endId: string; flowIds: string[] }>;
     /** Original top-level sequence flow IDs in document order */
     originalTopLevelFlowIds?: string[];
+    /**
+     * Verbatim original BPMN XML (full file content).
+     * When set, export re-emits this exactly for a lossless round-trip.
+     */
+    originalBpmnXml?: string;
   };
 }
 
@@ -375,6 +380,7 @@ export const caseIrSchema = z.object({
     originalEndEventId: z.string().optional(),
     originalSubProcessEventIds: z.record(z.object({ startId: z.string(), endId: z.string(), flowIds: z.array(z.string()) })).optional(),
     originalTopLevelFlowIds: z.array(z.string()).optional(),
+    originalBpmnXml: z.string().optional(),
   }),
 });
 
