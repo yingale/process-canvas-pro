@@ -1,8 +1,12 @@
 /**
- * BPMN Exporter – converts Case IR → Camunda 7 compatible BPMN XML
+ * BPMN Exporter – converts Case IR → valid Camunda 7 compatible BPMN 2.0 XML
+ * Generates proper sequence flows: startEvent → stages → endEvent
+ * Each stage is a subProcess with its own startEvent → steps → endEvent chain
  */
 
 import type { CaseIR, Stage, Step, DecisionStep, ForeachStep, CallActivityStep } from "@/types/caseIr";
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
 function escapeXml(str: string): string {
   return str
@@ -13,11 +17,14 @@ function escapeXml(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
+let _uidCounter = 0;
 function uid(prefix = "el"): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}_${(++_uidCounter).toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
-function renderCamundaAttrs(step: Step): string {
+// ─── Camunda attribute helpers ────────────────────────────────────────────────
+
+function camundaAttrs(step: Step): string {
   const tech = step.tech ?? {};
   const parts: string[] = [];
   if (tech.topic) parts.push(`camunda:topic="${escapeXml(tech.topic)}"`);
@@ -26,166 +33,211 @@ function renderCamundaAttrs(step: Step): string {
   return parts.length ? " " + parts.join(" ") : "";
 }
 
-function renderExtensions(step: Step): string {
-  const tech = step.tech ?? {};
-  if (!tech.callActivity?.inMappings?.length && !tech.callActivity?.outMappings?.length) return "";
-  const ins = (tech.callActivity?.inMappings ?? [])
-    .map(m => `      <camunda:in source="${escapeXml(m.source)}" target="${escapeXml(m.target)}" />`)
-    .join("\n");
-  const outs = (tech.callActivity?.outMappings ?? [])
-    .map(m => `      <camunda:out source="${escapeXml(m.source)}" target="${escapeXml(m.target)}" />`)
-    .join("\n");
-  return `    <extensionElements>\n${ins}${outs}\n    </extensionElements>`;
-}
+// ─── Render individual step elements ─────────────────────────────────────────
 
-function renderMultiInstance(step: ForeachStep): string {
-  return `    <multiInstanceLoopCharacteristics isSequential="${step.isSequential ?? false}"
-      camunda:collection="${escapeXml(step.collectionExpression)}"
-      camunda:elementVariable="${escapeXml(step.elementVariable)}">
-    </multiInstanceLoopCharacteristics>`;
-}
-
-function renderStep(step: Step, indent = "    "): { xml: string; flows: string[] } {
-  const id = step.source?.bpmnElementId ?? uid();
+function renderStepElement(step: Step, ind: string): string {
+  const id = step.source?.bpmnElementId ?? step.id;
   const name = escapeXml(step.name);
-  const flows: string[] = [];
 
   switch (step.type) {
-    case "automation": {
-      const attrs = renderCamundaAttrs(step);
-      return {
-        xml: `${indent}<serviceTask id="${id}" name="${name}"${attrs} />`,
-        flows,
-      };
-    }
+    case "automation":
+      return `${ind}<serviceTask id="${id}" name="${name}"${camundaAttrs(step)} />`;
 
     case "user": {
       const assignee = step.assignee ? ` camunda:assignee="${escapeXml(step.assignee)}"` : "";
-      const candidates = step.candidateGroups?.length
+      const groups = step.candidateGroups?.length
         ? ` camunda:candidateGroups="${step.candidateGroups.map(escapeXml).join(",")}"`
         : "";
-      return {
-        xml: `${indent}<userTask id="${id}" name="${name}"${assignee}${candidates} />`,
-        flows,
-      };
+      return `${ind}<userTask id="${id}" name="${name}"${assignee}${groups} />`;
     }
 
-    case "decision": {
-      const gwId = id;
-      const branches = (step as DecisionStep).branches.map(b => {
-        const flowId = `flow_${b.id}`;
-        const targetId = b.targetStepId ?? uid("end");
-        flows.push(
-          `${indent}<sequenceFlow id="${flowId}" name="${escapeXml(b.label)}" sourceRef="${gwId}" targetRef="${targetId}">
-${indent}  <conditionExpression xsi:type="tFormalExpression">${escapeXml(b.condition)}</conditionExpression>
-${indent}</sequenceFlow>`
-        );
-        return b;
-      });
-      void branches;
-      return {
-        xml: `${indent}<exclusiveGateway id="${gwId}" name="${name}" />`,
-        flows,
-      };
-    }
+    case "decision":
+      return `${ind}<exclusiveGateway id="${id}" name="${name}" />`;
 
     case "foreach": {
-      const fStep = step as ForeachStep;
-      const nestedXml = fStep.steps.map(s => renderStep(s, indent + "  ").xml).join("\n");
-      return {
-        xml: `${indent}<subProcess id="${id}" name="${name}">\n${renderMultiInstance(fStep)}\n${nestedXml}\n${indent}</subProcess>`,
-        flows,
-      };
+      const fs = step as ForeachStep;
+      // Render nested steps inside the subProcess
+      const nestedContent = renderStepsChain(fs.steps, ind + "  ");
+      const mi = `${ind}  <multiInstanceLoopCharacteristics isSequential="${fs.isSequential ?? false}"
+${ind}    camunda:collection="${escapeXml(fs.collectionExpression)}"
+${ind}    camunda:elementVariable="${escapeXml(fs.elementVariable)}" />`;
+      return `${ind}<subProcess id="${id}" name="${name}">
+${mi}
+${nestedContent}
+${ind}</subProcess>`;
     }
 
     case "callActivity": {
-      const cStep = step as CallActivityStep;
-      const ext = renderExtensions(step);
-      const inner = ext ? `\n${ext}\n${indent}` : " /";
-      return {
-        xml: `${indent}<callActivity id="${id}" name="${name}" calledElement="${escapeXml(cStep.calledElement)}"${inner}>`,
-        flows,
-      };
+      const cs = step as CallActivityStep;
+      const inMaps = cs.inMappings ?? [];
+      const outMaps = cs.outMappings ?? [];
+      if (inMaps.length === 0 && outMaps.length === 0) {
+        return `${ind}<callActivity id="${id}" name="${name}" calledElement="${escapeXml(cs.calledElement)}" />`;
+      }
+      const ins = inMaps.map(m => `${ind}    <camunda:in source="${escapeXml(m.source)}" target="${escapeXml(m.target)}" />`).join("\n");
+      const outs = outMaps.map(m => `${ind}    <camunda:out source="${escapeXml(m.source)}" target="${escapeXml(m.target)}" />`).join("\n");
+      return `${ind}<callActivity id="${id}" name="${name}" calledElement="${escapeXml(cs.calledElement)}">
+${ind}  <extensionElements>
+${ins}${outs}
+${ind}  </extensionElements>
+${ind}</callActivity>`;
     }
   }
 }
 
-function renderStage(stage: Stage): string {
-  const id = stage.source?.bpmnElementId ?? uid("stage");
-  const name = escapeXml(stage.name);
-  const allFlows: string[] = [];
+// ─── Render decision branch sequence flows ────────────────────────────────────
 
-  const stepsXml = stage.steps.map(step => {
-    const { xml, flows } = renderStep(step, "      ");
-    allFlows.push(...flows);
-    return xml;
+function renderDecisionFlows(step: Step, nextId: string | null, endId: string, ind: string): string {
+  if (step.type !== "decision") return "";
+  const ds = step as DecisionStep;
+  const gwId = step.source?.bpmnElementId ?? step.id;
+  return ds.branches.map((b, i) => {
+    const target = b.targetStepId ?? nextId ?? endId;
+    const condTag = b.condition && b.condition !== "${default}"
+      ? `\n${ind}  <conditionExpression xsi:type="tFormalExpression">${escapeXml(b.condition)}</conditionExpression>\n${ind}`
+      : "";
+    return `${ind}<sequenceFlow id="flow_gw_${gwId}_${i}" name="${escapeXml(b.label)}" sourceRef="${gwId}" targetRef="${target}">${condTag}</sequenceFlow>`;
   }).join("\n");
+}
 
-  // Generate linear sequence flows between steps
-  for (let i = 0; i < stage.steps.length - 1; i++) {
-    const src = stage.steps[i].source?.bpmnElementId ?? stage.steps[i].id;
-    const tgt = stage.steps[i + 1].source?.bpmnElementId ?? stage.steps[i + 1].id;
-    allFlows.push(`      <sequenceFlow id="flow_${src}_${tgt}" sourceRef="${src}" targetRef="${tgt}" />`);
+// ─── Render a chain of steps with proper sequence flows ───────────────────────
+// Returns XML string with startEvent, step elements, endEvent, and all sequenceFlows
+
+function renderStepsChain(steps: Step[], ind: string): string {
+  const startId = uid("start");
+  const endId = uid("end");
+  const lines: string[] = [];
+
+  lines.push(`${ind}<startEvent id="${startId}" />`);
+
+  // Step elements
+  steps.forEach(step => {
+    lines.push(renderStepElement(step, ind));
+  });
+
+  lines.push(`${ind}<endEvent id="${endId}" />`);
+
+  // Sequence flows
+  // startEvent → first step (or endEvent if no steps)
+  const firstId = steps.length > 0 ? (steps[0].source?.bpmnElementId ?? steps[0].id) : endId;
+  lines.push(`${ind}<sequenceFlow id="${uid("sf")}" sourceRef="${startId}" targetRef="${firstId}" />`);
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const stepId = step.source?.bpmnElementId ?? step.id;
+    const nextStep = steps[i + 1];
+    const nextId = nextStep ? (nextStep.source?.bpmnElementId ?? nextStep.id) : endId;
+
+    if (step.type !== "decision") {
+      // Normal sequential flow to next step
+      lines.push(`${ind}<sequenceFlow id="${uid("sf")}" sourceRef="${stepId}" targetRef="${nextId}" />`);
+    } else {
+      // Decision gateway flows are generated from branches
+      lines.push(renderDecisionFlows(step, nextId !== endId ? nextId : null, endId, ind));
+      // Also add a default flow if no branch covers the next step
+    }
   }
 
+  return lines.join("\n");
+}
+
+// ─── Render a stage as a subProcess ──────────────────────────────────────────
+
+function renderStage(stage: Stage): string {
+  const id = stage.source?.bpmnElementId ?? stage.id;
+  const name = escapeXml(stage.name);
+  const innerContent = renderStepsChain(stage.steps, "      ");
+
   return `    <subProcess id="${id}" name="${name}">
-      <startEvent id="${id}_start" />
-${stepsXml}
-      <endEvent id="${id}_end" />
-${allFlows.join("\n")}
+${innerContent}
     </subProcess>`;
 }
 
-function renderTrigger(ir: CaseIR): string {
-  const { trigger } = ir;
+// ─── Render trigger / startEvent ─────────────────────────────────────────────
+
+function renderTrigger(ir: CaseIR): { xml: string; id: string } {
   const id = `start_${ir.id}`;
-  switch (trigger.type) {
-    case "timer":
-      return `    <startEvent id="${id}" name="${escapeXml(trigger.name ?? "Timer Start")}">
+  const name = ir.trigger.name ? ` name="${escapeXml(ir.trigger.name)}"` : "";
+
+  switch (ir.trigger.type) {
+    case "timer": {
+      const expr = ir.trigger.expression ?? "";
+      return {
+        id,
+        xml: `    <startEvent id="${id}"${name}>
       <timerEventDefinition>
-        <timeCycle>${escapeXml(trigger.expression ?? "")}</timeCycle>
+        <timeCycle xsi:type="tFormalExpression">${escapeXml(expr)}</timeCycle>
       </timerEventDefinition>
-    </startEvent>`;
+    </startEvent>`,
+      };
+    }
     case "message":
-      return `    <startEvent id="${id}" name="${escapeXml(trigger.name ?? "Message Start")}">
+      return {
+        id,
+        xml: `    <startEvent id="${id}"${name}>
       <messageEventDefinition />
-    </startEvent>`;
+    </startEvent>`,
+      };
+    case "signal":
+      return {
+        id,
+        xml: `    <startEvent id="${id}"${name}>
+      <signalEventDefinition />
+    </startEvent>`,
+      };
     default:
-      return `    <startEvent id="${id}" />`;
+      return { id, xml: `    <startEvent id="${id}" />` };
   }
 }
 
+// ─── Main export function ─────────────────────────────────────────────────────
+
 export function exportBpmn(ir: CaseIR): string {
+  _uidCounter = 0; // reset counter for deterministic IDs per export
+
   const processId = ir.id;
   const processName = escapeXml(ir.name);
+  const endId = `end_${processId}`;
 
-  // Build inter-stage sequence flows
-  const stageFlows: string[] = [];
-  for (let i = 0; i < ir.stages.length - 1; i++) {
-    const src = ir.stages[i].source?.bpmnElementId ?? ir.stages[i].id;
-    const tgt = ir.stages[i + 1].source?.bpmnElementId ?? ir.stages[i + 1].id;
-    stageFlows.push(`    <sequenceFlow id="flow_stage_${i}" sourceRef="${src}" targetRef="${tgt}" />`);
-  }
-
+  const trigger = renderTrigger(ir);
   const stagesXml = ir.stages.map(renderStage).join("\n\n");
+
+  // Top-level sequence flows: startEvent → stage[0] → stage[1] → ... → endEvent
+  const topFlows: string[] = [];
+
+  if (ir.stages.length > 0) {
+    const firstStageId = ir.stages[0].source?.bpmnElementId ?? ir.stages[0].id;
+    topFlows.push(`    <sequenceFlow id="${uid("sf")}" sourceRef="${trigger.id}" targetRef="${firstStageId}" />`);
+
+    for (let i = 0; i < ir.stages.length - 1; i++) {
+      const src = ir.stages[i].source?.bpmnElementId ?? ir.stages[i].id;
+      const tgt = ir.stages[i + 1].source?.bpmnElementId ?? ir.stages[i + 1].id;
+      topFlows.push(`    <sequenceFlow id="${uid("sf")}" sourceRef="${src}" targetRef="${tgt}" />`);
+    }
+
+    const lastStageId = ir.stages[ir.stages.length - 1].source?.bpmnElementId ?? ir.stages[ir.stages.length - 1].id;
+    topFlows.push(`    <sequenceFlow id="${uid("sf")}" sourceRef="${lastStageId}" targetRef="${endId}" />`);
+  } else {
+    // No stages — connect start directly to end
+    topFlows.push(`    <sequenceFlow id="${uid("sf")}" sourceRef="${trigger.id}" targetRef="${endId}" />`);
+  }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
-             xmlns:activiti="http://activiti.org/bpmn"
              targetNamespace="http://bpmn.io/schema/bpmn"
              xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd">
 
   <process id="${processId}" name="${processName}" isExecutable="true">
 
-${renderTrigger(ir)}
+${trigger.xml}
 
 ${stagesXml}
 
-    <endEvent id="end_${processId}" />
+    <endEvent id="${endId}" />
 
-${stageFlows.join("\n")}
+${topFlows.join("\n")}
 
   </process>
 
