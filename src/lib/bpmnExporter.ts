@@ -158,14 +158,8 @@ function renderStageAsSubProcess(stage: Stage, preIds?: ChainIds): string {
 }
 
 function renderTrigger(ir: CaseIR): { xml: string; id: string } {
-  // Try to use original start event ID from the source
-  const origStart = ir.metadata.originalSequenceFlowIds
-    ? Object.values(ir.metadata.originalSequenceFlowIds).length === 0
-      ? null
-      : null
-    : null;
-  // Use the process-derived ID convention
-  const id = `start_${ir.id}`;
+  // Prefer the original start event ID captured during import for perfect round-trip
+  const id = ir.metadata.originalStartEventId ?? `start_${ir.id}`;
   const name = ir.trigger.name ? ` name="${escapeXml(ir.trigger.name)}"` : "";
   switch (ir.trigger.type) {
     case "timer": {
@@ -324,15 +318,20 @@ export function exportBpmn(ir: CaseIR): string {
   _uidCounter = 0;
   const processId = ir.id;
   const processName = escapeXml(ir.name);
-  const endId = `end_${processId}`;
+
+  // Use original IDs if available (import round-trip) else generate stable new ones
+  const endId = ir.metadata.originalEndEventId ?? `end_${processId}`;
   const trigger = renderTrigger(ir);
 
   // Pre-generate inner chain IDs for subProcess stages
+  // Prefer original IDs captured during import
   const stagePreIds = new Map<string, ChainIds>();
   for (const stage of ir.stages) {
     if (!isFlatStage(stage)) {
       const allSteps = flattenSteps(stage);
-      stagePreIds.set(stage.id, {
+      const stageId = stage.source?.bpmnElementId ?? stage.id;
+      const origInner = ir.metadata.originalSubProcessEventIds?.[stageId];
+      stagePreIds.set(stage.id, origInner ?? {
         startId: uid("start"),
         endId: uid("end"),
         flowIds: Array.from({ length: allSteps.length + 1 }, () => uid("sf")),
@@ -340,7 +339,7 @@ export function exportBpmn(ir: CaseIR): string {
     }
   }
 
-  // Build top-level chain IDs
+  // Build top-level element chain IDs
   const chainIds: string[] = [trigger.id];
   for (const stage of ir.stages) {
     const allSteps = flattenSteps(stage);
@@ -351,7 +350,12 @@ export function exportBpmn(ir: CaseIR): string {
     }
   }
   chainIds.push(endId);
-  const topFlowIds = Array.from({ length: chainIds.length - 1 }, () => uid("sf"));
+
+  // Use original top-level flow IDs if available (perfect round-trip), else generate new ones
+  const origTopFlows = ir.metadata.originalTopLevelFlowIds;
+  const topFlowIds = origTopFlows && origTopFlows.length >= chainIds.length - 1
+    ? origTopFlows
+    : Array.from({ length: chainIds.length - 1 }, () => uid("sf"));
 
   // Build process body XML
   const bodyXmlParts: string[] = [];
@@ -365,9 +369,16 @@ export function exportBpmn(ir: CaseIR): string {
     }
   }
 
-  const topFlowXmls = chainIds.slice(0, -1).map((srcId, i) =>
-    `    <sequenceFlow id="${topFlowIds[i]}" sourceRef="${srcId}" targetRef="${chainIds[i + 1]}" />`
-  );
+  // Build top-level sequence flows preserving original source/target refs
+  const origFlowRefs = ir.metadata.originalSequenceFlowIds ?? {};
+  const topFlowXmls = chainIds.slice(0, -1).map((srcId, i) => {
+    const flowId = topFlowIds[i];
+    // If this flow ID existed in the original, use original source/target refs
+    const origRef = origFlowRefs[flowId];
+    const src = origRef?.sourceRef ?? srcId;
+    const tgt = origRef?.targetRef ?? chainIds[i + 1];
+    return `    <sequenceFlow id="${flowId}" sourceRef="${src}" targetRef="${tgt}" />`;
+  });
 
   // ── Diagram section: use original if available, else auto-layout ────────────
   let diagramXml: string;
