@@ -91,7 +91,7 @@ export default function AiPromptBar({ caseIr, onApplyPatch }: AiPromptBarProps) 
 
   return (
     <div
-      className="border-t flex-shrink-0"
+      className="border-t border-r flex-shrink-0"
       style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))" }}
     >
       {/* Patch preview area */}

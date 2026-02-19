@@ -78,31 +78,36 @@ export default function WorkflowStudio() {
       <div className="flex flex-1 overflow-hidden">
         {caseIr ? (
           <>
-            <StageList
-              caseIr={caseIr}
-              selection={selection}
-              onSelect={setSelection}
-              onPatch={handlePatch}
-            />
-            <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Left column: Stage list + AI prompt */}
+            <div className="flex flex-col overflow-hidden flex-shrink-0" style={{ width: 260, minWidth: 260 }}>
               <div className="flex-1 overflow-hidden">
-                <ProcessDiagram
+                <StageList
                   caseIr={caseIr}
                   selection={selection}
-                  onSelectStage={handleSelectStage}
-                  onSelectStep={handleSelectStep}
+                  onSelect={setSelection}
+                  onPatch={handlePatch}
                 />
               </div>
               <AiPromptBar caseIr={caseIr} onApplyPatch={handlePatch} />
             </div>
-            {selection && (
-              <PropertiesPanel
+
+            {/* Center: Process diagram */}
+            <div className="flex-1 overflow-hidden">
+              <ProcessDiagram
                 caseIr={caseIr}
                 selection={selection}
-                onClose={() => setSelection(null)}
-                onPatch={handlePatch}
+                onSelectStage={handleSelectStage}
+                onSelectStep={handleSelectStep}
               />
-            )}
+            </div>
+
+            {/* Right: Properties panel */}
+            <PropertiesPanel
+              caseIr={caseIr}
+              selection={selection}
+              onClose={() => setSelection(null)}
+              onPatch={handlePatch}
+            />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
