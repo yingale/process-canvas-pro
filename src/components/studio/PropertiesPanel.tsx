@@ -294,7 +294,39 @@ function StepProperties({
 // ─── Main panel ───────────────────────────────────────────────────────────────
 
 export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }: PropertiesPanelProps) {
-  if (!selection) return null;
+  if (!selection) {
+    return (
+      <div
+        className="h-full flex flex-col border-l"
+        style={{
+          background: "hsl(var(--surface))",
+          borderColor: "hsl(var(--border))",
+          width: 280,
+          minWidth: 280,
+        }}
+      >
+        <div
+          className="px-4 py-3 border-b"
+          style={{ borderColor: "hsl(var(--border))" }}
+        >
+          <div className="text-[10px] font-bold uppercase tracking-widest text-foreground-muted">
+            Properties
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: "hsl(var(--surface-raised))", border: "1px solid hsl(var(--border))" }}
+          >
+            <ChevronRight size={18} className="text-foreground-subtle" />
+          </div>
+          <p className="text-[12px] text-foreground-muted leading-relaxed">
+            Select a stage or step to view and edit its properties
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const stageIdx = findStageIndex(caseIr, selection.stageId);
   const stage = caseIr.stages[stageIdx];
@@ -345,3 +377,4 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
     </div>
   );
 }
+
