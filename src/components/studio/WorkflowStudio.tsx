@@ -93,7 +93,13 @@ export default function WorkflowStudio() {
     if (!caseIr) return;
     try {
       const updated = applyCaseIRPatch(caseIr, patch);
-      updated.metadata = { ...updated.metadata, updatedAt: new Date().toISOString() };
+      // Clear the cached original XML so the exporter regenerates from the
+      // edited IR instead of returning the stale verbatim import.
+      updated.metadata = {
+        ...updated.metadata,
+        updatedAt: new Date().toISOString(),
+        originalBpmnXml: undefined,
+      };
       setCaseIr(updated);
     } catch (e) { console.error("Patch failed:", e); }
   }, [caseIr]);
@@ -178,6 +184,36 @@ export default function WorkflowStudio() {
     handlePatch([{ op: "add", path: "/stages/-", value: cloned }]);
   }, [caseIr, handlePatch]);
 
+  const handleMoveStage = useCallback((stageId: string, dir: -1 | 1) => {
+    if (!caseIr) return;
+    const si = caseIr.stages.findIndex(s => s.id === stageId);
+    const ti = si + dir;
+    if (si < 0 || ti < 0 || ti >= caseIr.stages.length) return;
+    handlePatch([{ op: "move", path: `/stages/${ti}`, from: `/stages/${si}` }]);
+  }, [caseIr, handlePatch]);
+
+  const handleMoveStep = useCallback((stageId: string, groupId: string, stepId: string, dir: -1 | 1) => {
+    if (!caseIr) return;
+    const si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const gi = caseIr.stages[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+    const sti = caseIr.stages[si].groups[gi].steps.findIndex(s => s.id === stepId);
+    const ti = sti + dir;
+    if (sti < 0 || ti < 0 || ti >= caseIr.stages[si].groups[gi].steps.length) return;
+    handlePatch([{ op: "move", path: `/stages/${si}/groups/${gi}/steps/${ti}`, from: `/stages/${si}/groups/${gi}/steps/${sti}` }]);
+  }, [caseIr, handlePatch]);
+
+  const handleMoveGroup = useCallback((stageId: string, groupId: string, dir: -1 | 1) => {
+    if (!caseIr) return;
+    const si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const gi = caseIr.stages[si].groups.findIndex(g => g.id === groupId);
+    const ti = gi + dir;
+    if (gi < 0 || ti < 0 || ti >= caseIr.stages[si].groups.length) return;
+    handlePatch([{ op: "move", path: `/stages/${si}/groups/${ti}`, from: `/stages/${si}/groups/${gi}` }]);
+  }, [caseIr, handlePatch]);
+
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ background: "hsl(var(--background))" }}>
       <Toolbar caseIr={caseIr} onImportBpmn={handleImportBpmn} onLoadSample={() => {}} />
@@ -212,6 +248,9 @@ export default function WorkflowStudio() {
                 onDeleteStep={handleDeleteStep}
                 onDuplicateStep={handleDuplicateStep}
                 onDuplicateStage={handleDuplicateStage}
+                onMoveStage={handleMoveStage}
+                onMoveGroup={handleMoveGroup}
+                onMoveStep={handleMoveStep}
               />
             </div>
             <PropertiesPanel
