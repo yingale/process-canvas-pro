@@ -22,6 +22,8 @@ interface ProcessDiagramProps {
   selection: SelectionTarget;
   onSelectStage: (stageId: string) => void;
   onSelectStep: (stageId: string, stepId: string) => void;
+  onAddStep: (stageId: string) => void;
+  onAddStage: () => void;
 }
 
 export default function ProcessDiagram({
@@ -29,6 +31,8 @@ export default function ProcessDiagram({
   selection,
   onSelectStage,
   onSelectStep,
+  onAddStep,
+  onAddStage,
 }: ProcessDiagramProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
@@ -42,10 +46,12 @@ export default function ProcessDiagram({
       selectedStepId,
       onSelectStage,
       onSelectStep,
+      onAddStep,
+      onAddStage,
     );
     setNodes(n);
     setEdges(e);
-  }, [caseIr, selection, onSelectStage, onSelectStep, setNodes, setEdges]);
+  }, [caseIr, selection, onSelectStage, onSelectStep, onAddStep, onAddStage, setNodes, setEdges]);
 
   return (
     <div className="w-full h-full" style={{ background: "hsl(var(--canvas-bg))" }}>
