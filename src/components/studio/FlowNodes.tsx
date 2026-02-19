@@ -1,23 +1,18 @@
 /**
  * Custom React Flow nodes for the Pega-style workflow diagram
- * Horizontal layout: chevron stage headers + step cards stacked below
  */
-import { Handle, Position, MarkerType, type NodeProps } from "reactflow";
-import { Bot, User, GitBranch, Repeat2, ExternalLink, Zap, type LucideIcon } from "lucide-react";
+import { Handle, Position, type NodeProps } from "reactflow";
+import { Bot, User, GitBranch, Repeat2, ExternalLink, Zap, Plus, type LucideIcon } from "lucide-react";
 import type { Step, StepType } from "@/types/caseIr";
 
 // ─── Step type configuration ──────────────────────────────────────────────────
 
-export const STEP_TYPE_CONFIG: Record<StepType, {
-  label: string;
-  icon: LucideIcon;
-  colorVar: string;
-}> = {
-  automation: { label: "Automation", icon: Bot,         colorVar: "hsl(var(--step-automation))" },
-  user:        { label: "User",       icon: User,        colorVar: "hsl(var(--step-user))" },
-  decision:    { label: "Decision",   icon: GitBranch,   colorVar: "hsl(var(--step-decision))" },
-  foreach:     { label: "For Each",   icon: Repeat2,     colorVar: "hsl(var(--step-foreach))" },
-  callActivity:{ label: "Call",       icon: ExternalLink, colorVar: "hsl(var(--step-call))" },
+export const STEP_TYPE_CONFIG: Record<StepType, { label: string; icon: LucideIcon; colorVar: string }> = {
+  automation: { label: "Automation", icon: Bot,          colorVar: "hsl(var(--step-automation))" },
+  user:        { label: "User",       icon: User,         colorVar: "hsl(var(--step-user))" },
+  decision:    { label: "Decision",   icon: GitBranch,    colorVar: "hsl(var(--step-decision))" },
+  foreach:     { label: "For Each",   icon: Repeat2,      colorVar: "hsl(var(--step-foreach))" },
+  callActivity:{ label: "Subprocess", icon: ExternalLink, colorVar: "hsl(var(--step-call))" },
 };
 
 // ─── Step card node ───────────────────────────────────────────────────────────
@@ -49,21 +44,15 @@ export function StepNode({ data }: NodeProps<StepNodeData>) {
         style={{
           background: "hsl(var(--surface))",
           borderColor: selected ? stageColor : "hsl(var(--border))",
-          borderLeftWidth: selected ? 3 : 1,
+          borderLeftWidth: 3,
           borderLeftColor: stageColor,
-          boxShadow: selected
-            ? `0 0 0 1px ${stageColor}40, var(--shadow-card)`
-            : "var(--shadow-card)",
+          boxShadow: selected ? `0 0 0 2px ${stageColor}40` : "var(--shadow-card)",
         }}
       >
         <div className="px-3 py-2.5">
-          {/* Type badge row */}
           <div className="flex items-center gap-1.5 mb-1.5">
             <Icon size={11} color={stageColor} />
-            <span
-              className="text-[10px] font-semibold uppercase tracking-wider"
-              style={{ color: stageColor }}
-            >
+            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: stageColor }}>
               {cfg.label}
             </span>
             {isAsync && (
@@ -73,18 +62,13 @@ export function StepNode({ data }: NodeProps<StepNodeData>) {
             )}
           </div>
 
-          {/* Step name */}
-          <p
-            className="text-[12px] font-medium leading-snug line-clamp-2"
-            style={{ color: "hsl(var(--foreground))" }}
-          >
+          <p className="text-[12px] font-medium leading-snug line-clamp-2" style={{ color: "hsl(var(--foreground))" }}>
             {step.name}
           </p>
 
-          {/* Decision branches */}
           {step.type === "decision" && step.branches.length > 0 && (
             <div className="mt-1.5 space-y-0.5">
-              {step.branches.slice(0, 2).map((b) => (
+              {step.branches.slice(0, 2).map(b => (
                 <div key={b.id} className="flex items-center gap-1">
                   <div className="w-1 h-1 rounded-full" style={{ background: stageColor, opacity: 0.6 }} />
                   <span className="text-[9px] truncate" style={{ color: "hsl(var(--foreground-muted))" }}>{b.label}</span>
@@ -96,14 +80,12 @@ export function StepNode({ data }: NodeProps<StepNodeData>) {
             </div>
           )}
 
-          {/* Foreach expression */}
           {step.type === "foreach" && (
             <div className="mt-1 font-mono text-[9px] truncate" style={{ color: "hsl(var(--foreground-muted))" }}>
               ∀ {step.collectionExpression}
             </div>
           )}
 
-          {/* Call activity target */}
           {step.type === "callActivity" && step.calledElement && (
             <div className="mt-1 font-mono text-[9px] truncate" style={{ color: "hsl(var(--foreground-muted))" }}>
               → {step.calledElement}
@@ -134,7 +116,6 @@ export interface StageHeaderNodeData {
 export function StageHeaderNode({ data }: NodeProps<StageHeaderNodeData>) {
   const { stageName, stageId, stageColor, isFirst, selected, onSelect } = data;
 
-  // Chevron shape: left indent if not first, right point always
   const W = 200;
   const H = 52;
   const indent = isFirst ? 0 : 18;
@@ -165,21 +146,101 @@ export function StageHeaderNode({ data }: NodeProps<StageHeaderNodeData>) {
           paddingLeft: isFirst ? 16 : 28,
           paddingRight: point + 8,
           transition: "filter 0.15s",
-          filter: selected ? "brightness(1.15)" : "none",
+          filter: selected ? "brightness(1.1)" : "none",
           boxSizing: "border-box",
         }}
       >
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: "0.06em", lineHeight: 1 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
             Stage
           </div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", lineHeight: 1.25, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", lineHeight: 1.25, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {stageName}
           </div>
         </div>
       </div>
 
       <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+    </div>
+  );
+}
+
+// ─── Add Step button node ─────────────────────────────────────────────────────
+
+export interface AddStepNodeData {
+  stageId: string;
+  stageColor: string;
+  onAddStep: (stageId: string) => void;
+}
+
+export function AddStepNode({ data }: NodeProps<AddStepNodeData>) {
+  const { stageId, stageColor, onAddStep } = data;
+
+  return (
+    <div style={{ width: 188 }}>
+      <button
+        className="w-full flex items-center justify-center gap-2 rounded border-dashed border transition-all duration-150 py-2"
+        style={{
+          borderColor: "hsl(var(--border))",
+          color: "hsl(var(--foreground-muted))",
+          background: "transparent",
+          fontSize: 11,
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.borderColor = stageColor;
+          e.currentTarget.style.color = stageColor;
+          e.currentTarget.style.background = `${stageColor}0d`;
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.borderColor = "hsl(var(--border))";
+          e.currentTarget.style.color = "hsl(var(--foreground-muted))";
+          e.currentTarget.style.background = "transparent";
+        }}
+        onClick={() => onAddStep(stageId)}
+      >
+        <Plus size={12} />
+        Add Step
+      </button>
+    </div>
+  );
+}
+
+// ─── Add Stage button node ────────────────────────────────────────────────────
+
+export interface AddStageNodeData {
+  onAddStage: () => void;
+}
+
+export function AddStageNode({ data }: NodeProps<AddStageNodeData>) {
+  const { onAddStage } = data;
+  const W = 52;
+  const H = 52;
+
+  return (
+    <div style={{ width: W, height: H }}>
+      <button
+        className="w-full h-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-all duration-150"
+        style={{
+          borderColor: "hsl(var(--border))",
+          color: "hsl(var(--foreground-muted))",
+          background: "transparent",
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.borderColor = "hsl(var(--primary))";
+          e.currentTarget.style.color = "hsl(var(--primary))";
+          e.currentTarget.style.background = "hsl(var(--primary-dim))";
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.borderColor = "hsl(var(--border))";
+          e.currentTarget.style.color = "hsl(var(--foreground-muted))";
+          e.currentTarget.style.background = "transparent";
+        }}
+        onClick={onAddStage}
+        title="Add new stage"
+      >
+        <Plus size={18} />
+        <span style={{ fontSize: 9, marginTop: 2 }}>Stage</span>
+      </button>
     </div>
   );
 }
@@ -206,7 +267,7 @@ export function TriggerNode({ data }: NodeProps<TriggerNodeData>) {
           justifyContent: "center",
         }}
       >
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           {data.triggerType === "none" ? "Start" : data.triggerType}
         </span>
       </div>
@@ -233,7 +294,7 @@ export function EndNode() {
           justifyContent: "center",
         }}
       >
-        <span style={{ fontSize: 11, fontWeight: 700, color: "hsl(var(--foreground-muted))", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: "hsl(var(--foreground-muted))", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           End
         </span>
       </div>
@@ -248,7 +309,6 @@ export const NODE_TYPES = {
   stageHeader: StageHeaderNode,
   triggerNode: TriggerNode,
   endNode: EndNode,
+  addStepNode: AddStepNode,
+  addStageNode: AddStageNode,
 };
-
-// re-export for flowBuilder
-export { MarkerType };
