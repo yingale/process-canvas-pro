@@ -1,12 +1,11 @@
 /**
- * Converts a CaseIR into React Flow nodes and edges
- * Pega-style: horizontal stage columns, steps stacked vertically below chevron headers
+ * Converts a CaseIR into React Flow nodes/edges.
+ * Updated for Section → Groups → Steps hierarchy.
  */
 import { MarkerType, type Node, type Edge } from "reactflow";
 import type { CaseIR } from "@/types/caseIr";
 import type { StepNodeData, StageHeaderNodeData, TriggerNodeData, AddStepNodeData, AddStageNodeData } from "./FlowNodes";
 
-// Layout constants – horizontal Pega layout
 const STAGE_COL_WIDTH = 210;
 const CHEVRON_OVERLAP = 18;
 const CHEVRON_HEIGHT = 56;
@@ -16,7 +15,6 @@ const STEP_PADDING_TOP = 14;
 const STAGES_START_X = 0;
 const STAGES_START_Y = 60;
 
-// Stage colors in order (matches Pega palette: green, red, teal, blue, orange, purple)
 export const STAGE_COLORS = [
   "hsl(134 58% 38%)",
   "hsl(0 68% 50%)",
@@ -37,29 +35,23 @@ export function buildFlowGraph(
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-
   const stageCount = caseIr.stages.length;
 
-  // ── Trigger node ──────────────────────────────────────────────────────────
   nodes.push({
     id: "trigger",
     type: "triggerNode",
     position: { x: -100, y: STAGES_START_Y + CHEVRON_HEIGHT / 2 - 18 },
-    data: {
-      triggerType: caseIr.trigger.type,
-      expression: caseIr.trigger.expression,
-      name: caseIr.trigger.name,
-    } satisfies TriggerNodeData,
-    selectable: false,
-    draggable: false,
+    data: { triggerType: caseIr.trigger.type, expression: caseIr.trigger.expression, name: caseIr.trigger.name } satisfies TriggerNodeData,
+    selectable: false, draggable: false,
   });
 
-  // ── Stage columns ─────────────────────────────────────────────────────────
   caseIr.stages.forEach((stage, si) => {
     const stageColor = STAGE_COLORS[si % STAGE_COLORS.length];
     const stageX = STAGES_START_X + si * (STAGE_COL_WIDTH - CHEVRON_OVERLAP);
 
-    // Stage chevron header
+    // Flatten all steps across all groups for layout
+    const allSteps = stage.groups.flatMap(g => g.steps);
+
     const headerNodeId = `stage_header_${stage.id}`;
     nodes.push({
       id: headerNodeId,
@@ -68,7 +60,7 @@ export function buildFlowGraph(
       data: {
         stageName: stage.name,
         stageId: stage.id,
-        stepCount: stage.steps.length,
+        stepCount: allSteps.length,
         stageIndex: si,
         stageColor,
         isFirst: si === 0,
@@ -77,10 +69,8 @@ export function buildFlowGraph(
         onSelect: onSelectStage,
       } satisfies StageHeaderNodeData,
       draggable: false,
-      // selectable must remain true so onClick fires
     });
 
-    // Connect trigger → first stage header
     if (si === 0) {
       edges.push({
         id: `edge_trigger_to_stage_${stage.id}`,
@@ -92,53 +82,34 @@ export function buildFlowGraph(
       });
     }
 
-    // Step cards stacked below the chevron
-    stage.steps.forEach((step, stepIdx) => {
-      const stepNodeId = `step_${step.id}`;
+    allSteps.forEach((step, stepIdx) => {
       const stepY = STAGES_START_Y + CHEVRON_HEIGHT + STEP_PADDING_TOP + stepIdx * (STEP_HEIGHT + STEP_GAP);
-
       nodes.push({
-        id: stepNodeId,
+        id: `step_${step.id}`,
         type: "stepNode",
         position: { x: stageX + 5, y: stepY },
-        data: {
-          step,
-          stageId: stage.id,
-          stageColor,
-          selected: selectedStepId === step.id,
-          onSelect: onSelectStep,
-        } satisfies StepNodeData,
+        data: { step, stageId: stage.id, stageColor, selected: selectedStepId === step.id, onSelect: onSelectStep } satisfies StepNodeData,
         draggable: false,
-        // selectable must remain true so onClick fires
       });
     });
 
-    // "+ Add Step" button below last step
-    const addStepY = STAGES_START_Y + CHEVRON_HEIGHT + STEP_PADDING_TOP
-      + stage.steps.length * (STEP_HEIGHT + STEP_GAP);
+    const addStepY = STAGES_START_Y + CHEVRON_HEIGHT + STEP_PADDING_TOP + allSteps.length * (STEP_HEIGHT + STEP_GAP);
     nodes.push({
       id: `add_step_${stage.id}`,
       type: "addStepNode",
       position: { x: stageX + 5, y: addStepY },
-      data: {
-        stageId: stage.id,
-        stageColor,
-        onAddStep,
-      } satisfies AddStepNodeData,
-      draggable: false,
-      selectable: false,
+      data: { stageId: stage.id, stageColor, onAddStep } satisfies AddStepNodeData,
+      draggable: false, selectable: false,
     });
   });
 
-  // ── "+ Add Stage" button at end of chevron row ────────────────────────────
   const addStageX = STAGES_START_X + stageCount * (STAGE_COL_WIDTH - CHEVRON_OVERLAP) + 16;
   nodes.push({
     id: "add_stage",
     type: "addStageNode",
     position: { x: addStageX, y: STAGES_START_Y },
     data: { onAddStage } satisfies AddStageNodeData,
-    draggable: false,
-    selectable: false,
+    draggable: false, selectable: false,
   });
 
   return { nodes, edges };

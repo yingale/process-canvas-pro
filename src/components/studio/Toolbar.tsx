@@ -36,7 +36,7 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
       if (warnings.length > 0) {
         notify("warn", `Imported with ${warnings.length} warning(s): ${warnings[0]}`);
       } else {
-        notify("success", `Imported "${ir.name}" – ${ir.stages.length} stages, ${ir.stages.reduce((n, s) => n + s.steps.length, 0)} steps`);
+        notify("success", `Imported "${ir.name}" – ${ir.stages.length} stages, ${ir.stages.reduce((n, s) => n + s.groups.reduce((m, g) => m + g.steps.length, 0), 0)} steps`);
       }
     } catch (err) {
       notify("error", err instanceof Error ? err.message : "Import failed");

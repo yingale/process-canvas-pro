@@ -1,23 +1,15 @@
 /**
  * Case Lifecycle Model Diagram
- * Card-based layout: BPMN XML → JSON → Lifecycle Diagram → Export
- *
- * Visual design matches Pega Case Lifecycle Manager:
- *  - "MAIN FLOW" swim lane with horizontal section cards
- *  - Each section card shows steps as a vertical list
- *  - Colored type indicator squares on each step
- *  - Hover context menus: Rename (via properties), Duplicate, Delete
- *  - "+ Add Step" within each section, "+ Add Section" at the end
- *  - "ALTERNATIVE PATHS" swim lane below (future)
+ * Hierarchy: Section (Stage) → Groups → Steps
+ * Visual design: Pega-style horizontal cards with group sub-sections inside each stage.
  */
-
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Plus, MoreHorizontal, ChevronDown, ChevronRight,
   Pencil, Copy, Trash2, GitBranch, Bot, User,
-  Repeat2, ExternalLink, Zap, AlignLeft, Bell, type LucideIcon,
+  Repeat2, ExternalLink, Zap, AlignLeft, Bell, Layers, type LucideIcon,
 } from "lucide-react";
-import type { CaseIR, Stage, Step, StepType, SelectionTarget } from "@/types/caseIr";
+import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget } from "@/types/caseIr";
 
 // ─── Step type config ──────────────────────────────────────────────────────────
 
@@ -30,7 +22,6 @@ const STEP_TYPE_META: Record<StepType, { label: string; color: string; Icon: Luc
   intermediateEvent: { label: "Wait/Event",  color: "hsl(199 80% 42%)",  Icon: Bell },
 };
 
-// Section accent colors cycling per stage index
 const SECTION_COLORS = [
   "hsl(213 80% 50%)",
   "hsl(32 86% 48%)",
@@ -43,77 +34,38 @@ const SECTION_COLORS = [
 // ─── Context menu ──────────────────────────────────────────────────────────────
 
 interface CtxMenu {
-  kind: "stage" | "step";
+  kind: "stage" | "group" | "step";
   stageId: string;
+  groupId?: string;
   stepId?: string;
-  x: number;
-  y: number;
+  x: number; y: number;
 }
 
-function ContextMenu({
-  menu,
-  onRename,
-  onDuplicate,
-  onDelete,
-  onClose,
-}: {
-  menu: CtxMenu;
-  onRename: () => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
-  onClose: () => void;
+function ContextMenu({ menu, onRename, onDuplicate, onDelete, onClose }: {
+  menu: CtxMenu; onRename: () => void; onDuplicate: () => void; onDelete: () => void; onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, [onClose]);
 
-  const Item = ({
-    icon: Icon,
-    label,
-    danger,
-    onClick,
-  }: {
-    icon: LucideIcon;
-    label: string;
-    danger?: boolean;
-    onClick: () => void;
-  }) => (
-    <button
-      className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors rounded"
+  const Item = ({ icon: Icon, label, danger, onClick }: { icon: LucideIcon; label: string; danger?: boolean; onClick: () => void }) => (
+    <button className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors rounded"
       style={{ color: danger ? "hsl(var(--destructive))" : "hsl(var(--foreground))" }}
-      onMouseEnter={e => {
-        e.currentTarget.style.background = danger
-          ? "hsl(var(--destructive) / 0.08)"
-          : "hsl(var(--surface-raised))";
-      }}
+      onMouseEnter={e => { e.currentTarget.style.background = danger ? "hsl(var(--destructive) / 0.08)" : "hsl(var(--surface-raised))"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-      onClick={() => { onClick(); onClose(); }}
-    >
-      <Icon size={12} />
-      {label}
+      onClick={() => { onClick(); onClose(); }}>
+      <Icon size={12} />{label}
     </button>
   );
 
   return (
-    <div
-      ref={ref}
-      className="fixed z-50 rounded-lg shadow-lg border py-1 min-w-[130px]"
-      style={{
-        top: menu.y,
-        left: menu.x,
-        background: "hsl(var(--surface))",
-        borderColor: "hsl(var(--border))",
-        boxShadow: "0 8px 24px hsl(0 0% 0% / 0.14)",
-      }}
-    >
+    <div ref={ref} className="fixed z-50 rounded-lg shadow-lg border py-1 min-w-[130px]"
+      style={{ top: menu.y, left: menu.x, background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", boxShadow: "0 8px 24px hsl(0 0% 0% / 0.14)" }}>
       <Item icon={Pencil} label="Rename" onClick={onRename} />
-      <Item icon={Copy} label="Duplicate" onClick={onDuplicate} />
+      {menu.kind !== "group" && <Item icon={Copy} label="Duplicate" onClick={onDuplicate} />}
       <div className="my-1 border-t" style={{ borderColor: "hsl(var(--border))" }} />
       <Item icon={Trash2} label="Delete" danger onClick={onDelete} />
     </div>
@@ -122,20 +74,9 @@ function ContextMenu({
 
 // ─── Step row ──────────────────────────────────────────────────────────────────
 
-function StepRow({
-  step,
-  stageId,
-  color,
-  selected,
-  onSelect,
-  onContextMenu,
-}: {
-  step: Step;
-  stageId: string;
-  color: string;
-  selected: boolean;
-  onSelect: () => void;
-  onContextMenu: (e: React.MouseEvent) => void;
+function StepRow({ step, color, selected, onSelect, onContextMenu }: {
+  step: Step; color: string; selected: boolean;
+  onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void;
 }) {
   const [hover, setHover] = useState(false);
   const meta = STEP_TYPE_META[step.type];
@@ -143,111 +84,47 @@ function StepRow({
   const inputCount = step.tech?.inputParameters?.length ?? 0;
   const outputCount = step.tech?.outputParameters?.length ?? 0;
 
-  // Sub-label line
   let subLabel = meta.label;
   if (step.tech?.topic) subLabel += ` · ${step.tech.topic}`;
   if (step.type === "intermediateEvent") {
     subLabel = `${step.eventSubType.charAt(0).toUpperCase() + step.eventSubType.slice(1)} Event`;
     if (step.messageRef) subLabel += ` · ${step.messageRef}`;
   }
-  if (step.type === "foreach") {
-    subLabel = `For Each · ${step.elementVariable || step.collectionExpression}`;
-  }
+  if (step.type === "foreach") subLabel = `For Each · ${step.elementVariable || step.collectionExpression}`;
 
   return (
     <div
       className="group relative rounded-md cursor-pointer transition-all"
       style={{
-        background: selected
-          ? `color-mix(in srgb, ${color} 8%, hsl(var(--surface)))`
-          : hover
-          ? "hsl(var(--surface-raised))"
-          : "hsl(var(--surface))",
+        background: selected ? `color-mix(in srgb, ${color} 8%, hsl(var(--surface)))` : hover ? "hsl(var(--surface-raised))" : "hsl(var(--surface))",
         border: `1px solid ${selected ? color + "60" : "hsl(var(--border))"}`,
-        marginBottom: 6,
+        marginBottom: 5,
       }}
-      onClick={onSelect}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
+      onClick={onSelect} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
     >
       <div className="flex items-start gap-2.5 px-2.5 py-2">
-        {/* Type icon with colored bg */}
-        <div
-          className="flex-shrink-0 rounded-sm flex items-center justify-center mt-0.5"
-          style={{ width: 16, height: 16, background: `${meta.color}22`, marginTop: 3 }}
-        >
+        <div className="flex-shrink-0 rounded-sm flex items-center justify-center mt-0.5"
+          style={{ width: 16, height: 16, background: `${meta.color}22`, marginTop: 3 }}>
           <meta.Icon size={9} style={{ color: meta.color }} />
         </div>
-
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
-            <span
-              className="text-[11px] font-semibold truncate"
-              style={{ color: "hsl(var(--foreground))" }}
-            >
-              {step.name}
-            </span>
-            {isAsync && (
-              <span title="Async"><Zap size={9} style={{ color: "hsl(var(--warning))", flexShrink: 0 }} /></span>
-            )}
+            <span className="text-[11px] font-semibold truncate" style={{ color: "hsl(var(--foreground))" }}>{step.name}</span>
+            {isAsync && <span title="Async"><Zap size={9} style={{ color: "hsl(var(--warning))", flexShrink: 0 }} /></span>}
           </div>
-          <div
-            className="text-[10px] mt-0.5 truncate"
-            style={{ color: "hsl(var(--foreground-muted))" }}
-          >
-            {subLabel}
-          </div>
-          {/* Metadata chips row */}
-          {(inputCount > 0 || outputCount > 0 || (step.type === "decision" && step.branches?.length > 0)) && (
-            <div className="flex items-center gap-1 mt-1 flex-wrap">
-              {inputCount > 0 && (
-                <span
-                  className="text-[9px] px-1 py-0.5 rounded font-mono"
-                  style={{ background: "hsl(213 80% 50% / 0.12)", color: "hsl(213 80% 50%)" }}
-                  title={`${inputCount} input parameter${inputCount !== 1 ? "s" : ""}`}
-                >
-                  IN:{inputCount}
-                </span>
-              )}
-              {outputCount > 0 && (
-                <span
-                  className="text-[9px] px-1 py-0.5 rounded font-mono"
-                  style={{ background: "hsl(134 58% 38% / 0.12)", color: "hsl(134 58% 38%)" }}
-                  title={`${outputCount} output parameter${outputCount !== 1 ? "s" : ""}`}
-                >
-                  OUT:{outputCount}
-                </span>
-              )}
-              {step.type === "decision" && step.branches?.length > 0 && (
-                <span
-                  className="text-[9px] px-1 py-0.5 rounded"
-                  style={{ background: "hsl(134 58% 38% / 0.1)", color: "hsl(134 58% 38%)" }}
-                >
-                  {step.branches.length} branch{step.branches.length !== 1 ? "es" : ""}
-                </span>
-              )}
+          <div className="text-[10px] mt-0.5 truncate" style={{ color: "hsl(var(--foreground-muted))" }}>{subLabel}</div>
+          {(inputCount > 0 || outputCount > 0) && (
+            <div className="flex items-center gap-1 mt-1">
+              {inputCount > 0 && <span className="text-[9px] px-1 py-0.5 rounded font-mono" style={{ background: "hsl(213 80% 50% / 0.12)", color: "hsl(213 80% 50%)" }}>IN:{inputCount}</span>}
+              {outputCount > 0 && <span className="text-[9px] px-1 py-0.5 rounded font-mono" style={{ background: "hsl(134 58% 38% / 0.12)", color: "hsl(134 58% 38%)" }}>OUT:{outputCount}</span>}
             </div>
           )}
-          {/* Description snippet */}
-          {step.description && (
-            <div
-              className="text-[9px] mt-0.5 truncate italic"
-              style={{ color: "hsl(var(--foreground-subtle))" }}
-              title={step.description}
-            >
-              {step.description}
-            </div>
-          )}
+          {step.description && <div className="text-[9px] mt-0.5 truncate italic" style={{ color: "hsl(var(--foreground-subtle))" }}>{step.description}</div>}
         </div>
-
-        {/* Context menu trigger */}
         {hover && (
-          <button
-            className="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
+          <button className="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
             style={{ color: "hsl(var(--foreground-muted))" }}
-            onClick={e => { e.stopPropagation(); onContextMenu(e); }}
-          >
+            onClick={e => { e.stopPropagation(); onContextMenu(e); }}>
             <MoreHorizontal size={12} />
           </button>
         )}
@@ -256,155 +133,73 @@ function StepRow({
   );
 }
 
-// ─── Section card ──────────────────────────────────────────────────────────────
+// ─── Group sub-section ─────────────────────────────────────────────────────────
 
-function SectionCard({
-  stage,
-  stageIdx,
-  color,
-  selectedStageId,
-  selectedStepId,
-  onSelectStage,
-  onSelectStep,
-  onAddStep,
-  onContextMenu,
-  onStepContextMenu,
-}: {
-  stage: Stage;
-  stageIdx: number;
-  color: string;
-  selectedStageId: string | null;
-  selectedStepId: string | null;
-  onSelectStage: (id: string) => void;
-  onSelectStep: (stageId: string, stepId: string) => void;
-  onAddStep: (stageId: string) => void;
-  onContextMenu: (e: React.MouseEvent, stageId: string) => void;
-  onStepContextMenu: (e: React.MouseEvent, stageId: string, stepId: string) => void;
+function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onGroupCtx, onStepCtx }: {
+  group: Group; stageId: string; color: string; selection: SelectionTarget;
+  onSelectGroup: (stageId: string, groupId: string) => void;
+  onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
+  onAddStep: (stageId: string, groupId: string) => void;
+  onGroupCtx: (e: React.MouseEvent, groupId: string) => void;
+  onStepCtx: (e: React.MouseEvent, groupId: string, stepId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [headerHover, setHeaderHover] = useState(false);
-  const isStageSelected = selectedStageId === stage.id && !selectedStepId;
+  const [hover, setHover] = useState(false);
+  const isGroupSel = selection?.kind === "group" && selection.groupId === group.id;
 
   return (
-    <div
-      className="flex-shrink-0 flex flex-col rounded-xl border transition-all"
-      style={{
-        width: 272,
-        background: "hsl(var(--surface))",
-        borderColor: isStageSelected ? color : "hsl(var(--border))",
-        boxShadow: isStageSelected
-          ? `0 0 0 2px ${color}30, 0 4px 16px hsl(0 0% 0% / 0.06)`
-          : "0 2px 8px hsl(0 0% 0% / 0.04)",
-        // Colored top accent
-        borderTop: `3px solid ${color}`,
-      }}
-    >
-      {/* Section header */}
+    <div className="mb-2">
+      {/* Group header */}
       <div
-        className="flex items-center gap-2 px-3 py-2.5 cursor-pointer rounded-t-xl select-none"
-        style={{
-          background: headerHover || isStageSelected
-            ? `color-mix(in srgb, ${color} 6%, hsl(var(--surface)))`
-            : "transparent",
-        }}
-        onClick={() => onSelectStage(stage.id)}
-        onMouseEnter={() => setHeaderHover(true)}
-        onMouseLeave={() => setHeaderHover(false)}
+        className="flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer transition-all select-none"
+        style={{ background: isGroupSel || hover ? `color-mix(in srgb, ${color} 6%, hsl(var(--surface-raised)))` : "transparent" }}
+        onClick={() => onSelectGroup(stageId, group.id)}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
       >
-        {/* Collapse toggle */}
-        <button
-          className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
-          onClick={e => { e.stopPropagation(); setCollapsed(c => !c); }}
-          style={{ color: "hsl(var(--foreground-muted))" }}
-        >
-          {collapsed
-            ? <ChevronRight size={13} />
-            : <ChevronDown size={13} />}
+        <button className="flex-shrink-0 opacity-50 hover:opacity-100" onClick={e => { e.stopPropagation(); setCollapsed(c => !c); }}
+          style={{ color: "hsl(var(--foreground-muted))" }}>
+          {collapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
         </button>
-
-        {/* Stage name */}
-        <span
-          className="flex-1 text-[13px] font-semibold truncate"
-          style={{ color: "hsl(var(--foreground))" }}
-        >
-          {stage.name}
-        </span>
-
-        {/* Step count badge */}
-        <span
-          className="text-[10px] font-mono px-1.5 py-0.5 rounded-md flex-shrink-0"
-          style={{
-            background: `color-mix(in srgb, ${color} 12%, transparent)`,
-            color,
-          }}
-        >
-          {stage.steps.length}
-        </span>
-
-        {/* Context menu */}
-        {headerHover && (
-          <button
-            className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
+        <Layers size={10} style={{ color, flexShrink: 0 }} />
+        <span className="flex-1 text-[11px] font-semibold truncate" style={{ color: "hsl(var(--foreground))" }}>{group.name}</span>
+        <span className="text-[9px] font-mono px-1 rounded" style={{ background: `${color}18`, color }}>{group.steps.length}</span>
+        {hover && (
+          <button className="w-4 h-4 rounded flex items-center justify-center opacity-60 hover:opacity-100"
             style={{ color: "hsl(var(--foreground-muted))" }}
-            onClick={e => { e.stopPropagation(); onContextMenu(e, stage.id); }}
-          >
-            <MoreHorizontal size={13} />
+            onClick={e => { e.stopPropagation(); onGroupCtx(e, group.id); }}>
+            <MoreHorizontal size={10} />
           </button>
         )}
       </div>
 
-      {/* Divider */}
-      <div className="mx-3" style={{ height: 1, background: `color-mix(in srgb, ${color} 20%, hsl(var(--border)))` }} />
-
       {/* Steps */}
       {!collapsed && (
-        <div className="flex-1 p-3 flex flex-col">
-          {stage.steps.length === 0 && (
-            <div
-              className="text-center py-4 text-[11px] rounded-lg mb-2"
-              style={{
-                color: "hsl(var(--foreground-subtle))",
-                border: `1px dashed hsl(var(--border))`,
-              }}
-            >
-              No steps yet
+        <div className="ml-4 mt-1">
+          {group.steps.length === 0 && (
+            <div className="text-center py-3 text-[10px] rounded-lg mb-1.5"
+              style={{ color: "hsl(var(--foreground-subtle))", border: `1px dashed hsl(var(--border))` }}>
+              No steps
             </div>
           )}
-
-          {stage.steps.map(step => (
+          {group.steps.map(step => (
             <StepRow
               key={step.id}
               step={step}
-              stageId={stage.id}
               color={color}
-              selected={selectedStepId === step.id}
-              onSelect={() => onSelectStep(stage.id, step.id)}
-              onContextMenu={e => onStepContextMenu(e, stage.id, step.id)}
+              selected={selection?.kind === "step" && selection.stepId === step.id}
+              onSelect={() => onSelectStep(stageId, group.id, step.id)}
+              onContextMenu={e => onStepCtx(e, group.id, step.id)}
             />
           ))}
-
-          {/* Add Step button */}
           <button
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-md border-dashed border transition-all text-[11px] font-medium mt-1"
-            style={{
-              borderColor: "hsl(var(--border))",
-              color: "hsl(var(--foreground-subtle))",
-              background: "transparent",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = color;
-              e.currentTarget.style.color = color;
-              e.currentTarget.style.background = `color-mix(in srgb, ${color} 6%, transparent)`;
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = "hsl(var(--border))";
-              e.currentTarget.style.color = "hsl(var(--foreground-subtle))";
-              e.currentTarget.style.background = "transparent";
-            }}
-            onClick={() => onAddStep(stage.id)}
+            className="w-full flex items-center justify-center gap-1 py-1.5 rounded border-dashed border text-[10px] font-medium transition-all"
+            style={{ borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.color = color; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; }}
+            onClick={() => onAddStep(stageId, group.id)}
           >
-            <Plus size={11} />
-            Add Step
+            <Plus size={10} /> Add Step
           </button>
         </div>
       )}
@@ -412,267 +207,240 @@ function SectionCard({
   );
 }
 
-// ─── Swim lane ─────────────────────────────────────────────────────────────────
+// ─── Section card (Stage) ──────────────────────────────────────────────────────
 
-function SwimLane({
-  label,
-  stages,
-  startIdx,
-  selectedStageId,
-  selectedStepId,
-  onSelectStage,
-  onSelectStep,
-  onAddStep,
-  onAddStage,
-  onContextMenu,
-  onStepContextMenu,
-  showAddStage,
-  altPath,
-}: {
-  label: string;
-  stages: Stage[];
-  startIdx: number;
-  selectedStageId: string | null;
-  selectedStepId: string | null;
+function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onAddGroup, onStageCtx, onGroupCtx, onStepCtx }: {
+  stage: Stage; stageIdx: number; color: string; selection: SelectionTarget;
   onSelectStage: (id: string) => void;
-  onSelectStep: (stageId: string, stepId: string) => void;
-  onAddStep: (stageId: string) => void;
-  onAddStage: () => void;
-  onContextMenu: (e: React.MouseEvent, stageId: string) => void;
-  onStepContextMenu: (e: React.MouseEvent, stageId: string, stepId: string) => void;
-  showAddStage: boolean;
-  altPath?: boolean;
+  onSelectGroup: (stageId: string, groupId: string) => void;
+  onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
+  onAddStep: (stageId: string, groupId: string) => void;
+  onAddGroup: (stageId: string) => void;
+  onStageCtx: (e: React.MouseEvent, stageId: string) => void;
+  onGroupCtx: (e: React.MouseEvent, stageId: string, groupId: string) => void;
+  onStepCtx: (e: React.MouseEvent, stageId: string, groupId: string, stepId: string) => void;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [headerHover, setHeaderHover] = useState(false);
+  const isStageSelected = selection?.stageId === stage.id && selection?.kind === "stage";
+  const totalSteps = stage.groups.reduce((n, g) => n + g.steps.length, 0);
+
   return (
-    <div className="mb-6">
-      {/* Lane header */}
-      <div
-        className="flex items-center gap-2 mb-3 px-1"
+    <div className="flex-shrink-0 flex flex-col rounded-xl border transition-all"
+      style={{
+        width: 290,
+        background: "hsl(var(--surface))",
+        borderColor: isStageSelected ? color : "hsl(var(--border))",
+        boxShadow: isStageSelected ? `0 0 0 2px ${color}30, 0 4px 16px hsl(0 0% 0% / 0.06)` : "0 2px 8px hsl(0 0% 0% / 0.04)",
+        borderTop: `3px solid ${color}`,
+      }}>
+
+      {/* Stage header */}
+      <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer rounded-t-xl select-none"
+        style={{ background: headerHover || isStageSelected ? `color-mix(in srgb, ${color} 6%, hsl(var(--surface)))` : "transparent" }}
+        onClick={() => onSelectStage(stage.id)}
+        onMouseEnter={() => setHeaderHover(true)}
+        onMouseLeave={() => setHeaderHover(false)}
       >
-        <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
-        <span
-          className="text-[11px] font-bold uppercase tracking-widest"
-          style={{ color: "hsl(var(--foreground-muted))" }}
-        >
-          {label}
+        <button className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
+          onClick={e => { e.stopPropagation(); setCollapsed(c => !c); }}
+          style={{ color: "hsl(var(--foreground-muted))" }}>
+          {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+        </button>
+        <span className="flex-1 text-[13px] font-bold truncate" style={{ color: "hsl(var(--foreground))" }}>{stage.name}</span>
+        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md"
+          style={{ background: `color-mix(in srgb, ${color} 12%, transparent)`, color }}>
+          {stage.groups.length}g · {totalSteps}s
         </span>
-        <div
-          className="flex-1 h-px"
-          style={{ background: altPath
-            ? `repeating-linear-gradient(90deg, hsl(var(--border)) 0, hsl(var(--border)) 6px, transparent 6px, transparent 12px)`
-            : "hsl(var(--border))"
-          }}
-        />
-      </div>
-
-      {/* Cards row */}
-      <div className="flex gap-3 items-start">
-        {stages.map((stage, i) => (
-          <SectionCard
-            key={stage.id}
-            stage={stage}
-            stageIdx={startIdx + i}
-            color={SECTION_COLORS[(startIdx + i) % SECTION_COLORS.length]}
-            selectedStageId={selectedStageId}
-            selectedStepId={selectedStepId}
-            onSelectStage={onSelectStage}
-            onSelectStep={onSelectStep}
-            onAddStep={onAddStep}
-            onContextMenu={onContextMenu}
-            onStepContextMenu={onStepContextMenu}
-          />
-        ))}
-
-        {/* Add Section button */}
-        {showAddStage && (
-          <button
-            className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
-            style={{
-              width: 100,
-              height: 80,
-              borderColor: "hsl(var(--border))",
-              color: "hsl(var(--foreground-subtle))",
-              background: "transparent",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = "hsl(var(--primary))";
-              e.currentTarget.style.color = "hsl(var(--primary))";
-              e.currentTarget.style.background = "hsl(var(--primary-dim))";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = "hsl(var(--border))";
-              e.currentTarget.style.color = "hsl(var(--foreground-subtle))";
-              e.currentTarget.style.background = "transparent";
-            }}
-            onClick={onAddStage}
-          >
-            <Plus size={20} />
-            <span className="text-[10px] font-medium">
-              {altPath ? "Add Alt. Path" : "Add Section"}
-            </span>
+        {headerHover && (
+          <button className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center opacity-60 hover:opacity-100"
+            style={{ color: "hsl(var(--foreground-muted))" }}
+            onClick={e => { e.stopPropagation(); onStageCtx(e, stage.id); }}>
+            <MoreHorizontal size={13} />
           </button>
         )}
       </div>
+
+      <div className="mx-3" style={{ height: 1, background: `color-mix(in srgb, ${color} 20%, hsl(var(--border)))` }} />
+
+      {/* Groups */}
+      {!collapsed && (
+        <div className="flex-1 p-3 flex flex-col">
+          {stage.groups.map(group => (
+            <GroupSection
+              key={group.id}
+              group={group}
+              stageId={stage.id}
+              color={color}
+              selection={selection}
+              onSelectGroup={onSelectGroup}
+              onSelectStep={onSelectStep}
+              onAddStep={onAddStep}
+              onGroupCtx={(e, gid) => onGroupCtx(e, stage.id, gid)}
+              onStepCtx={(e, gid, sid) => onStepCtx(e, stage.id, gid, sid)}
+            />
+          ))}
+
+          {/* Add Group */}
+          <button
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-md border-dashed border transition-all text-[11px] font-medium mt-1"
+            style={{ borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.color = color; e.currentTarget.style.background = `color-mix(in srgb, ${color} 4%, transparent)`; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
+            onClick={() => onAddGroup(stage.id)}
+          >
+            <Plus size={11} /><Layers size={10} /> Add Group
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─── Main diagram component ────────────────────────────────────────────────────
+// ─── Main diagram ──────────────────────────────────────────────────────────────
 
 interface LifecycleDiagramProps {
   caseIr: CaseIR;
   selection: SelectionTarget;
   onSelectStage: (stageId: string) => void;
-  onSelectStep: (stageId: string, stepId: string) => void;
-  onAddStep: (stageId: string) => void;
+  onSelectGroup: (stageId: string, groupId: string) => void;
+  onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
+  onAddStep: (stageId: string, groupId: string) => void;
+  onAddGroup: (stageId: string) => void;
   onAddStage: () => void;
   onDeleteStage: (stageId: string) => void;
-  onDeleteStep: (stageId: string, stepId: string) => void;
-  onDuplicateStep: (stageId: string, stepId: string) => void;
+  onDeleteGroup: (stageId: string, groupId: string) => void;
+  onDeleteStep: (stageId: string, groupId: string, stepId: string) => void;
+  onDuplicateStep: (stageId: string, groupId: string, stepId: string) => void;
   onDuplicateStage: (stageId: string) => void;
 }
 
 export default function LifecycleDiagram({
-  caseIr,
-  selection,
-  onSelectStage,
-  onSelectStep,
-  onAddStep,
-  onAddStage,
-  onDeleteStage,
-  onDeleteStep,
-  onDuplicateStep,
-  onDuplicateStage,
+  caseIr, selection,
+  onSelectStage, onSelectGroup, onSelectStep,
+  onAddStep, onAddGroup, onAddStage,
+  onDeleteStage, onDeleteGroup, onDeleteStep,
+  onDuplicateStep, onDuplicateStage,
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
 
-  const selectedStageId = selection?.stageId ?? null;
-  const selectedStepId = selection?.kind === "step" ? selection.stepId : null;
-
   const openStageCtx = useCallback((e: React.MouseEvent, stageId: string) => {
-    e.preventDefault();
-    setCtxMenu({ kind: "stage", stageId, x: e.clientX, y: e.clientY });
+    e.preventDefault(); setCtxMenu({ kind: "stage", stageId, x: e.clientX, y: e.clientY });
   }, []);
-
-  const openStepCtx = useCallback((e: React.MouseEvent, stageId: string, stepId: string) => {
-    e.preventDefault();
-    setCtxMenu({ kind: "step", stageId, stepId, x: e.clientX, y: e.clientY });
+  const openGroupCtx = useCallback((e: React.MouseEvent, stageId: string, groupId: string) => {
+    e.preventDefault(); setCtxMenu({ kind: "group", stageId, groupId, x: e.clientX, y: e.clientY });
+  }, []);
+  const openStepCtx = useCallback((e: React.MouseEvent, stageId: string, groupId: string, stepId: string) => {
+    e.preventDefault(); setCtxMenu({ kind: "step", stageId, groupId, stepId, x: e.clientX, y: e.clientY });
   }, []);
 
   const handleCtxRename = useCallback(() => {
     if (!ctxMenu) return;
     if (ctxMenu.kind === "stage") onSelectStage(ctxMenu.stageId);
-    else if (ctxMenu.stepId) onSelectStep(ctxMenu.stageId, ctxMenu.stepId);
+    else if (ctxMenu.kind === "group" && ctxMenu.groupId) onSelectGroup(ctxMenu.stageId, ctxMenu.groupId);
+    else if (ctxMenu.kind === "step" && ctxMenu.groupId && ctxMenu.stepId) onSelectStep(ctxMenu.stageId, ctxMenu.groupId, ctxMenu.stepId);
     setCtxMenu(null);
-  }, [ctxMenu, onSelectStage, onSelectStep]);
+  }, [ctxMenu, onSelectStage, onSelectGroup, onSelectStep]);
 
   const handleCtxDuplicate = useCallback(() => {
     if (!ctxMenu) return;
-    if (ctxMenu.kind === "step" && ctxMenu.stepId) {
-      onDuplicateStep(ctxMenu.stageId, ctxMenu.stepId);
-    } else {
-      onDuplicateStage(ctxMenu.stageId);
-    }
+    if (ctxMenu.kind === "step" && ctxMenu.groupId && ctxMenu.stepId) onDuplicateStep(ctxMenu.stageId, ctxMenu.groupId, ctxMenu.stepId);
+    else if (ctxMenu.kind === "stage") onDuplicateStage(ctxMenu.stageId);
     setCtxMenu(null);
   }, [ctxMenu, onDuplicateStep, onDuplicateStage]);
 
   const handleCtxDelete = useCallback(() => {
     if (!ctxMenu) return;
-    if (ctxMenu.kind === "step" && ctxMenu.stepId) {
-      onDeleteStep(ctxMenu.stageId, ctxMenu.stepId);
-    } else {
-      onDeleteStage(ctxMenu.stageId);
-    }
+    if (ctxMenu.kind === "step" && ctxMenu.groupId && ctxMenu.stepId) onDeleteStep(ctxMenu.stageId, ctxMenu.groupId, ctxMenu.stepId);
+    else if (ctxMenu.kind === "group" && ctxMenu.groupId) onDeleteGroup(ctxMenu.stageId, ctxMenu.groupId);
+    else if (ctxMenu.kind === "stage") onDeleteStage(ctxMenu.stageId);
     setCtxMenu(null);
-  }, [ctxMenu, onDeleteStep, onDeleteStage]);
+  }, [ctxMenu, onDeleteStep, onDeleteGroup, onDeleteStage]);
 
-  // Trigger info banner
-  const triggerLabel = caseIr.trigger.type === "none"
-    ? "Manual Start"
-    : caseIr.trigger.type === "timer"
-    ? `Timer: ${caseIr.trigger.expression ?? "scheduled"}`
+  const triggerLabel = caseIr.trigger.type === "none" ? "Manual Start"
+    : caseIr.trigger.type === "timer" ? `Timer: ${caseIr.trigger.expression ?? "scheduled"}`
     : caseIr.trigger.type.charAt(0).toUpperCase() + caseIr.trigger.type.slice(1);
 
   return (
-    <div
-      className="w-full h-full overflow-auto"
-      style={{ background: "hsl(var(--canvas-bg))" }}
-    >
+    <div className="w-full h-full overflow-auto" style={{ background: "hsl(var(--canvas-bg))" }}>
       <div className="p-6 min-w-max min-h-full">
 
-        {/* Process header */}
+        {/* Header */}
         <div className="flex items-center gap-3 mb-5">
           <div>
-            <h1
-              className="text-[15px] font-bold"
-              style={{ color: "hsl(var(--foreground))" }}
-            >
-              {caseIr.name}
-            </h1>
+            <h1 className="text-[15px] font-bold" style={{ color: "hsl(var(--foreground))" }}>{caseIr.name}</h1>
             <div className="flex items-center gap-2 mt-0.5">
-              <span
-                className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium"
-                style={{
-                  background: "hsl(var(--primary) / 0.1)",
-                  color: "hsl(var(--primary))",
-                }}
-              >
-                <Zap size={8} />
-                {triggerLabel}
+              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium"
+                style={{ background: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))" }}>
+                <Zap size={8} />{triggerLabel}
               </span>
-              <span
-                className="text-[10px] font-mono"
-                style={{ color: "hsl(var(--foreground-subtle))" }}
-              >
+              <span className="text-[10px] font-mono" style={{ color: "hsl(var(--foreground-subtle))" }}>
                 {caseIr.id} · v{caseIr.version}
               </span>
             </div>
           </div>
         </div>
 
-        {/* MAIN FLOW swim lane */}
-        <SwimLane
-          label="Main Flow"
-          stages={caseIr.stages}
-          startIdx={0}
-          selectedStageId={selectedStageId}
-          selectedStepId={selectedStepId}
-          onSelectStage={onSelectStage}
-          onSelectStep={onSelectStep}
-          onAddStep={onAddStep}
-          onAddStage={onAddStage}
-          onContextMenu={openStageCtx}
-          onStepContextMenu={openStepCtx}
-          showAddStage
-        />
+        {/* Main Flow lane */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
+            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Main Flow</span>
+            <div className="flex-1 h-px" style={{ background: "hsl(var(--border))" }} />
+          </div>
+          <div className="flex gap-3 items-start">
+            {caseIr.stages.map((stage, i) => (
+              <SectionCard
+                key={stage.id}
+                stage={stage}
+                stageIdx={i}
+                color={SECTION_COLORS[i % SECTION_COLORS.length]}
+                selection={selection}
+                onSelectStage={onSelectStage}
+                onSelectGroup={onSelectGroup}
+                onSelectStep={onSelectStep}
+                onAddStep={onAddStep}
+                onAddGroup={onAddGroup}
+                onStageCtx={openStageCtx}
+                onGroupCtx={openGroupCtx}
+                onStepCtx={openStepCtx}
+              />
+            ))}
+            {/* Add Section */}
+            <button
+              className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
+              style={{ width: 100, height: 90, borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "hsl(var(--primary))"; e.currentTarget.style.color = "hsl(var(--primary))"; e.currentTarget.style.background = "hsl(var(--primary-dim))"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
+              onClick={onAddStage}
+            >
+              <Plus size={20} />
+              <span className="text-[10px] font-medium">Add Section</span>
+            </button>
+          </div>
+        </div>
 
-        {/* ALTERNATIVE PATHS swim lane */}
-        <SwimLane
-          label="Alternative Paths"
-          stages={[]}
-          startIdx={caseIr.stages.length}
-          selectedStageId={selectedStageId}
-          selectedStepId={selectedStepId}
-          onSelectStage={onSelectStage}
-          onSelectStep={onSelectStep}
-          onAddStep={onAddStep}
-          onAddStage={onAddStage}
-          onContextMenu={openStageCtx}
-          onStepContextMenu={openStepCtx}
-          showAddStage
-          altPath
-        />
+        {/* Alt Paths lane (empty placeholder) */}
+        <div>
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
+            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Alternative Paths</span>
+            <div className="flex-1 h-px" style={{ background: `repeating-linear-gradient(90deg, hsl(var(--border)) 0, hsl(var(--border)) 6px, transparent 6px, transparent 12px)` }} />
+          </div>
+          <div className="flex gap-3">
+            <button
+              className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed"
+              style={{ width: 100, height: 80, borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
+            >
+              <Plus size={16} />
+              <span className="text-[10px]">Add Alt. Path</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Context menu */}
       {ctxMenu && (
-        <ContextMenu
-          menu={ctxMenu}
-          onRename={handleCtxRename}
-          onDuplicate={handleCtxDuplicate}
-          onDelete={handleCtxDelete}
-          onClose={() => setCtxMenu(null)}
-        />
+        <ContextMenu menu={ctxMenu} onRename={handleCtxRename} onDuplicate={handleCtxDuplicate} onDelete={handleCtxDelete} onClose={() => setCtxMenu(null)} />
       )}
     </div>
   );
