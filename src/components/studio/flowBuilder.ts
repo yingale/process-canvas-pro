@@ -7,12 +7,12 @@ import type { CaseIR } from "@/types/caseIr";
 import type { StepNodeData, StageHeaderNodeData, TriggerNodeData, AddStepNodeData, AddStageNodeData } from "./FlowNodes";
 
 // Layout constants – horizontal Pega layout
-const STAGE_COL_WIDTH = 200;
+const STAGE_COL_WIDTH = 210;
 const CHEVRON_OVERLAP = 18;
-const CHEVRON_HEIGHT = 52;
-const STEP_HEIGHT = 72;
-const STEP_GAP = 8;
-const STEP_PADDING_TOP = 12;
+const CHEVRON_HEIGHT = 56;
+const STEP_HEIGHT = 76;
+const STEP_GAP = 10;
+const STEP_PADDING_TOP = 14;
 const STAGES_START_X = 0;
 const STAGES_START_Y = 60;
 
@@ -44,7 +44,7 @@ export function buildFlowGraph(
   nodes.push({
     id: "trigger",
     type: "triggerNode",
-    position: { x: -90, y: STAGES_START_Y + CHEVRON_HEIGHT / 2 - 18 },
+    position: { x: -100, y: STAGES_START_Y + CHEVRON_HEIGHT / 2 - 18 },
     data: {
       triggerType: caseIr.trigger.type,
       expression: caseIr.trigger.expression,
@@ -77,7 +77,7 @@ export function buildFlowGraph(
         onSelect: onSelectStage,
       } satisfies StageHeaderNodeData,
       draggable: false,
-      selectable: false,
+      // selectable must remain true so onClick fires
     });
 
     // Connect trigger → first stage header
@@ -100,7 +100,7 @@ export function buildFlowGraph(
       nodes.push({
         id: stepNodeId,
         type: "stepNode",
-        position: { x: stageX + 4, y: stepY },
+        position: { x: stageX + 5, y: stepY },
         data: {
           step,
           stageId: stage.id,
@@ -109,7 +109,7 @@ export function buildFlowGraph(
           onSelect: onSelectStep,
         } satisfies StepNodeData,
         draggable: false,
-        selectable: false,
+        // selectable must remain true so onClick fires
       });
     });
 
@@ -119,7 +119,7 @@ export function buildFlowGraph(
     nodes.push({
       id: `add_step_${stage.id}`,
       type: "addStepNode",
-      position: { x: stageX + 4, y: addStepY },
+      position: { x: stageX + 5, y: addStepY },
       data: {
         stageId: stage.id,
         stageColor,
@@ -131,7 +131,7 @@ export function buildFlowGraph(
   });
 
   // ── "+ Add Stage" button at end of chevron row ────────────────────────────
-  const addStageX = STAGES_START_X + stageCount * (STAGE_COL_WIDTH - CHEVRON_OVERLAP) + 12;
+  const addStageX = STAGES_START_X + stageCount * (STAGE_COL_WIDTH - CHEVRON_OVERLAP) + 16;
   nodes.push({
     id: "add_stage",
     type: "addStageNode",
