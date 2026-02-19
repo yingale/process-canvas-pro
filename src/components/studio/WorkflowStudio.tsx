@@ -93,12 +93,13 @@ export default function WorkflowStudio() {
     if (!caseIr) return;
     try {
       const updated = applyCaseIRPatch(caseIr, patch);
-      // Clear the cached original XML so the exporter regenerates from the
-      // edited IR instead of returning the stale verbatim import.
+      // Clear ALL cached original XML/diagram data so the exporter fully
+      // regenerates from the edited IR – including diagram shapes for new steps.
       updated.metadata = {
         ...updated.metadata,
         updatedAt: new Date().toISOString(),
         originalBpmnXml: undefined,
+        originalDiagramXml: undefined,
       };
       setCaseIr(updated);
     } catch (e) { console.error("Patch failed:", e); }

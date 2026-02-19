@@ -316,11 +316,20 @@ export function exportBpmn(ir: CaseIR): string {
       const allSteps = flattenSteps(stage);
       const stageId = stage.source?.bpmnElementId ?? stage.id;
       const origInner = ir.metadata.originalSubProcessEventIds?.[stageId];
-      stagePreIds.set(stage.id, origInner ?? {
-        startId: uid("start"),
-        endId: uid("end"),
-        flowIds: Array.from({ length: allSteps.length + 1 }, () => uid("sf")),
-      });
+      const needed = allSteps.length + 1; // start→step1→…→stepN→end
+      if (origInner) {
+        // Pad flowIds if new steps were added since the original import
+        const flowIds = origInner.flowIds.length >= needed
+          ? origInner.flowIds.slice(0, needed)
+          : [...origInner.flowIds, ...Array.from({ length: needed - origInner.flowIds.length }, () => uid("sf"))];
+        stagePreIds.set(stage.id, { startId: origInner.startId, endId: origInner.endId, flowIds });
+      } else {
+        stagePreIds.set(stage.id, {
+          startId: uid("start"),
+          endId: uid("end"),
+          flowIds: Array.from({ length: needed }, () => uid("sf")),
+        });
+      }
     }
   }
 
@@ -336,9 +345,16 @@ export function exportBpmn(ir: CaseIR): string {
   chainIds.push(endId);
 
   const origTopFlows = ir.metadata.originalTopLevelFlowIds;
-  const topFlowIds = origTopFlows && origTopFlows.length >= chainIds.length - 1
-    ? origTopFlows
-    : Array.from({ length: chainIds.length - 1 }, () => uid("sf"));
+  const needed = chainIds.length - 1;
+  let topFlowIds: string[];
+  if (origTopFlows && origTopFlows.length >= needed) {
+    topFlowIds = origTopFlows.slice(0, needed);
+  } else if (origTopFlows && origTopFlows.length > 0) {
+    // Pad with fresh IDs for any newly added top-level stages
+    topFlowIds = [...origTopFlows, ...Array.from({ length: needed - origTopFlows.length }, () => uid("sf"))];
+  } else {
+    topFlowIds = Array.from({ length: needed }, () => uid("sf"));
+  }
 
   const bodyXmlParts: string[] = [];
   for (const stage of ir.stages) {
