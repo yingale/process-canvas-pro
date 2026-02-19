@@ -7,7 +7,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Plus, MoreHorizontal, ChevronDown, ChevronRight,
   Pencil, Copy, Trash2, GitBranch, Bot, User,
-  Repeat2, ExternalLink, Zap, AlignLeft, Bell, Layers, type LucideIcon,
+  Repeat2, ExternalLink, Zap, AlignLeft, Bell, Layers,
+  ArrowUp, ArrowDown, type LucideIcon,
 } from "lucide-react";
 import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget } from "@/types/caseIr";
 
@@ -39,10 +40,13 @@ interface CtxMenu {
   groupId?: string;
   stepId?: string;
   x: number; y: number;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }
 
-function ContextMenu({ menu, onRename, onDuplicate, onDelete, onClose }: {
-  menu: CtxMenu; onRename: () => void; onDuplicate: () => void; onDelete: () => void; onClose: () => void;
+function ContextMenu({ menu, onRename, onDuplicate, onDelete, onMoveUp, onMoveDown, onClose }: {
+  menu: CtxMenu; onRename: () => void; onDuplicate: () => void; onDelete: () => void;
+  onMoveUp: () => void; onMoveDown: () => void; onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -51,21 +55,25 @@ function ContextMenu({ menu, onRename, onDuplicate, onDelete, onClose }: {
     return () => document.removeEventListener("mousedown", h);
   }, [onClose]);
 
-  const Item = ({ icon: Icon, label, danger, onClick }: { icon: LucideIcon; label: string; danger?: boolean; onClick: () => void }) => (
-    <button className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors rounded"
-      style={{ color: danger ? "hsl(var(--destructive))" : "hsl(var(--foreground))" }}
-      onMouseEnter={e => { e.currentTarget.style.background = danger ? "hsl(var(--destructive) / 0.08)" : "hsl(var(--surface-raised))"; }}
+  const Item = ({ icon: Icon, label, danger, disabled, onClick }: { icon: LucideIcon; label: string; danger?: boolean; disabled?: boolean; onClick: () => void }) => (
+    <button
+      className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[12px] transition-colors rounded"
+      style={{ color: disabled ? "hsl(var(--foreground-subtle))" : danger ? "hsl(var(--destructive))" : "hsl(var(--foreground))", cursor: disabled ? "default" : "pointer" }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = danger ? "hsl(var(--destructive) / 0.08)" : "hsl(var(--surface-raised))"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-      onClick={() => { onClick(); onClose(); }}>
+      onClick={() => { if (!disabled) { onClick(); onClose(); } }}>
       <Icon size={12} />{label}
     </button>
   );
 
   return (
-    <div ref={ref} className="fixed z-50 rounded-lg shadow-lg border py-1 min-w-[130px]"
+    <div ref={ref} className="fixed z-50 rounded-lg shadow-lg border py-1 min-w-[145px]"
       style={{ top: menu.y, left: menu.x, background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", boxShadow: "0 8px 24px hsl(0 0% 0% / 0.14)" }}>
       <Item icon={Pencil} label="Rename" onClick={onRename} />
       {menu.kind !== "group" && <Item icon={Copy} label="Duplicate" onClick={onDuplicate} />}
+      <div className="my-1 border-t" style={{ borderColor: "hsl(var(--border))" }} />
+      <Item icon={ArrowUp} label="Move Up" disabled={!menu.canMoveUp} onClick={onMoveUp} />
+      <Item icon={ArrowDown} label="Move Down" disabled={!menu.canMoveDown} onClick={onMoveDown} />
       <div className="my-1 border-t" style={{ borderColor: "hsl(var(--border))" }} />
       <Item icon={Trash2} label="Delete" danger onClick={onDelete} />
     </div>
@@ -313,6 +321,9 @@ interface LifecycleDiagramProps {
   onDeleteStep: (stageId: string, groupId: string, stepId: string) => void;
   onDuplicateStep: (stageId: string, groupId: string, stepId: string) => void;
   onDuplicateStage: (stageId: string) => void;
+  onMoveStage: (stageId: string, dir: -1 | 1) => void;
+  onMoveGroup: (stageId: string, groupId: string, dir: -1 | 1) => void;
+  onMoveStep: (stageId: string, groupId: string, stepId: string, dir: -1 | 1) => void;
 }
 
 export default function LifecycleDiagram({
@@ -321,18 +332,32 @@ export default function LifecycleDiagram({
   onAddStep, onAddGroup, onAddStage,
   onDeleteStage, onDeleteGroup, onDeleteStep,
   onDuplicateStep, onDuplicateStage,
+  onMoveStage, onMoveGroup, onMoveStep,
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
 
   const openStageCtx = useCallback((e: React.MouseEvent, stageId: string) => {
-    e.preventDefault(); setCtxMenu({ kind: "stage", stageId, x: e.clientX, y: e.clientY });
-  }, []);
+    e.preventDefault();
+    const si = caseIr.stages.findIndex(s => s.id === stageId);
+    setCtxMenu({ kind: "stage", stageId, x: e.clientX, y: e.clientY, canMoveUp: si > 0, canMoveDown: si < caseIr.stages.length - 1 });
+  }, [caseIr.stages]);
+
   const openGroupCtx = useCallback((e: React.MouseEvent, stageId: string, groupId: string) => {
-    e.preventDefault(); setCtxMenu({ kind: "group", stageId, groupId, x: e.clientX, y: e.clientY });
-  }, []);
+    e.preventDefault();
+    const stage = caseIr.stages.find(s => s.id === stageId);
+    const gi = stage ? stage.groups.findIndex(g => g.id === groupId) : -1;
+    const groupCount = stage ? stage.groups.length : 0;
+    setCtxMenu({ kind: "group", stageId, groupId, x: e.clientX, y: e.clientY, canMoveUp: gi > 0, canMoveDown: gi < groupCount - 1 });
+  }, [caseIr.stages]);
+
   const openStepCtx = useCallback((e: React.MouseEvent, stageId: string, groupId: string, stepId: string) => {
-    e.preventDefault(); setCtxMenu({ kind: "step", stageId, groupId, stepId, x: e.clientX, y: e.clientY });
-  }, []);
+    e.preventDefault();
+    const stage = caseIr.stages.find(s => s.id === stageId);
+    const group = stage?.groups.find(g => g.id === groupId);
+    const sti = group ? group.steps.findIndex(s => s.id === stepId) : -1;
+    const stepCount = group ? group.steps.length : 0;
+    setCtxMenu({ kind: "step", stageId, groupId, stepId, x: e.clientX, y: e.clientY, canMoveUp: sti > 0, canMoveDown: sti < stepCount - 1 });
+  }, [caseIr.stages]);
 
   const handleCtxRename = useCallback(() => {
     if (!ctxMenu) return;
@@ -356,6 +381,22 @@ export default function LifecycleDiagram({
     else if (ctxMenu.kind === "stage") onDeleteStage(ctxMenu.stageId);
     setCtxMenu(null);
   }, [ctxMenu, onDeleteStep, onDeleteGroup, onDeleteStage]);
+
+  const handleCtxMoveUp = useCallback(() => {
+    if (!ctxMenu) return;
+    if (ctxMenu.kind === "stage") onMoveStage(ctxMenu.stageId, -1);
+    else if (ctxMenu.kind === "group" && ctxMenu.groupId) onMoveGroup(ctxMenu.stageId, ctxMenu.groupId, -1);
+    else if (ctxMenu.kind === "step" && ctxMenu.groupId && ctxMenu.stepId) onMoveStep(ctxMenu.stageId, ctxMenu.groupId, ctxMenu.stepId, -1);
+    setCtxMenu(null);
+  }, [ctxMenu, onMoveStage, onMoveGroup, onMoveStep]);
+
+  const handleCtxMoveDown = useCallback(() => {
+    if (!ctxMenu) return;
+    if (ctxMenu.kind === "stage") onMoveStage(ctxMenu.stageId, 1);
+    else if (ctxMenu.kind === "group" && ctxMenu.groupId) onMoveGroup(ctxMenu.stageId, ctxMenu.groupId, 1);
+    else if (ctxMenu.kind === "step" && ctxMenu.groupId && ctxMenu.stepId) onMoveStep(ctxMenu.stageId, ctxMenu.groupId, ctxMenu.stepId, 1);
+    setCtxMenu(null);
+  }, [ctxMenu, onMoveStage, onMoveGroup, onMoveStep]);
 
   const triggerLabel = caseIr.trigger.type === "none" ? "Manual Start"
     : caseIr.trigger.type === "timer" ? `Timer: ${caseIr.trigger.expression ?? "scheduled"}`
@@ -440,8 +481,17 @@ export default function LifecycleDiagram({
       </div>
 
       {ctxMenu && (
-        <ContextMenu menu={ctxMenu} onRename={handleCtxRename} onDuplicate={handleCtxDuplicate} onDelete={handleCtxDelete} onClose={() => setCtxMenu(null)} />
+        <ContextMenu
+          menu={ctxMenu}
+          onRename={handleCtxRename}
+          onDuplicate={handleCtxDuplicate}
+          onDelete={handleCtxDelete}
+          onMoveUp={handleCtxMoveUp}
+          onMoveDown={handleCtxMoveDown}
+          onClose={() => setCtxMenu(null)}
+        />
       )}
     </div>
   );
 }
+
