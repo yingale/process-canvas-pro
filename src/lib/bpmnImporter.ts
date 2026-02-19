@@ -297,6 +297,37 @@ export async function importBpmn(bpmnXml: string, fileName?: string): Promise<Im
   const originalDefinitionsAttrs = extractDefinitionsAttrs(doc);
   const originalSequenceFlowIds = buildAllFlowRefMap(doc);
 
+  // Capture original start/end event IDs from the top-level process
+  const topLevelStartEvent = Array.from(processEl.children).find(el => lname(el) === "startEvent");
+  const topLevelEndEvent = Array.from(processEl.children).find(el => lname(el) === "endEvent");
+  const originalStartEventId = topLevelStartEvent ? (attr(topLevelStartEvent, "id") ?? undefined) : undefined;
+  const originalEndEventId = topLevelEndEvent ? (attr(topLevelEndEvent, "id") ?? undefined) : undefined;
+
+  // Capture original start/end event IDs and flow IDs per subProcess
+  const originalSubProcessEventIds: Record<string, { startId: string; endId: string; flowIds: string[] }> = {};
+  for (const child of Array.from(processEl.children)) {
+    if (lname(child) !== "subProcess") continue;
+    const spId = attr(child, "id");
+    if (!spId) continue;
+    const spStart = Array.from(child.children).find(el => lname(el) === "startEvent");
+    const spEnd = Array.from(child.children).find(el => lname(el) === "endEvent");
+    const spFlows = Array.from(child.children)
+      .filter(el => lname(el) === "sequenceFlow")
+      .map(el => attr(el, "id") ?? uid());
+    if (spStart && spEnd) {
+      originalSubProcessEventIds[spId] = {
+        startId: attr(spStart, "id") ?? uid(),
+        endId: attr(spEnd, "id") ?? uid(),
+        flowIds: spFlows,
+      };
+    }
+  }
+
+  // Capture original top-level sequence flow IDs in order
+  const originalTopLevelFlowIds = Array.from(processEl.children)
+    .filter(el => lname(el) === "sequenceFlow")
+    .map(el => attr(el, "id") ?? uid());
+
   const caseIr: CaseIR = {
     id: processId, name: processName, version: "1.0.0", trigger, stages,
     metadata: {
@@ -304,6 +335,10 @@ export async function importBpmn(bpmnXml: string, fileName?: string): Promise<Im
       originalDiagramXml,
       originalDefinitionsAttrs,
       originalSequenceFlowIds,
+      originalStartEventId,
+      originalEndEventId,
+      originalSubProcessEventIds,
+      originalTopLevelFlowIds,
     },
   };
   return { caseIr, warnings };

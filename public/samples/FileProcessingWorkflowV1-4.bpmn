@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_FileProcessingWorkflowV1"
+                  targetNamespace="http://example.com/bpmn/FileProcessingWorkflowV1">
+
+  <bpmn:process id="FileProcessingWorkflowV1" name="File Processing Workflow V1" isExecutable="true">
+
+    <bpmn:startEvent id="StartEvent_Timer" name="Timer Start">
+      <bpmn:outgoing>Flow_FetchEmails</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_1h3xj23">
+        <bpmn:timeCycle xsi:type="bpmn:tFormalExpression">R/PT5M</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_FetchEmails" name="Fetch Emails" camunda:type="external" camunda:topic="fetchMessages">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="mailLimit">10</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_FetchEmails</bpmn:incoming>
+      <bpmn:outgoing>Flow_ProcessEmails</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:subProcess id="SubProcess_ProcessEachEmail" name="Process Each Attachment" camunda:asyncBefore="true">
+      <bpmn:incoming>Flow_ProcessEmails</bpmn:incoming>
+      <bpmn:outgoing>Flow_End</bpmn:outgoing>
+
+      <bpmn:multiInstanceLoopCharacteristics isSequential="true"
+          camunda:collection="${keys.elements()}" camunda:elementVariable="key" />
+
+      <bpmn:startEvent id="StartEvent_SubProcess" name="Start Subprocess">
+        <bpmn:outgoing>Flow_StartProcess</bpmn:outgoing>
+      </bpmn:startEvent>
+
+      <bpmn:serviceTask id="Task_ProcessAttachments" name="Process Attachments" camunda:type="external" camunda:topic="processAttachments" camunda:asyncBefore="true">
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="requestId">${key.prop("requestId").stringValue()}</camunda:inputParameter>
+            <camunda:inputParameter name="filePath">${key.prop("attachmentFileLocation").stringValue()}</camunda:inputParameter>
+            <camunda:inputParameter name="emailList">${key.prop("emailList").stringValue()}</camunda:inputParameter>
+            <camunda:inputParameter name="workflowId">${key.prop("BEVERLYWRKFLID").stringValue()}</camunda:inputParameter>
+            <camunda:inputParameter name="businessKey">${key.prop("businessKey").stringValue()}</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_StartProcess</bpmn:incoming>
+        <bpmn:outgoing>Flow_WaitForProcessingComplete</bpmn:outgoing>
+      </bpmn:serviceTask>
+
+      <bpmn:intermediateCatchEvent id="Event_0h13toy" name="invoke_email_worker">
+        <bpmn:documentation>Wating to get file processing done</bpmn:documentation>
+        <bpmn:incoming>Flow_WaitForProcessingComplete</bpmn:incoming>
+        <bpmn:outgoing>Flow_SendEmail</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="MessageEventDefinition_0835gde" messageRef="Message_1jj8154"/>
+      </bpmn:intermediateCatchEvent>
+
+      <bpmn:serviceTask id="Task_SendEmail" name="Send Email" camunda:type="external" camunda:topic="emailSendMailbox">
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="emailList">${key.prop("emailList").stringValue()}</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_SendEmail</bpmn:incoming>
+        <bpmn:outgoing>Flow_EndSubProcess</bpmn:outgoing>
+      </bpmn:serviceTask>
+
+      <bpmn:endEvent id="EndEvent_SubProcess" name="Subprocess End">
+        <bpmn:incoming>Flow_EndSubProcess</bpmn:incoming>
+      </bpmn:endEvent>
+
+      <bpmn:sequenceFlow id="Flow_StartProcess" sourceRef="StartEvent_SubProcess" targetRef="Task_ProcessAttachments" />
+      <bpmn:sequenceFlow id="Flow_WaitForProcessingComplete" sourceRef="Task_ProcessAttachments" targetRef="Event_0h13toy" />
+      <bpmn:sequenceFlow id="Flow_SendEmail" sourceRef="Event_0h13toy" targetRef="Task_SendEmail" />
+      <bpmn:sequenceFlow id="Flow_EndSubProcess" sourceRef="Task_SendEmail" targetRef="EndEvent_SubProcess" />
+    </bpmn:subProcess>
+
+    <bpmn:endEvent id="EndEvent" name="End">
+      <bpmn:incoming>Flow_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_FetchEmails" sourceRef="StartEvent_Timer" targetRef="Task_FetchEmails" />
+    <bpmn:sequenceFlow id="Flow_ProcessEmails" sourceRef="Task_FetchEmails" targetRef="SubProcess_ProcessEachEmail" />
+    <bpmn:sequenceFlow id="Flow_End" sourceRef="SubProcess_ProcessEachEmail" targetRef="EndEvent" />
+  </bpmn:process>
+
+  <bpmn:message id="Message_1jj8154" name="invoke_email_worker" />
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_FileProcessingWorkflowV1">
+    <bpmndi:BPMNPlane id="BPMNPlane_FileProcessingWorkflowV1" bpmnElement="FileProcessingWorkflowV1">
+
+      <bpmndi:BPMNShape id="Shape_StartEvent_Timer" bpmnElement="StartEvent_Timer">
+        <dc:Bounds x="160" y="122" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="153" y="162" width="55" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_FetchEmails" bpmnElement="Task_FetchEmails">
+        <dc:Bounds x="250" y="110" width="120" height="60" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_SubProcess_ProcessEachEmail" bpmnElement="SubProcess_ProcessEachEmail" isExpanded="true">
+        <dc:Bounds x="410" y="50" width="600" height="220" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_StartEvent_SubProcess" bpmnElement="StartEvent_SubProcess">
+        <dc:Bounds x="430" y="90" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="406" y="126" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_ProcessAttachments" bpmnElement="Task_ProcessAttachments">
+        <dc:Bounds x="490" y="80" width="140" height="60" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Event_WaitForProcessingComplete" bpmnElement="Event_0h13toy">
+        <dc:Bounds x="660" y="95" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="644" y="135" width="85" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_SendEmail" bpmnElement="Task_SendEmail">
+        <dc:Bounds x="710" y="80" width="140" height="60" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent_SubProcess" bpmnElement="EndEvent_SubProcess">
+        <dc:Bounds x="880" y="100" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="858" y="136" width="81" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent" bpmnElement="EndEvent">
+        <dc:Bounds x="1060" y="150" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1065" y="190" width="20" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_FetchEmails_di" bpmnElement="Flow_FetchEmails">
+        <di:waypoint x="196" y="140" />
+        <di:waypoint x="223" y="140" />
+        <di:waypoint x="223" y="143" />
+        <di:waypoint x="250" y="143" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_ProcessEmails_di" bpmnElement="Flow_ProcessEmails">
+        <di:waypoint x="370" y="140" />
+        <di:waypoint x="410" y="140" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_End_di" bpmnElement="Flow_End">
+        <di:waypoint x="1010" y="168" />
+        <di:waypoint x="1060" y="168" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_StartProcess_di" bpmnElement="Flow_StartProcess">
+        <di:waypoint x="466" y="108" />
+        <di:waypoint x="490" y="110" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_WaitForProcessingComplete_di" bpmnElement="Flow_WaitForProcessingComplete">
+        <di:waypoint x="630" y="113" />
+        <di:waypoint x="660" y="113" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_SendEmail_di" bpmnElement="Flow_SendEmail">
+        <di:waypoint x="696" y="113" />
+        <di:waypoint x="710" y="110" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_EndSubProcess_di" bpmnElement="Flow_EndSubProcess">
+        <di:waypoint x="850" y="118" />
+        <di:waypoint x="880" y="118" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

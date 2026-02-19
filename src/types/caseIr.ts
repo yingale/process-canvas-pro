@@ -212,6 +212,14 @@ export interface CaseIR {
     originalDefinitionsAttrs?: Record<string, string>;
     /** Original top-level sequence flow IDs captured for edge references */
     originalSequenceFlowIds?: Record<string, { sourceRef: string; targetRef: string }>;
+    /** Original start event ID from the process (to preserve round-trip) */
+    originalStartEventId?: string;
+    /** Original end event ID from the process (to preserve round-trip) */
+    originalEndEventId?: string;
+    /** Original inner start/end event IDs per subProcess stage */
+    originalSubProcessEventIds?: Record<string, { startId: string; endId: string; flowIds: string[] }>;
+    /** Original top-level sequence flow IDs in document order */
+    originalTopLevelFlowIds?: string[];
   };
 }
 
@@ -363,6 +371,10 @@ export const caseIrSchema = z.object({
     originalDiagramXml: z.string().optional(),
     originalDefinitionsAttrs: z.record(z.string()).optional(),
     originalSequenceFlowIds: z.record(z.object({ sourceRef: z.string(), targetRef: z.string() })).optional(),
+    originalStartEventId: z.string().optional(),
+    originalEndEventId: z.string().optional(),
+    originalSubProcessEventIds: z.record(z.object({ startId: z.string(), endId: z.string(), flowIds: z.array(z.string()) })).optional(),
+    originalTopLevelFlowIds: z.array(z.string()).optional(),
   }),
 });
 
