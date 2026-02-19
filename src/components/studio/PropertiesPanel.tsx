@@ -2,8 +2,8 @@
  * Properties Panel – right sidebar for editing selected stage/step
  */
 import { useState, useEffect } from "react";
-import { X, ChevronRight, Plus, Trash2 } from "lucide-react";
-import type { CaseIR, SelectionTarget, Stage, Step, StepType } from "@/types/caseIr";
+import { X, ChevronRight, ArrowRight, Bell } from "lucide-react";
+import type { CaseIR, SelectionTarget, Stage, Step, StepType, IoParam } from "@/types/caseIr";
 import { STEP_TYPE_CONFIG } from "./FlowNodes";
 import type { JsonPatch } from "@/types/caseIr";
 
@@ -141,6 +141,51 @@ function StageProperties({
   );
 }
 
+// ─── I/O Params table ─────────────────────────────────────────────────────────
+
+function IoParamsTable({ params, label, accent }: { params: IoParam[]; label: string; accent: string }) {
+  if (params.length === 0) return null;
+  return (
+    <div>
+      <div
+        className="text-[10px] font-bold uppercase tracking-widest mb-1.5"
+        style={{ color: accent }}
+      >
+        {label}
+      </div>
+      <div
+        className="rounded-lg overflow-hidden border"
+        style={{ borderColor: "hsl(var(--border))" }}
+      >
+        {params.map((p, i) => (
+          <div
+            key={i}
+            className="flex items-start gap-2 px-3 py-2 text-[11px]"
+            style={{
+              background: i % 2 === 0 ? "hsl(var(--surface-overlay))" : "transparent",
+              borderBottom: i < params.length - 1 ? "1px solid hsl(var(--border))" : undefined,
+            }}
+          >
+            <span
+              className="font-semibold flex-shrink-0"
+              style={{ color: "hsl(var(--foreground))", minWidth: 80 }}
+            >
+              {p.name}
+            </span>
+            <ArrowRight size={9} className="flex-shrink-0 mt-0.5" style={{ color: "hsl(var(--foreground-subtle))" }} />
+            <span
+              className="font-mono break-all"
+              style={{ color: "hsl(var(--foreground-muted))" }}
+            >
+              {p.value || <em style={{ opacity: 0.5 }}>—</em>}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Step Properties ──────────────────────────────────────────────────────────
 
 function StepProperties({
@@ -187,10 +232,13 @@ function StepProperties({
     if (patch.length > 0) onPatch(patch);
   };
 
+  const inputParams = step.tech?.inputParameters ?? [];
+  const outputParams = step.tech?.outputParameters ?? [];
+
   return (
     <div className="space-y-4 p-4">
-      {/* Step type badge */}
-      <div className="flex items-center gap-2">
+      {/* Step type badge + BPMN ID */}
+      <div className="flex items-center gap-2 flex-wrap">
         <div
           className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide"
           style={{
@@ -201,17 +249,38 @@ function StepProperties({
           {cfg.label}
         </div>
         {step.source?.bpmnElementId && (
-          <span className="font-mono text-[10px] text-foreground-subtle truncate">{step.source.bpmnElementId}</span>
+          <span
+            className="font-mono text-[10px] px-1.5 py-0.5 rounded truncate max-w-[140px]"
+            style={{ background: "hsl(var(--surface-raised))", color: "hsl(var(--foreground-subtle))" }}
+            title={step.source.bpmnElementId}
+          >
+            {step.source.bpmnElementId}
+          </span>
         )}
       </div>
+
+      {/* Description (documentation) */}
+      {step.description && (
+        <div
+          className="text-[11px] px-3 py-2 rounded-lg italic"
+          style={{
+            background: "hsl(var(--surface-overlay))",
+            color: "hsl(var(--foreground-muted))",
+            border: "1px solid hsl(var(--border))",
+          }}
+        >
+          {step.description}
+        </div>
+      )}
 
       <Field label="Step Name">
         <TextInput value={name} onChange={setName} placeholder="Step name" />
       </Field>
 
-      {(step.type === "automation") && (
+      {/* Camunda tech extensions */}
+      {(step.type === "automation" || step.type === "user") && (
         <>
-          <SectionHeader title="Camunda 7 Extensions" />
+          <SectionHeader title="Camunda Extensions" />
           <div className="space-y-3 pt-1">
             <Field label="External Task Topic">
               <TextInput value={topic} onChange={setTopic} placeholder="e.g. fetch-emails" mono />
@@ -222,40 +291,91 @@ function StepProperties({
         </>
       )}
 
+      {/* Intermediate Event */}
+      {step.type === "intermediateEvent" && (
+        <>
+          <SectionHeader title="Event Details" />
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center gap-2">
+              <Bell size={13} style={{ color: "hsl(199 80% 42%)" }} />
+              <span className="text-[12px] font-medium" style={{ color: "hsl(var(--foreground))" }}>
+                {step.eventSubType.charAt(0).toUpperCase() + step.eventSubType.slice(1)} Event
+              </span>
+            </div>
+            {step.messageRef && (
+              <Field label="Message">
+                <div
+                  className="font-mono text-[11px] px-3 py-2 rounded-lg"
+                  style={{ background: "hsl(var(--surface-overlay))", color: "hsl(var(--foreground-muted))" }}
+                >
+                  {step.messageRef}
+                </div>
+              </Field>
+            )}
+            {step.timerExpression && (
+              <Field label="Timer Expression">
+                <div
+                  className="font-mono text-[11px] px-3 py-2 rounded-lg"
+                  style={{ background: "hsl(var(--surface-overlay))", color: "hsl(var(--foreground-muted))" }}
+                >
+                  {step.timerExpression}
+                </div>
+              </Field>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Decision branches */}
       {step.type === "decision" && (
         <>
           <SectionHeader title="Decision Branches" />
           <div className="space-y-2 pt-1">
-            {step.branches.map((branch, bi) => (
-              <div key={branch.id} className="rounded-lg border p-3 space-y-2"
+            {step.branches.map((branch) => (
+              <div key={branch.id} className="rounded-lg border p-3 space-y-1.5"
                 style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--surface-overlay))" }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-foreground-muted">{branch.label}</span>
-                  <ChevronRight size={12} className="text-foreground-subtle" />
+                <div className="text-[11px] font-semibold" style={{ color: "hsl(var(--foreground))" }}>
+                  {branch.label}
                 </div>
-                <div className="font-mono text-[11px] text-foreground-subtle truncate">
+                <div className="font-mono text-[10px] break-all" style={{ color: "hsl(var(--foreground-subtle))" }}>
                   {branch.condition}
                 </div>
+                {branch.targetStepId && (
+                  <div className="text-[10px]" style={{ color: "hsl(var(--foreground-muted))" }}>
+                    → {branch.targetStepId}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </>
       )}
 
+      {/* For Each config */}
       {step.type === "foreach" && (
         <>
           <SectionHeader title="For Each Configuration" />
           <div className="space-y-3 pt-1">
-            <Field label="Collection">
+            <Field label="Collection Expression">
               <TextInput value={step.collectionExpression} onChange={() => {}} mono placeholder="${emails}" />
             </Field>
             <Field label="Element Variable">
               <TextInput value={step.elementVariable} onChange={() => {}} mono placeholder="email" />
             </Field>
+            <div className="text-[11px]" style={{ color: "hsl(var(--foreground-muted))" }}>
+              Sequential: <strong>{step.isSequential ? "Yes" : "No"}</strong>
+            </div>
+            {step.tech?.multiInstance && (
+              <div className="text-[10px] font-mono break-all px-3 py-2 rounded-lg"
+                style={{ background: "hsl(var(--surface-overlay))", color: "hsl(var(--foreground-subtle))" }}>
+                {step.tech.multiInstance.collectionExpression}
+              </div>
+            )}
           </div>
         </>
       )}
 
+      {/* Call Activity */}
       {step.type === "callActivity" && (
         <>
           <SectionHeader title="Call Activity" />
@@ -263,19 +383,17 @@ function StepProperties({
             <Field label="Called Element">
               <TextInput value={step.calledElement} onChange={() => {}} mono />
             </Field>
-            {(step.inMappings?.length ?? 0) > 0 && (
-              <Field label="In Mappings">
-                <div className="space-y-1">
-                  {step.inMappings?.map((m, i) => (
-                    <div key={i} className="font-mono text-[11px] text-foreground-muted flex gap-2">
-                      <span>{m.source}</span>
-                      <span className="text-foreground-subtle">→</span>
-                      <span>{m.target}</span>
-                    </div>
-                  ))}
-                </div>
-              </Field>
-            )}
+          </div>
+        </>
+      )}
+
+      {/* I/O Parameters */}
+      {(inputParams.length > 0 || outputParams.length > 0) && (
+        <>
+          <SectionHeader title="Parameters" />
+          <div className="space-y-3 pt-1">
+            <IoParamsTable params={inputParams} label="Input Parameters" accent="hsl(213 80% 50%)" />
+            <IoParamsTable params={outputParams} label="Output Parameters" accent="hsl(134 58% 38%)" />
           </div>
         </>
       )}

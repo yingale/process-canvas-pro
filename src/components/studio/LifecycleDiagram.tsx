@@ -15,18 +15,19 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Plus, MoreHorizontal, ChevronDown, ChevronRight,
   Pencil, Copy, Trash2, GitBranch, Bot, User,
-  Repeat2, ExternalLink, Zap, AlignLeft, type LucideIcon,
+  Repeat2, ExternalLink, Zap, AlignLeft, Bell, type LucideIcon,
 } from "lucide-react";
 import type { CaseIR, Stage, Step, StepType, SelectionTarget } from "@/types/caseIr";
 
 // ─── Step type config ──────────────────────────────────────────────────────────
 
 const STEP_TYPE_META: Record<StepType, { label: string; color: string; Icon: LucideIcon }> = {
-  automation:   { label: "Automation",  color: "hsl(213 80% 50%)",  Icon: Bot },
-  user:         { label: "User Task",   color: "hsl(32 86% 48%)",   Icon: User },
-  decision:     { label: "Decision",    color: "hsl(134 58% 38%)",  Icon: GitBranch },
-  foreach:      { label: "For Each",    color: "hsl(268 60% 50%)",  Icon: Repeat2 },
-  callActivity: { label: "Subprocess",  color: "hsl(193 70% 42%)",  Icon: ExternalLink },
+  automation:        { label: "Automation",  color: "hsl(213 80% 50%)",  Icon: Bot },
+  user:              { label: "User Task",   color: "hsl(32 86% 48%)",   Icon: User },
+  decision:          { label: "Decision",    color: "hsl(134 58% 38%)",  Icon: GitBranch },
+  foreach:           { label: "For Each",    color: "hsl(268 60% 50%)",  Icon: Repeat2 },
+  callActivity:      { label: "Subprocess",  color: "hsl(193 70% 42%)",  Icon: ExternalLink },
+  intermediateEvent: { label: "Wait/Event",  color: "hsl(199 80% 42%)",  Icon: Bell },
 };
 
 // Section accent colors cycling per stage index
@@ -139,6 +140,19 @@ function StepRow({
   const [hover, setHover] = useState(false);
   const meta = STEP_TYPE_META[step.type];
   const isAsync = step.tech?.asyncBefore || step.tech?.asyncAfter;
+  const inputCount = step.tech?.inputParameters?.length ?? 0;
+  const outputCount = step.tech?.outputParameters?.length ?? 0;
+
+  // Sub-label line
+  let subLabel = meta.label;
+  if (step.tech?.topic) subLabel += ` · ${step.tech.topic}`;
+  if (step.type === "intermediateEvent") {
+    subLabel = `${step.eventSubType.charAt(0).toUpperCase() + step.eventSubType.slice(1)} Event`;
+    if (step.messageRef) subLabel += ` · ${step.messageRef}`;
+  }
+  if (step.type === "foreach") {
+    subLabel = `For Each · ${step.elementVariable || step.collectionExpression}`;
+  }
 
   return (
     <div
@@ -157,11 +171,13 @@ function StepRow({
       onMouseLeave={() => setHover(false)}
     >
       <div className="flex items-start gap-2.5 px-2.5 py-2">
-        {/* Type color dot */}
+        {/* Type icon with colored bg */}
         <div
-          className="flex-shrink-0 mt-0.5 rounded-sm"
-          style={{ width: 10, height: 10, background: meta.color, marginTop: 4 }}
-        />
+          className="flex-shrink-0 rounded-sm flex items-center justify-center mt-0.5"
+          style={{ width: 16, height: 16, background: `${meta.color}22`, marginTop: 3 }}
+        >
+          <meta.Icon size={9} style={{ color: meta.color }} />
+        </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
@@ -173,19 +189,54 @@ function StepRow({
               {step.name}
             </span>
             {isAsync && (
-              <Zap size={9} style={{ color: "hsl(var(--warning))", flexShrink: 0 }} />
+              <span title="Async"><Zap size={9} style={{ color: "hsl(var(--warning))", flexShrink: 0 }} /></span>
             )}
           </div>
           <div
             className="text-[10px] mt-0.5 truncate"
             style={{ color: "hsl(var(--foreground-muted))" }}
           >
-            {meta.label}
-            {step.tech?.topic && ` · ${step.tech.topic}`}
+            {subLabel}
           </div>
-          {step.type === "decision" && step.branches?.length > 0 && (
-            <div className="text-[9px] mt-0.5" style={{ color: "hsl(var(--foreground-subtle))" }}>
-              {step.branches.length} branch{step.branches.length !== 1 ? "es" : ""}
+          {/* Metadata chips row */}
+          {(inputCount > 0 || outputCount > 0 || (step.type === "decision" && step.branches?.length > 0)) && (
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              {inputCount > 0 && (
+                <span
+                  className="text-[9px] px-1 py-0.5 rounded font-mono"
+                  style={{ background: "hsl(213 80% 50% / 0.12)", color: "hsl(213 80% 50%)" }}
+                  title={`${inputCount} input parameter${inputCount !== 1 ? "s" : ""}`}
+                >
+                  IN:{inputCount}
+                </span>
+              )}
+              {outputCount > 0 && (
+                <span
+                  className="text-[9px] px-1 py-0.5 rounded font-mono"
+                  style={{ background: "hsl(134 58% 38% / 0.12)", color: "hsl(134 58% 38%)" }}
+                  title={`${outputCount} output parameter${outputCount !== 1 ? "s" : ""}`}
+                >
+                  OUT:{outputCount}
+                </span>
+              )}
+              {step.type === "decision" && step.branches?.length > 0 && (
+                <span
+                  className="text-[9px] px-1 py-0.5 rounded"
+                  style={{ background: "hsl(134 58% 38% / 0.1)", color: "hsl(134 58% 38%)" }}
+                >
+                  {step.branches.length} branch{step.branches.length !== 1 ? "es" : ""}
+                </span>
+              )}
+            </div>
+          )}
+          {/* Description snippet */}
+          {step.description && (
+            <div
+              className="text-[9px] mt-0.5 truncate italic"
+              style={{ color: "hsl(var(--foreground-subtle))" }}
+              title={step.description}
+            >
+              {step.description}
             </div>
           )}
         </div>

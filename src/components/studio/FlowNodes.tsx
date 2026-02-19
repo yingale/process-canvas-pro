@@ -2,17 +2,18 @@
  * Custom React Flow nodes for the Pega-style workflow diagram
  */
 import { Handle, Position, type NodeProps } from "reactflow";
-import { Bot, User, GitBranch, Repeat2, ExternalLink, Zap, Plus, type LucideIcon } from "lucide-react";
+import { Bot, User, GitBranch, Repeat2, ExternalLink, Zap, Plus, Bell, type LucideIcon } from "lucide-react";
 import type { Step, StepType } from "@/types/caseIr";
 
 // ─── Step type configuration ──────────────────────────────────────────────────
 
 export const STEP_TYPE_CONFIG: Record<StepType, { label: string; icon: LucideIcon; colorVar: string }> = {
-  automation: { label: "Automation", icon: Bot,          colorVar: "hsl(var(--step-automation))" },
-  user:        { label: "User",       icon: User,         colorVar: "hsl(var(--step-user))" },
-  decision:    { label: "Decision",   icon: GitBranch,    colorVar: "hsl(var(--step-decision))" },
-  foreach:     { label: "For Each",   icon: Repeat2,      colorVar: "hsl(var(--step-foreach))" },
-  callActivity:{ label: "Subprocess", icon: ExternalLink, colorVar: "hsl(var(--step-call))" },
+  automation:       { label: "Automation",   icon: Bot,          colorVar: "hsl(var(--step-automation))" },
+  user:             { label: "User",          icon: User,         colorVar: "hsl(var(--step-user))" },
+  decision:         { label: "Decision",      icon: GitBranch,    colorVar: "hsl(var(--step-decision))" },
+  foreach:          { label: "For Each",      icon: Repeat2,      colorVar: "hsl(var(--step-foreach))" },
+  callActivity:     { label: "Subprocess",    icon: ExternalLink, colorVar: "hsl(var(--step-call))" },
+  intermediateEvent:{ label: "Wait / Event",  icon: Bell,         colorVar: "hsl(var(--step-event, 199 80% 42%))" },
 };
 
 // ─── Step card node ───────────────────────────────────────────────────────────
