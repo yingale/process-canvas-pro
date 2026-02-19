@@ -229,6 +229,36 @@ function buildStages(processEl: Element, sequenceFlows: Map<string, Element>, me
   return { stages, warnings };
 }
 
+/** Extract the full bpmndi:BPMNDiagram XML block as a string */
+function extractDiagramXml(bpmnXml: string): string | undefined {
+  // Use regex to capture everything between <bpmndi:BPMNDiagram ...> and </bpmndi:BPMNDiagram>
+  const match = bpmnXml.match(/<bpmndi:BPMNDiagram[\s\S]*?<\/bpmndi:BPMNDiagram>/);
+  return match?.[0];
+}
+
+/** Extract definitions-level attributes (id, targetNamespace, etc.) */
+function extractDefinitionsAttrs(doc: Document): Record<string, string> {
+  const defsEl = doc.documentElement;
+  const result: Record<string, string> = {};
+  if (!defsEl) return result;
+  for (const attr of Array.from(defsEl.attributes)) {
+    result[attr.name] = attr.value;
+  }
+  return result;
+}
+
+/** Build a map of sequenceFlow id → { sourceRef, targetRef } for the full doc */
+function buildAllFlowRefMap(doc: Document): Record<string, { sourceRef: string; targetRef: string }> {
+  const result: Record<string, { sourceRef: string; targetRef: string }> = {};
+  Array.from(doc.getElementsByTagNameNS("*", "sequenceFlow")).forEach(el => {
+    const id = el.getAttribute("id");
+    const src = el.getAttribute("sourceRef");
+    const tgt = el.getAttribute("targetRef");
+    if (id && src && tgt) result[id] = { sourceRef: src, targetRef: tgt };
+  });
+  return result;
+}
+
 export async function importBpmn(bpmnXml: string, fileName?: string): Promise<ImportResult> {
   const warnings: string[] = [];
   let doc: Document;
@@ -262,9 +292,19 @@ export async function importBpmn(bpmnXml: string, fileName?: string): Promise<Im
     warnings.push("No recognizable task elements found. Check your BPMN file.");
   }
 
+  // Capture original diagram data for lossless round-trip
+  const originalDiagramXml = extractDiagramXml(bpmnXml);
+  const originalDefinitionsAttrs = extractDefinitionsAttrs(doc);
+  const originalSequenceFlowIds = buildAllFlowRefMap(doc);
+
   const caseIr: CaseIR = {
     id: processId, name: processName, version: "1.0.0", trigger, stages,
-    metadata: { createdAt: now(), updatedAt: now(), sourceFile: fileName, exportedFrom: "bpmn" },
+    metadata: {
+      createdAt: now(), updatedAt: now(), sourceFile: fileName, exportedFrom: "bpmn",
+      originalDiagramXml,
+      originalDefinitionsAttrs,
+      originalSequenceFlowIds,
+    },
   };
   return { caseIr, warnings };
 }

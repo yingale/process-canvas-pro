@@ -206,6 +206,12 @@ export interface CaseIR {
     updatedAt: string;
     sourceFile?: string;
     exportedFrom?: "bpmn" | "manual";
+    /** Verbatim bpmndi:BPMNDiagram XML block captured from the original file */
+    originalDiagramXml?: string;
+    /** Original definitions-level attributes (targetNamespace, id, etc.) */
+    originalDefinitionsAttrs?: Record<string, string>;
+    /** Original top-level sequence flow IDs captured for edge references */
+    originalSequenceFlowIds?: Record<string, { sourceRef: string; targetRef: string }>;
   };
 }
 
@@ -354,6 +360,9 @@ export const caseIrSchema = z.object({
     updatedAt: z.string(),
     sourceFile: z.string().optional(),
     exportedFrom: z.enum(["bpmn", "manual"]).optional(),
+    originalDiagramXml: z.string().optional(),
+    originalDefinitionsAttrs: z.record(z.string()).optional(),
+    originalSequenceFlowIds: z.record(z.object({ sourceRef: z.string(), targetRef: z.string() })).optional(),
   }),
 });
 
