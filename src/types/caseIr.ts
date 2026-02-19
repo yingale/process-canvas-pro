@@ -115,12 +115,21 @@ export type Step =
   | CallActivityStep
   | IntermediateEventStep;
 
+// ─── Group ────────────────────────────────────────────────────────────────────
+
+/** A named group of steps within a Stage (Section → Groups → Steps) */
+export interface Group {
+  id: string;
+  name: string;
+  steps: Step[];
+}
+
 // ─── Stage ────────────────────────────────────────────────────────────────────
 
 export interface Stage {
   id: string;
   name: string;
-  steps: Step[];
+  groups: Group[];          // Section → Groups → Steps
   source?: SourceMeta;
 }
 
@@ -184,7 +193,8 @@ export interface ExportBpmnResult {
 
 export type SelectionTarget =
   | { kind: "stage"; stageId: string }
-  | { kind: "step"; stageId: string; stepId: string }
+  | { kind: "group"; stageId: string; groupId: string }
+  | { kind: "step"; stageId: string; groupId: string; stepId: string }
   | null;
 
 // ─── Zod Schemas ──────────────────────────────────────────────────────────────
@@ -266,10 +276,16 @@ export const stepSchema: z.ZodType<any> = z.lazy(() =>
   ])
 );
 
-export const stageSchema = z.object({
+export const groupSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   steps: z.array(stepSchema),
+});
+
+export const stageSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  groups: z.array(groupSchema),
   source: z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional(),
 });
 
