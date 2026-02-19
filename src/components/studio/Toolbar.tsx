@@ -3,7 +3,7 @@
  */
 import { useState, useRef } from "react";
 import {
-  Upload, Download, FileJson, Code, AlertTriangle, CheckCircle, X, RefreshCw
+  Upload, FileJson, Code, AlertTriangle, CheckCircle, X, Loader2
 } from "lucide-react";
 import type { CaseIR } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
@@ -143,17 +143,7 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
       )}
 
       {/* Actions */}
-      <button
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors"
-        style={{ background: "hsl(var(--surface-raised))", color: "hsl(var(--foreground-muted))" }}
-        onMouseEnter={e => { e.currentTarget.style.color = "hsl(var(--foreground))"; }}
-        onMouseLeave={e => { e.currentTarget.style.color = "hsl(var(--foreground-muted))"; }}
-        onClick={onLoadSample}
-        title="Load sample BPMN"
-      >
-        <RefreshCw size={13} />
-        Sample
-      </button>
+      {/* No sample button - users must upload their own BPMN */}
 
       <input
         ref={fileRef}
@@ -171,7 +161,7 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
         onClick={() => fileRef.current?.click()}
         disabled={importing}
       >
-        {importing ? <RefreshCw size={13} className="animate-spin" /> : <Upload size={13} />}
+        {importing ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
         Import BPMN
       </button>
 
