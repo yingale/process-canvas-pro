@@ -6,7 +6,7 @@ import type { CaseIR, SelectionTarget, JsonPatch, StepType } from "@/types/caseI
 import { importBpmn } from "@/lib/bpmnImporter";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import Toolbar from "./Toolbar";
-import ProcessDiagram from "./ProcessDiagram";
+import LifecycleDiagram from "./LifecycleDiagram";
 import PropertiesPanel from "./PropertiesPanel";
 import AiChatPanel from "./AiChatPanel";
 import { Upload, FileText } from "lucide-react";
@@ -176,6 +176,47 @@ export default function WorkflowStudio() {
     handlePatch([{ op: "add", path: "/stages/-", value: newStage }]);
   }, [handlePatch]);
 
+  const handleDeleteStage = useCallback((stageId: string) => {
+    if (!caseIr) return;
+    const si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    handlePatch([{ op: "remove", path: `/stages/${si}` }]);
+    setSelection(null);
+  }, [caseIr, handlePatch]);
+
+  const handleDeleteStep = useCallback((stageId: string, stepId: string) => {
+    if (!caseIr) return;
+    const si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const step_i = caseIr.stages[si].steps.findIndex(s => s.id === stepId);
+    if (step_i < 0) return;
+    handlePatch([{ op: "remove", path: `/stages/${si}/steps/${step_i}` }]);
+    setSelection(null);
+  }, [caseIr, handlePatch]);
+
+  const handleDuplicateStep = useCallback((stageId: string, stepId: string) => {
+    if (!caseIr) return;
+    const si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const step = caseIr.stages[si].steps.find(s => s.id === stepId);
+    if (!step) return;
+    const cloned = { ...step, id: uid(), name: `${step.name} (copy)` };
+    handlePatch([{ op: "add", path: `/stages/${si}/steps/-`, value: cloned }]);
+  }, [caseIr, handlePatch]);
+
+  const handleDuplicateStage = useCallback((stageId: string) => {
+    if (!caseIr) return;
+    const stage = caseIr.stages.find(s => s.id === stageId);
+    if (!stage) return;
+    const cloned = {
+      ...stage,
+      id: uid(),
+      name: `${stage.name} (copy)`,
+      steps: stage.steps.map(s => ({ ...s, id: uid() })),
+    };
+    handlePatch([{ op: "add", path: "/stages/-", value: cloned }]);
+  }, [caseIr, handlePatch]);
+
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ background: "hsl(var(--background))" }}>
       <Toolbar caseIr={caseIr} onImportBpmn={handleImportBpmn} onLoadSample={() => {}} />
@@ -205,15 +246,19 @@ export default function WorkflowStudio() {
               />
             </div>
 
-            {/* Center: Process diagram */}
+            {/* Center: Lifecycle Diagram */}
             <div className="flex-1 overflow-hidden">
-              <ProcessDiagram
+              <LifecycleDiagram
                 caseIr={caseIr}
                 selection={selection}
                 onSelectStage={handleSelectStage}
                 onSelectStep={handleSelectStep}
                 onAddStep={handleAddStep}
                 onAddStage={handleAddStage}
+                onDeleteStage={handleDeleteStage}
+                onDeleteStep={handleDeleteStep}
+                onDuplicateStep={handleDuplicateStep}
+                onDuplicateStage={handleDuplicateStage}
               />
             </div>
 
