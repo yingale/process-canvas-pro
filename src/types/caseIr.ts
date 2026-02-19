@@ -10,13 +10,25 @@ export type StepType =
   | "user"
   | "decision"
   | "foreach"
-  | "callActivity";
+  | "callActivity"
+  | "intermediateEvent";
+
+// ─── I/O Parameter ────────────────────────────────────────────────────────────
+
+export interface IoParam {
+  name: string;
+  value: string;   // FEEL expression or literal
+}
 
 // Camunda 7 technical extensions
 export interface Camunda7Tech {
   topic?: string;
   asyncBefore?: boolean;
   asyncAfter?: boolean;
+  /** Input parameters from camunda:inputOutput/camunda:inputParameter */
+  inputParameters?: IoParam[];
+  /** Output parameters from camunda:inputOutput/camunda:outputParameter */
+  outputParameters?: IoParam[];
   multiInstance?: {
     isSequential: boolean;
     collectionExpression: string;
@@ -84,12 +96,24 @@ export interface CallActivityStep extends BaseStep {
   outMappings?: Array<{ source: string; target: string }>;
 }
 
+/** Intermediate catch/throw event (message, timer, signal, etc.) */
+export interface IntermediateEventStep extends BaseStep {
+  type: "intermediateEvent";
+  /** "message" | "timer" | "signal" | "error" | "escalation" | "generic" */
+  eventSubType: string;
+  /** Message name or ref (for message events) */
+  messageRef?: string;
+  /** Timer expression */
+  timerExpression?: string;
+}
+
 export type Step =
   | AutomationStep
   | UserStep
   | DecisionStep
   | ForeachStep
-  | CallActivityStep;
+  | CallActivityStep
+  | IntermediateEventStep;
 
 // ─── Stage ────────────────────────────────────────────────────────────────────
 
@@ -167,10 +191,14 @@ export type SelectionTarget =
 
 import { z } from "zod";
 
+const ioParamSchema = z.object({ name: z.string(), value: z.string() });
+
 export const camunda7TechSchema = z.object({
   topic: z.string().optional(),
   asyncBefore: z.boolean().optional(),
   asyncAfter: z.boolean().optional(),
+  inputParameters: z.array(ioParamSchema).optional(),
+  outputParameters: z.array(ioParamSchema).optional(),
   multiInstance: z.object({
     isSequential: z.boolean(),
     collectionExpression: z.string(),
@@ -184,64 +212,56 @@ export const camunda7TechSchema = z.object({
   }).optional(),
 }).optional();
 
+const sourceSchema = z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional();
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const stepSchema: z.ZodType<any> = z.lazy(() =>
   z.discriminatedUnion("type", [
     z.object({
-      id: z.string().min(1),
-      type: z.literal("automation"),
-      name: z.string().min(1),
-      description: z.string().optional(),
-      tech: camunda7TechSchema,
-      source: z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional(),
+      id: z.string().min(1), type: z.literal("automation"),
+      name: z.string().min(1), description: z.string().optional(),
+      tech: camunda7TechSchema, source: sourceSchema,
     }),
     z.object({
-      id: z.string().min(1),
-      type: z.literal("user"),
-      name: z.string().min(1),
-      description: z.string().optional(),
+      id: z.string().min(1), type: z.literal("user"),
+      name: z.string().min(1), description: z.string().optional(),
       assignee: z.string().optional(),
       candidateGroups: z.array(z.string()).optional(),
-      tech: camunda7TechSchema,
-      source: z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional(),
+      tech: camunda7TechSchema, source: sourceSchema,
     }),
     z.object({
-      id: z.string().min(1),
-      type: z.literal("decision"),
-      name: z.string().min(1),
-      description: z.string().optional(),
+      id: z.string().min(1), type: z.literal("decision"),
+      name: z.string().min(1), description: z.string().optional(),
       branches: z.array(z.object({
-        id: z.string(),
-        label: z.string(),
-        condition: z.string(),
+        id: z.string(), label: z.string(), condition: z.string(),
         targetStepId: z.string().optional(),
       })),
       defaultBranchId: z.string().optional(),
-      tech: camunda7TechSchema,
-      source: z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional(),
+      tech: camunda7TechSchema, source: sourceSchema,
     }),
     z.object({
-      id: z.string().min(1),
-      type: z.literal("foreach"),
-      name: z.string().min(1),
-      description: z.string().optional(),
-      collectionExpression: z.string(),
-      elementVariable: z.string(),
+      id: z.string().min(1), type: z.literal("foreach"),
+      name: z.string().min(1), description: z.string().optional(),
+      collectionExpression: z.string(), elementVariable: z.string(),
       isSequential: z.boolean().optional(),
       steps: z.array(z.lazy(() => stepSchema)),
-      tech: camunda7TechSchema,
-      source: z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional(),
+      tech: camunda7TechSchema, source: sourceSchema,
     }),
     z.object({
-      id: z.string().min(1),
-      type: z.literal("callActivity"),
-      name: z.string().min(1),
-      description: z.string().optional(),
+      id: z.string().min(1), type: z.literal("callActivity"),
+      name: z.string().min(1), description: z.string().optional(),
       calledElement: z.string(),
       inMappings: z.array(z.object({ source: z.string(), target: z.string() })).optional(),
       outMappings: z.array(z.object({ source: z.string(), target: z.string() })).optional(),
-      tech: camunda7TechSchema,
-      source: z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional(),
+      tech: camunda7TechSchema, source: sourceSchema,
+    }),
+    z.object({
+      id: z.string().min(1), type: z.literal("intermediateEvent"),
+      name: z.string().min(1), description: z.string().optional(),
+      eventSubType: z.string(),
+      messageRef: z.string().optional(),
+      timerExpression: z.string().optional(),
+      tech: camunda7TechSchema, source: sourceSchema,
     }),
   ])
 );

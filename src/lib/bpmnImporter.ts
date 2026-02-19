@@ -1,19 +1,27 @@
 /**
  * BPMN Importer – converts BPMN 2.0 XML → Case IR
  * Supports Camunda 7 extension elements.
- * Handles BOTH flat processes (tasks only) AND mixed processes
- * (top-level tasks interleaved with subProcesses).
+ *
+ * Captures:
+ *  - camunda:inputOutput → inputParameters / outputParameters
+ *  - bpmn:documentation
+ *  - intermediateCatchEvent / intermediateThrowEvent with event sub-type & message ref
+ *  - multiInstanceLoopCharacteristics (collection, elementVariable, isSequential)
+ *  - asyncBefore / asyncAfter
+ *  - external task topic
+ *  - callActivity in/out mappings
+ *  - exclusiveGateway decision branches with conditions
  *
  * Strategy:
  *  1. Walk the top-level children of <process> in document order.
  *  2. Collect consecutive "task-like" elements into a synthetic stage.
  *  3. Treat every <subProcess> as its own stage (with its inner tasks).
- *  4. Result: one stage per contiguous group of flat tasks + one per subProcess.
  */
 
 import type {
   CaseIR, Stage, Step, AutomationStep, UserStep, DecisionStep,
-  ForeachStep, CallActivityStep, Trigger, ImportResult, Camunda7Tech, DecisionBranch,
+  ForeachStep, CallActivityStep, IntermediateEventStep,
+  Trigger, ImportResult, Camunda7Tech, DecisionBranch, IoParam,
 } from "@/types/caseIr";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -31,14 +39,14 @@ function attr(el: Element, name: string): string | undefined {
 }
 
 function childrenByLocalName(el: Element, tag: string): Element[] {
-  return Array.from(el.children).filter(c => localName(c) === tag);
+  return Array.from(el.children).filter(c => lname(c) === tag);
 }
 
-function firstChildByLocalName(el: Element, tag: string): Element | undefined {
+function firstChild(el: Element, tag: string): Element | undefined {
   return childrenByLocalName(el, tag)[0];
 }
 
-function localName(el: Element): string {
+function lname(el: Element): string {
   return el.localName ?? el.tagName.split(":")[1];
 }
 
@@ -46,7 +54,37 @@ function textContent(el: Element | undefined): string {
   return el?.textContent?.trim() ?? "";
 }
 
-// ─── Parse Camunda extensions ─────────────────────────────────────────────────
+// ─── Parse camunda:inputOutput ────────────────────────────────────────────────
+
+function parseInputOutput(el: Element): { inputs: IoParam[]; outputs: IoParam[] } {
+  const extEl = firstChild(el, "extensionElements");
+  if (!extEl) return { inputs: [], outputs: [] };
+
+  const ioEl = Array.from(extEl.children).find(c => lname(c) === "inputOutput");
+  if (!ioEl) return { inputs: [], outputs: [] };
+
+  const inputs: IoParam[] = childrenByLocalName(ioEl, "inputParameter").map(p => ({
+    name: attr(p, "name") ?? "",
+    value: textContent(p),
+  }));
+
+  const outputs: IoParam[] = childrenByLocalName(ioEl, "outputParameter").map(p => ({
+    name: attr(p, "name") ?? "",
+    value: textContent(p),
+  }));
+
+  return { inputs, outputs };
+}
+
+// ─── Parse bpmn:documentation ────────────────────────────────────────────────
+
+function parseDocumentation(el: Element): string | undefined {
+  const docEl = firstChild(el, "documentation");
+  const text = textContent(docEl);
+  return text || undefined;
+}
+
+// ─── Parse Camunda core tech extensions ──────────────────────────────────────
 
 function parseCamundaExtensions(el: Element): Camunda7Tech {
   const tech: Camunda7Tech = {};
@@ -54,17 +92,14 @@ function parseCamundaExtensions(el: Element): Camunda7Tech {
   const topic = attr(el, "camunda:topic") ?? attr(el, "topic");
   if (topic) tech.topic = topic;
 
-  const asyncBefore = attr(el, "camunda:asyncBefore") ?? attr(el, "flowable:asyncBefore");
-  if (asyncBefore === "true") tech.asyncBefore = true;
-
-  const asyncAfter = attr(el, "camunda:asyncAfter") ?? attr(el, "flowable:asyncAfter");
-  if (asyncAfter === "true") tech.asyncAfter = true;
+  if (attr(el, "camunda:asyncBefore") === "true") tech.asyncBefore = true;
+  if (attr(el, "camunda:asyncAfter") === "true") tech.asyncAfter = true;
 
   // Multi-instance
-  const miEl = firstChildByLocalName(el, "multiInstanceLoopCharacteristics");
+  const miEl = firstChild(el, "multiInstanceLoopCharacteristics");
   if (miEl) {
-    const loopCardinality = firstChildByLocalName(miEl, "loopCardinality");
-    const completionCondition = firstChildByLocalName(miEl, "completionCondition");
+    const loopCardinality = firstChild(miEl, "loopCardinality");
+    const completionCondition = firstChild(miEl, "completionCondition");
     const collectionEl = miEl.getAttribute("camunda:collection") ?? miEl.getAttribute("collection") ?? "";
     const elementVar = miEl.getAttribute("camunda:elementVariable") ?? miEl.getAttribute("elementVariable") ?? "";
     tech.multiInstance = {
@@ -75,12 +110,16 @@ function parseCamundaExtensions(el: Element): Camunda7Tech {
     };
   }
 
+  // I/O params
+  const { inputs, outputs } = parseInputOutput(el);
+  if (inputs.length > 0) tech.inputParameters = inputs;
+  if (outputs.length > 0) tech.outputParameters = outputs;
+
   return Object.keys(tech).length > 0 ? tech : {};
 }
 
-// ─── Parse a single flow element into a Step ─────────────────────────────────
+// ─── Tags ────────────────────────────────────────────────────────────────────
 
-// Tags that are "task-like" at the top level (i.e. map to Step types)
 const TASK_LIKE_TAGS = new Set([
   "serviceTask", "scriptTask", "sendTask", "receiveTask", "businessRuleTask",
   "userTask", "manualTask",
@@ -88,12 +127,42 @@ const TASK_LIKE_TAGS = new Set([
   "callActivity",
 ]);
 
+const INTERMEDIATE_EVENT_TAGS = new Set([
+  "intermediateCatchEvent", "intermediateThrowEvent",
+]);
+
+// ─── Determine intermediate event sub-type ───────────────────────────────────
+
+function getEventSubType(el: Element): { subType: string; messageRef?: string; timerExpr?: string } {
+  if (firstChild(el, "messageEventDefinition")) {
+    const msgDef = firstChild(el, "messageEventDefinition");
+    const messageRef = msgDef ? (attr(msgDef, "messageRef") ?? undefined) : undefined;
+    return { subType: "message", messageRef };
+  }
+  if (firstChild(el, "timerEventDefinition")) {
+    const timerDef = firstChild(el, "timerEventDefinition");
+    const expr = timerDef
+      ? (textContent(firstChild(timerDef, "timeCycle")) ||
+         textContent(firstChild(timerDef, "timeDate")) ||
+         textContent(firstChild(timerDef, "timeDuration")))
+      : "";
+    return { subType: "timer", timerExpr: expr || undefined };
+  }
+  if (firstChild(el, "signalEventDefinition")) return { subType: "signal" };
+  if (firstChild(el, "errorEventDefinition")) return { subType: "error" };
+  if (firstChild(el, "escalationEventDefinition")) return { subType: "escalation" };
+  if (firstChild(el, "conditionalEventDefinition")) return { subType: "conditional" };
+  return { subType: "generic" };
+}
+
+// ─── Parse a single flow element into a Step ─────────────────────────────────
+
 function parseFlowElement(el: Element, sequenceFlows: Map<string, Element>): Step | null {
-  const tag = localName(el);
+  const tag = lname(el);
   const id = attr(el, "id") ?? uid();
   const name = attr(el, "name") ?? tag;
   const tech = parseCamundaExtensions(el);
-
+  const description = parseDocumentation(el);
   const source = { bpmnElementId: id, bpmnElementType: tag };
 
   switch (tag) {
@@ -102,7 +171,7 @@ function parseFlowElement(el: Element, sequenceFlows: Map<string, Element>): Ste
     case "sendTask":
     case "receiveTask":
     case "businessRuleTask": {
-      const step: AutomationStep = { id, name, type: "automation", tech, source };
+      const step: AutomationStep = { id, name, type: "automation", tech, source, description };
       return step;
     }
 
@@ -112,7 +181,7 @@ function parseFlowElement(el: Element, sequenceFlows: Map<string, Element>): Ste
         id, name, type: "user",
         assignee: attr(el, "camunda:assignee"),
         candidateGroups: attr(el, "camunda:candidateGroups")?.split(",").map(s => s.trim()),
-        tech, source,
+        tech, source, description,
       };
       return step;
     }
@@ -121,13 +190,13 @@ function parseFlowElement(el: Element, sequenceFlows: Map<string, Element>): Ste
     case "inclusiveGateway":
     case "complexGateway": {
       const outgoing = Array.from(el.children)
-        .filter(c => localName(c) === "outgoing")
+        .filter(c => lname(c) === "outgoing")
         .map(o => o.textContent?.trim() ?? "")
         .filter(Boolean);
 
       const branches: DecisionBranch[] = outgoing.map((flowId, idx) => {
         const flow = sequenceFlows.get(flowId);
-        const condEl = flow ? firstChildByLocalName(flow, "conditionExpression") : undefined;
+        const condEl = flow ? firstChild(flow, "conditionExpression") : undefined;
         return {
           id: `branch_${flowId}`,
           label: attr(flow ?? el, "name") ?? `Branch ${idx + 1}`,
@@ -136,13 +205,12 @@ function parseFlowElement(el: Element, sequenceFlows: Map<string, Element>): Ste
         };
       });
 
-      const step: DecisionStep = { id, name, type: "decision", branches, tech, source };
+      const step: DecisionStep = { id, name, type: "decision", branches, tech, source, description };
       return step;
     }
 
     case "subProcess": {
-      // Multi-instance subProcess → foreach step
-      const miEl = firstChildByLocalName(el, "multiInstanceLoopCharacteristics");
+      const miEl = firstChild(el, "multiInstanceLoopCharacteristics");
       if (miEl) {
         const collectionEl = miEl.getAttribute("camunda:collection") ?? "";
         const elementVar = miEl.getAttribute("camunda:elementVariable") ?? "";
@@ -153,25 +221,24 @@ function parseFlowElement(el: Element, sequenceFlows: Map<string, Element>): Ste
           elementVariable: elementVar,
           isSequential: miEl.getAttribute("isSequential") === "true",
           steps: nestedSteps,
-          tech, source,
+          tech, source, description,
         };
         return step;
       }
-      // Plain subProcess inline → automation
-      const step: AutomationStep = { id, name, type: "automation", tech, source };
+      const step: AutomationStep = { id, name, type: "automation", tech, source, description };
       return step;
     }
 
     case "callActivity": {
-      const extEl = firstChildByLocalName(el, "extensionElements");
-      const inEls = extEl ? Array.from(extEl.children).filter(c => localName(c) === "in") : [];
-      const outEls = extEl ? Array.from(extEl.children).filter(c => localName(c) === "out") : [];
+      const extEl = firstChild(el, "extensionElements");
+      const inEls = extEl ? Array.from(extEl.children).filter(c => lname(c) === "in") : [];
+      const outEls = extEl ? Array.from(extEl.children).filter(c => lname(c) === "out") : [];
       const step: CallActivityStep = {
         id, name, type: "callActivity",
         calledElement: attr(el, "calledElement") ?? "",
         inMappings: inEls.map(e => ({ source: attr(e, "source") ?? "", target: attr(e, "target") ?? "" })),
         outMappings: outEls.map(e => ({ source: attr(e, "source") ?? "", target: attr(e, "target") ?? "" })),
-        tech, source,
+        tech, source, description,
       };
       return step;
     }
@@ -181,7 +248,7 @@ function parseFlowElement(el: Element, sequenceFlows: Map<string, Element>): Ste
   }
 }
 
-// ─── Parse inner flow elements (inside a subProcess container) ────────────────
+// ─── Parse inner flow elements ────────────────────────────────────────────────
 
 const INNER_SKIP_TAGS = new Set([
   "startEvent", "endEvent", "boundaryEvent", "sequenceFlow",
@@ -191,49 +258,66 @@ const INNER_SKIP_TAGS = new Set([
   "messageEventDefinition", "timerEventDefinition",
   "errorEventDefinition", "signalEventDefinition",
   "multiInstanceLoopCharacteristics",
-  // intermediate events – map to automation steps
-]);
-
-const INTERMEDIATE_EVENT_TAGS = new Set([
-  "intermediateCatchEvent", "intermediateThrowEvent",
 ]);
 
 function parseInnerFlowElements(container: Element, sequenceFlows: Map<string, Element>): Step[] {
-  return Array.from(container.children)
-    .filter(el => {
-      const tag = localName(el);
-      if (INNER_SKIP_TAGS.has(tag)) return false;
-      if (INTERMEDIATE_EVENT_TAGS.has(tag)) return true; // treat as automation
-      return true;
-    })
-    .map(el => {
-      const tag = localName(el);
-      if (INTERMEDIATE_EVENT_TAGS.has(tag)) {
-        // Map intermediate events to automation steps
-        const id = attr(el, "id") ?? uid();
-        const name = attr(el, "name") ?? "Wait";
-        const tech = parseCamundaExtensions(el);
-        const step: AutomationStep = { id, name, type: "automation", tech, source: { bpmnElementId: id, bpmnElementType: tag } };
-        return step;
-      }
-      return parseFlowElement(el, sequenceFlows);
-    })
-    .filter((s): s is Step => s !== null);
+  const steps: Step[] = [];
+
+  for (const el of Array.from(container.children)) {
+    const tag = lname(el);
+
+    if (INNER_SKIP_TAGS.has(tag)) continue;
+
+    if (INTERMEDIATE_EVENT_TAGS.has(tag)) {
+      const id = attr(el, "id") ?? uid();
+      const name = attr(el, "name") ?? "Wait";
+      const description = parseDocumentation(el);
+      const tech = parseCamundaExtensions(el);
+      const { subType, messageRef, timerExpr } = getEventSubType(el);
+      const step: IntermediateEventStep = {
+        id, name, type: "intermediateEvent",
+        eventSubType: subType,
+        messageRef,
+        timerExpression: timerExpr,
+        tech, source: { bpmnElementId: id, bpmnElementType: tag },
+        description,
+      };
+      steps.push(step);
+      continue;
+    }
+
+    if (TASK_LIKE_TAGS.has(tag) || tag === "subProcess") {
+      const step = parseFlowElement(el, sequenceFlows);
+      if (step) steps.push(step);
+    }
+  }
+
+  return steps;
 }
 
 // ─── Build sequence flow map ──────────────────────────────────────────────────
 
 function buildSeqFlowMap(doc: Document): Map<string, Element> {
   const map = new Map<string, Element>();
-  // Use querySelectorAll with both prefixed and unprefixed
-  doc.querySelectorAll("sequenceFlow").forEach(el => {
+  Array.from(doc.getElementsByTagNameNS("*", "sequenceFlow")).forEach(el => {
     const id = el.getAttribute("id");
     if (id) map.set(id, el);
   });
-  // Also handle namespace-prefixed (bpmn:sequenceFlow)
-  Array.from(doc.getElementsByTagNameNS("*", "sequenceFlow")).forEach(el => {
+  doc.querySelectorAll("sequenceFlow").forEach(el => {
     const id = el.getAttribute("id");
     if (id && !map.has(id)) map.set(id, el);
+  });
+  return map;
+}
+
+// ─── Build a message name lookup map ─────────────────────────────────────────
+
+function buildMessageMap(doc: Document): Map<string, string> {
+  const map = new Map<string, string>();
+  Array.from(doc.getElementsByTagNameNS("*", "message")).forEach(el => {
+    const id = el.getAttribute("id");
+    const name = el.getAttribute("name");
+    if (id && name) map.set(id, name);
   });
   return map;
 }
@@ -241,44 +325,36 @@ function buildSeqFlowMap(doc: Document): Map<string, Element> {
 // ─── Parse trigger from start events ─────────────────────────────────────────
 
 function parseTrigger(doc: Document): Trigger {
-  // Find the top-level startEvent (not inside a subProcess)
-  const processEl = doc.querySelector("process, [localName='process']");
+  const processEl = doc.querySelector("process") ??
+    Array.from(doc.getElementsByTagName("*")).find(el => lname(el) === "process" && lname(el.parentElement ?? el) !== "process");
   if (!processEl) return { type: "none" };
 
-  const startEvent = Array.from(processEl.children).find(el => localName(el) === "startEvent");
+  const startEvent = Array.from(processEl.children).find(el => lname(el) === "startEvent");
   if (!startEvent) return { type: "none" };
 
-  if (firstChildByLocalName(startEvent, "timerEventDefinition")) {
-    const timer = firstChildByLocalName(startEvent, "timerEventDefinition");
-    const expr = timer ? (
-      textContent(firstChildByLocalName(timer, "timeCycle")) ||
-      textContent(firstChildByLocalName(timer, "timeDate")) ||
-      textContent(firstChildByLocalName(timer, "timeDuration"))
-    ) : "";
+  if (firstChild(startEvent, "timerEventDefinition")) {
+    const timer = firstChild(startEvent, "timerEventDefinition")!;
+    const expr =
+      textContent(firstChild(timer, "timeCycle")) ||
+      textContent(firstChild(timer, "timeDate")) ||
+      textContent(firstChild(timer, "timeDuration"));
     return { type: "timer", expression: expr || undefined, name: attr(startEvent, "name") };
   }
-
-  if (firstChildByLocalName(startEvent, "messageEventDefinition")) {
+  if (firstChild(startEvent, "messageEventDefinition")) {
     return { type: "message", name: attr(startEvent, "name") };
   }
-
-  if (firstChildByLocalName(startEvent, "signalEventDefinition")) {
+  if (firstChild(startEvent, "signalEventDefinition")) {
     return { type: "signal", name: attr(startEvent, "name") };
   }
-
   return { type: "none" };
 }
 
-// ─── Build stages from process children (document order) ─────────────────────
-/**
- * Walk top-level children of <process> in order.
- * - Skip non-flow elements (startEvent, endEvent, sequenceFlow, etc.)
- * - Accumulate consecutive "task-like" elements into a synthetic stage
- * - Each <subProcess> becomes its own stage
- */
+// ─── Build stages from process children ──────────────────────────────────────
+
 function buildStages(
   processEl: Element,
   sequenceFlows: Map<string, Element>,
+  messageMap: Map<string, string>,
   processName: string,
 ): { stages: Stage[]; warnings: string[] } {
   const warnings: string[] = [];
@@ -296,7 +372,6 @@ function buildStages(
 
   const flushBuffer = () => {
     if (flatBuffer.length === 0) return;
-    // Give the stage a name based on first step
     const stageName = flatBuffer.length === 1 ? flatBuffer[0].name : `${flatBuffer[0].name} & more`;
     stages.push({
       id: uid(),
@@ -308,31 +383,30 @@ function buildStages(
   };
 
   for (const child of Array.from(processEl.children)) {
-    const tag = localName(child);
+    const tag = lname(child);
 
     if (SKIP_TOP.has(tag)) continue;
 
     if (tag === "subProcess") {
-      // Flush any accumulated flat tasks first
       flushBuffer();
 
-      // Check: is this a multi-instance subProcess (foreach)?
-      const miEl = firstChildByLocalName(child, "multiInstanceLoopCharacteristics");
+      const miEl = firstChild(child, "multiInstanceLoopCharacteristics");
       const stageId = attr(child, "id") ?? uid();
       const stageName = attr(child, "name") ?? "Stage";
+      const innerSteps = parseInnerFlowElements(child, sequenceFlows);
+
+      // Resolve message names in inner intermediate events
+      resolveMessageNames(innerSteps, messageMap);
 
       if (miEl) {
-        // Multi-instance subProcess → stage whose steps are the inner tasks
-        const innerSteps = parseInnerFlowElements(child, sequenceFlows);
+        // multi-instance → stage source keeps the foreach info
         stages.push({
           id: stageId,
           name: stageName,
           steps: innerSteps,
-          source: { bpmnElementId: stageId, bpmnElementType: "subProcess" },
+          source: { bpmnElementId: stageId, bpmnElementType: "subProcess-multi" },
         });
       } else {
-        // Plain subProcess → stage
-        const innerSteps = parseInnerFlowElements(child, sequenceFlows);
         stages.push({
           id: stageId,
           name: stageName,
@@ -344,20 +418,25 @@ function buildStages(
       const step = parseFlowElement(child, sequenceFlows);
       if (step) flatBuffer.push(step);
     } else if (INTERMEDIATE_EVENT_TAGS.has(tag)) {
-      // Treat intermediate events as automation steps in the current flat stage
       const id = attr(child, "id") ?? uid();
       const name = attr(child, "name") ?? "Wait";
+      const description = parseDocumentation(child);
       const tech = parseCamundaExtensions(child);
-      flatBuffer.push({ id, name, type: "automation", tech, source: { bpmnElementId: id, bpmnElementType: tag } });
+      const { subType, messageRef, timerExpr } = getEventSubType(child);
+      flatBuffer.push({
+        id, name, type: "intermediateEvent",
+        eventSubType: subType,
+        messageRef: messageRef ? (messageMap.get(messageRef) ?? messageRef) : undefined,
+        timerExpression: timerExpr,
+        tech, source: { bpmnElementId: id, bpmnElementType: tag },
+        description,
+      } as IntermediateEventStep);
     }
-    // else: unknown element, skip
   }
 
-  // Flush any trailing flat tasks
   flushBuffer();
 
   if (stages.length === 0) {
-    // No stages at all — make a single stage from the entire flat process
     warnings.push("No task or subProcess elements found – placed all tasks in one stage.");
     const steps = parseInnerFlowElements(processEl, sequenceFlows);
     stages.push({
@@ -369,6 +448,19 @@ function buildStages(
   }
 
   return { stages, warnings };
+}
+
+// ─── Resolve message ID → name in steps ──────────────────────────────────────
+
+function resolveMessageNames(steps: Step[], messageMap: Map<string, string>) {
+  for (const step of steps) {
+    if (step.type === "intermediateEvent" && step.messageRef) {
+      step.messageRef = messageMap.get(step.messageRef) ?? step.messageRef;
+    }
+    if (step.type === "foreach") {
+      resolveMessageNames(step.steps, messageMap);
+    }
+  }
 }
 
 // ─── Main import function ─────────────────────────────────────────────────────
@@ -389,27 +481,27 @@ export async function importBpmn(bpmnXml: string, fileName?: string): Promise<Im
   }
 
   const sequenceFlows = buildSeqFlowMap(doc);
+  const messageMap = buildMessageMap(doc);
   const trigger = parseTrigger(doc);
 
-  // Find the main process element (handle namespace prefix)
-  let processEl: Element | null = null;
-  // Try unprefixed first, then prefixed
-  processEl = doc.querySelector("process");
+  // Find the main process element
+  let processEl: Element | null = doc.querySelector("process");
   if (!processEl) {
-    // Try with namespace prefix (bpmn:process etc.)
-    const allEls = Array.from(doc.getElementsByTagName("*"));
-    processEl = allEls.find(el => localName(el) === "process" && localName(el.parentElement ?? el) !== "process") ?? null;
+    processEl = Array.from(doc.getElementsByTagName("*"))
+      .find(el => lname(el) === "process" && lname(el.parentElement ?? el) !== "process") ?? null;
   }
-
-  if (!processEl) {
-    throw new Error("No <process> element found in BPMN XML");
-  }
+  if (!processEl) throw new Error("No <process> element found in BPMN XML");
 
   const processId = attr(processEl, "id") ?? uid();
   const processName = attr(processEl, "name") ?? "Unnamed Process";
 
-  const { stages, warnings: stageWarnings } = buildStages(processEl, sequenceFlows, processName);
+  const { stages, warnings: stageWarnings } = buildStages(processEl, sequenceFlows, messageMap, processName);
   warnings.push(...stageWarnings);
+
+  // Resolve message names at top level too
+  for (const stage of stages) {
+    resolveMessageNames(stage.steps, messageMap);
+  }
 
   if (stages.every(s => s.steps.length === 0)) {
     warnings.push("No recognizable task elements found. Check your BPMN file.");
