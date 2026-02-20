@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import type { CaseIR, SelectionTarget, Stage, Group, Step, IoParam } from "@/types/caseIr";
 import { STEP_TYPE_CONFIG } from "./FlowNodes";
-import { CAMUNDA_PROP_GROUPS, type PropField } from "./camundaSchema";
-import type { JsonPatch } from "@/types/caseIr";
+import { CAMUNDA_PROP_GROUPS, TRIGGER_PROP_GROUPS, type PropField } from "./camundaSchema";
+import type { JsonPatch, Trigger } from "@/types/caseIr";
 
 // ─── Path helpers ─────────────────────────────────────────────────────────────
 
@@ -518,6 +518,103 @@ function GroupPropertiesPanel({ group, stageIdx, groupIdx, onPatch }: { group: G
   );
 }
 
+// ─── Trigger properties panel ─────────────────────────────────────────────────
+
+function TriggerPropertiesPanel({ trigger, onPatch }: { trigger: Trigger; onPatch: (p: JsonPatch) => void }) {
+  const [draft, setDraft] = useState<Record<string, unknown>>(trigger as unknown as Record<string, unknown>);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(["trigger-type", "trigger-async"]));
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setDraft(trigger as unknown as Record<string, unknown>);
+    setDirty(false);
+  }, [trigger.type, trigger.expression, trigger.name]);
+
+  const toggleGroup = (id: string) => setOpenGroups(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const handleChange = useCallback((key: string, value: unknown) => {
+    setDraft(d => deepSet(d, key, value));
+    setDirty(true);
+  }, []);
+
+  const handleSave = () => {
+    const patch: JsonPatch = [{ op: "replace", path: "/trigger", value: draft }];
+    onPatch(patch);
+    setDirty(false);
+  };
+
+  const triggerType = String(draft.type ?? "none");
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Type badge */}
+      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
+        <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
+          style={{ background: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}>
+          Start Event
+        </div>
+        {(trigger.source?.bpmnElementId) && (
+          <span className="font-mono text-[10px] opacity-60 truncate max-w-full"
+            style={{ color: "hsl(var(--foreground-subtle))" }} title={trigger.source.bpmnElementId}>
+            #{trigger.source.bpmnElementId}
+          </span>
+        )}
+      </div>
+
+      {/* Schema-driven groups */}
+      {TRIGGER_PROP_GROUPS.map(group => {
+        const isOpen = openGroups.has(group.id);
+        return (
+          <div key={group.id}>
+            <SectionHeader title={group.title} open={isOpen} onToggle={() => toggleGroup(group.id)} />
+            {isOpen && (
+              <div className="px-4 py-3 space-y-3">
+                {group.fields.map(field => {
+                  // Conditionally show fields based on trigger type
+                  if (field.key === "expression" && triggerType !== "timer") return null;
+                  if (field.key === "messageRef" && triggerType !== "message") return null;
+
+                  const val = deepGet(draft as Record<string, unknown>, field.key);
+                  if (field.type === "boolean") {
+                    const boolVal = typeof val === "boolean" ? val : (field.default as boolean ?? false);
+                    return (
+                      <Toggle key={field.key} checked={boolVal} onChange={v => handleChange(field.key, v)} label={field.label} />
+                    );
+                  }
+                  return (
+                    <Field key={field.key} label={field.label} hint={field.hint}>
+                      <FieldRenderer field={field} value={val} onChange={v => handleChange(field.key, v)} />
+                    </Field>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Save button */}
+      <div className="p-4 border-t mt-auto" style={{ borderColor: "hsl(var(--border))" }}>
+        <button
+          className="w-full py-2 rounded-md text-sm font-semibold transition-all"
+          style={{
+            background: dirty ? "hsl(var(--primary))" : "hsl(var(--surface-raised))",
+            color: dirty ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))",
+            cursor: dirty ? "pointer" : "default",
+          }}
+          onClick={handleSave}
+        >
+          {dirty ? "Save Changes" : "No Changes"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main panel ───────────────────────────────────────────────────────────────
 
 export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }: {
@@ -541,8 +638,32 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
             <Settings2 size={18} style={{ color: "hsl(var(--foreground-subtle))" }} />
           </div>
           <p className="text-[12px] leading-relaxed" style={{ color: "hsl(var(--foreground-muted))" }}>
-            Select a stage, group, or step to view and edit its Camunda 7 properties
+            Select a trigger, stage, group, or step to view and edit its Camunda 7 properties
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Trigger properties ────────────────────────────────────────────────────
+  if (selection.kind === "trigger") {
+    return (
+      <div className="h-full flex flex-col border-l" style={panelStyle}>
+        <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--border))" }}>
+          <div className="min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Trigger Properties</div>
+            <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>Start Event</div>
+          </div>
+          <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
+            style={{ color: "hsl(var(--foreground-muted))" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            onClick={onClose}>
+            <X size={14} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <TriggerPropertiesPanel trigger={caseIr.trigger} onPatch={onPatch} />
         </div>
       </div>
     );

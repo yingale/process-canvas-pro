@@ -41,7 +41,7 @@ export default function ProcessDiagram({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
 
   useEffect(() => {
-    const selectedStageId = selection?.stageId ?? null;
+    const selectedStageId = (selection && 'stageId' in selection) ? selection.stageId : null;
     const selectedStepId = selection?.kind === "step" ? selection.stepId : null;
     const { nodes: n, edges: e } = buildFlowGraph(
       caseIr,
