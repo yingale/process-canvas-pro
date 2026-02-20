@@ -9,9 +9,10 @@ import {
   Pencil, Copy, Trash2, GitBranch, Bot, User,
   Repeat2, ExternalLink, Zap, AlignLeft, Bell, Layers,
   ArrowUp, ArrowDown, Timer, Mail, Radio, Play,
+  Square, AlertTriangle, Settings,
   type LucideIcon,
 } from "lucide-react";
-import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger } from "@/types/caseIr";
+import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent } from "@/types/caseIr";
 
 // ─── Step type config ──────────────────────────────────────────────────────────
 
@@ -83,9 +84,10 @@ function ContextMenu({ menu, onRename, onDuplicate, onDelete, onMoveUp, onMoveDo
 
 // ─── Step row ──────────────────────────────────────────────────────────────────
 
-function StepRow({ step, color, selected, onSelect, onContextMenu }: {
+function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick }: {
   step: Step; color: string; selected: boolean;
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void;
+  onBoundaryClick?: (boundaryEventId: string) => void;
 }) {
   const [hover, setHover] = useState(false);
   const meta = STEP_TYPE_META[step.type];
@@ -129,6 +131,27 @@ function StepRow({ step, color, selected, onSelect, onContextMenu }: {
             </div>
           )}
           {step.description && <div className="text-[9px] mt-0.5 truncate italic" style={{ color: "hsl(var(--foreground-subtle))" }}>{step.description}</div>}
+          {/* Boundary events indicators */}
+          {step.boundaryEvents && step.boundaryEvents.length > 0 && (
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              {step.boundaryEvents.map(be => (
+                <button
+                  key={be.id}
+                  className="text-[8px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5 transition-colors"
+                  style={{
+                    background: be.cancelActivity !== false ? "hsl(0 68% 50% / 0.12)" : "hsl(32 86% 48% / 0.12)",
+                    color: be.cancelActivity !== false ? "hsl(0 68% 50%)" : "hsl(32 86% 48%)",
+                    border: `1px solid ${be.cancelActivity !== false ? "hsl(0 68% 50% / 0.3)" : "hsl(32 86% 48% / 0.3)"}`,
+                  }}
+                  onClick={e => { e.stopPropagation(); onBoundaryClick?.(be.id); }}
+                  title={`${be.cancelActivity !== false ? "Interrupting" : "Non-interrupting"} ${be.eventType} boundary event`}
+                >
+                  <AlertTriangle size={7} />
+                  {be.eventType}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {hover && (
           <button className="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity"
@@ -353,12 +376,51 @@ function TriggerCard({ trigger, selected, onClick }: { trigger: Trigger; selecte
   );
 }
 
+// ─── End Event card ────────────────────────────────────────────────────────────
+
+const END_EVT_ICONS: Record<string, LucideIcon> = { none: Square, terminate: Square, error: AlertTriangle, message: Mail, signal: Radio };
+
+function EndEventCard({ endEvent, selected, onClick }: { endEvent: EndEvent; selected: boolean; onClick: () => void }) {
+  const [hover, setHover] = useState(false);
+  const Icon = END_EVT_ICONS[endEvent.eventType] ?? Square;
+  const label = endEvent.eventType === "none" ? "End" : `${endEvent.eventType.charAt(0).toUpperCase() + endEvent.eventType.slice(1)} End`;
+  const accentColor = "hsl(0 68% 50%)";
+
+  return (
+    <div
+      className="flex-shrink-0 rounded-xl border cursor-pointer transition-all"
+      style={{
+        width: 130,
+        background: selected ? `color-mix(in srgb, ${accentColor} 6%, hsl(var(--surface)))` : hover ? "hsl(var(--surface-raised))" : "hsl(var(--surface))",
+        borderColor: selected ? accentColor : "hsl(var(--border))",
+        boxShadow: selected ? `0 0 0 2px hsl(0 68% 50% / 0.3), 0 4px 16px hsl(0 0% 0% / 0.06)` : "0 2px 8px hsl(0 0% 0% / 0.04)",
+        borderTop: `3px solid ${accentColor}`,
+      }}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <div className="px-3 py-3 flex flex-col items-center gap-2 text-center">
+        <div className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: "hsl(0 68% 50% / 0.12)" }}>
+          <Icon size={18} style={{ color: accentColor }} />
+        </div>
+        <div className="text-[11px] font-bold" style={{ color: "hsl(var(--foreground))" }}>{label}</div>
+        {endEvent.name && <div className="text-[10px] mt-0.5 truncate max-w-[110px]" style={{ color: "hsl(var(--foreground-muted))" }}>{endEvent.name}</div>}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main diagram ──────────────────────────────────────────────────────────────
 
 interface LifecycleDiagramProps {
   caseIr: CaseIR;
   selection: SelectionTarget;
   onSelectTrigger: () => void;
+  onSelectEndEvent: () => void;
+  onSelectProcess: () => void;
+  onSelectBoundaryEvent: (stageId: string, groupId: string, stepId: string, boundaryEventId: string) => void;
   onSelectStage: (stageId: string) => void;
   onSelectGroup: (stageId: string, groupId: string) => void;
   onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
@@ -377,7 +439,8 @@ interface LifecycleDiagramProps {
 
 export default function LifecycleDiagram({
   caseIr, selection,
-  onSelectTrigger, onSelectStage, onSelectGroup, onSelectStep,
+  onSelectTrigger, onSelectEndEvent, onSelectProcess, onSelectBoundaryEvent,
+  onSelectStage, onSelectGroup, onSelectStep,
   onAddStep, onAddGroup, onAddStage,
   onDeleteStage, onDeleteGroup, onDeleteStep,
   onDuplicateStep, onDuplicateStage,
@@ -459,8 +522,12 @@ export default function LifecycleDiagram({
     <div className="w-full h-full overflow-auto" style={{ background: "hsl(var(--canvas-bg))" }}>
       <div className="p-6 min-w-max min-h-full">
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-5">
+        {/* Header – clickable for process properties */}
+        <div className="flex items-center gap-3 mb-5 cursor-pointer rounded-lg px-2 py-1 transition-colors"
+          style={{ background: selection?.kind === "process" ? "hsl(var(--primary) / 0.06)" : "transparent" }}
+          onClick={onSelectProcess}
+        >
+          <Settings size={14} style={{ color: "hsl(var(--primary))", flexShrink: 0 }} />
           <div>
             <h1 className="text-[15px] font-bold" style={{ color: "hsl(var(--foreground))" }}>{caseIr.name}</h1>
             <div className="flex items-center gap-2 mt-0.5">

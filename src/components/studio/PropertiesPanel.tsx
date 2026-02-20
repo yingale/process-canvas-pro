@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   X, ChevronRight, Plus, Trash2, ArrowRight, ChevronDown, Settings2,
 } from "lucide-react";
-import type { CaseIR, SelectionTarget, Stage, Group, Step, IoParam } from "@/types/caseIr";
+import type { CaseIR, SelectionTarget, Stage, Group, Step, IoParam, EndEvent, ProcessProperties } from "@/types/caseIr";
 import { STEP_TYPE_CONFIG } from "./FlowNodes";
 import { CAMUNDA_PROP_GROUPS, TRIGGER_PROP_GROUPS, type PropField } from "./camundaSchema";
 import type { JsonPatch, Trigger } from "@/types/caseIr";
@@ -615,6 +615,245 @@ function TriggerPropertiesPanel({ trigger, onPatch }: { trigger: Trigger; onPatc
   );
 }
 
+// ─── End Event properties panel ───────────────────────────────────────────────
+
+function EndEventPropertiesPanel({ endEvent, onPatch }: { endEvent: EndEvent; onPatch: (p: JsonPatch) => void }) {
+  const [draft, setDraft] = useState<Record<string, unknown>>(endEvent as unknown as Record<string, unknown>);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setDraft(endEvent as unknown as Record<string, unknown>);
+    setDirty(false);
+  }, [endEvent.id, endEvent.eventType]);
+
+  const handleChange = useCallback((key: string, value: unknown) => {
+    setDraft(d => deepSet(d, key, value));
+    setDirty(true);
+  }, []);
+
+  const handleSave = () => {
+    onPatch([{ op: "replace", path: "/endEvent", value: draft }]);
+    setDirty(false);
+  };
+
+  const eventType = String(draft.eventType ?? "none");
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
+        <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
+          style={{ background: "hsl(0 68% 50% / 0.15)", color: "hsl(0 68% 50%)" }}>
+          End Event
+        </div>
+        {endEvent.source?.bpmnElementId && (
+          <span className="font-mono text-[10px] opacity-60" style={{ color: "hsl(var(--foreground-subtle))" }}>
+            #{endEvent.source.bpmnElementId}
+          </span>
+        )}
+      </div>
+      <div className="px-4 py-3 space-y-3">
+        <Field label="Event Type">
+          <SelectInput
+            value={eventType}
+            onChange={v => handleChange("eventType", v)}
+            options={[
+              { label: "None", value: "none" },
+              { label: "Terminate", value: "terminate" },
+              { label: "Error", value: "error" },
+              { label: "Message", value: "message" },
+              { label: "Signal", value: "signal" },
+              { label: "Escalation", value: "escalation" },
+              { label: "Compensate", value: "compensate" },
+            ]}
+          />
+        </Field>
+        <Field label="Name">
+          <TextInput value={String(draft.name ?? "")} onChange={v => handleChange("name", v)} placeholder="End Event name" />
+        </Field>
+        {(eventType === "error" || eventType === "escalation") && (
+          <Field label="Error/Escalation Code" hint="Reference code for the error or escalation">
+            <TextInput value={String(draft.expression ?? "")} onChange={v => handleChange("expression", v)} placeholder="errorCode" mono />
+          </Field>
+        )}
+      </div>
+      <div className="px-4 py-3 space-y-3 border-t" style={{ borderColor: "hsl(var(--border))" }}>
+        <Toggle checked={typeof deepGet(draft, "tech.asyncBefore") === "boolean" ? deepGet(draft, "tech.asyncBefore") as boolean : false}
+          onChange={v => handleChange("tech.asyncBefore", v)} label="Async Before" />
+        <Toggle checked={typeof deepGet(draft, "tech.asyncAfter") === "boolean" ? deepGet(draft, "tech.asyncAfter") as boolean : false}
+          onChange={v => handleChange("tech.asyncAfter", v)} label="Async After" />
+      </div>
+      <div className="p-4 border-t mt-auto" style={{ borderColor: "hsl(var(--border))" }}>
+        <button className="w-full py-2 rounded-md text-sm font-semibold transition-all"
+          style={{ background: dirty ? "hsl(var(--primary))" : "hsl(var(--surface-raised))", color: dirty ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))", cursor: dirty ? "pointer" : "default" }}
+          onClick={handleSave}>
+          {dirty ? "Save Changes" : "No Changes"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Process properties panel ─────────────────────────────────────────────────
+
+function ProcessPropertiesPanel({ caseIr, onPatch }: { caseIr: CaseIR; onPatch: (p: JsonPatch) => void }) {
+  const props = caseIr.processProperties ?? {};
+  const [draft, setDraft] = useState<Record<string, unknown>>({
+    name: caseIr.name,
+    id: caseIr.id,
+    version: caseIr.version,
+    ...props,
+  });
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setDraft({ name: caseIr.name, id: caseIr.id, version: caseIr.version, ...(caseIr.processProperties ?? {}) });
+    setDirty(false);
+  }, [caseIr.id, caseIr.name]);
+
+  const handleChange = useCallback((key: string, value: unknown) => {
+    setDraft(d => ({ ...d, [key]: value }));
+    setDirty(true);
+  }, []);
+
+  const handleSave = () => {
+    const patch: JsonPatch = [];
+    if (draft.name !== caseIr.name) patch.push({ op: "replace", path: "/name", value: draft.name });
+    if (draft.version !== caseIr.version) patch.push({ op: "replace", path: "/version", value: draft.version });
+    const procProps: ProcessProperties = {};
+    if (draft.isExecutable !== undefined) procProps.isExecutable = draft.isExecutable as boolean;
+    if (draft.versionTag) procProps.versionTag = String(draft.versionTag);
+    if (draft.historyTimeToLive) procProps.historyTimeToLive = String(draft.historyTimeToLive);
+    if (draft.candidateStarterGroups) procProps.candidateStarterGroups = String(draft.candidateStarterGroups);
+    if (draft.candidateStarterUsers) procProps.candidateStarterUsers = String(draft.candidateStarterUsers);
+    if (draft.jobPriority) procProps.jobPriority = String(draft.jobPriority);
+    if (draft.taskPriority) procProps.taskPriority = String(draft.taskPriority);
+    patch.push({ op: "replace", path: "/processProperties", value: procProps });
+    if (patch.length) onPatch(patch);
+    setDirty(false);
+  };
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
+        <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
+          style={{ background: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}>
+          Process
+        </div>
+        <span className="font-mono text-[10px] opacity-60" style={{ color: "hsl(var(--foreground-subtle))" }}>
+          {caseIr.id}
+        </span>
+      </div>
+      <div className="px-4 py-3 space-y-3">
+        <Field label="Process Name">
+          <TextInput value={String(draft.name ?? "")} onChange={v => handleChange("name", v)} placeholder="Process name" />
+        </Field>
+        <Field label="Version">
+          <TextInput value={String(draft.version ?? "")} onChange={v => handleChange("version", v)} placeholder="1.0.0" mono />
+        </Field>
+        <Toggle checked={draft.isExecutable === true} onChange={v => handleChange("isExecutable", v)} label="Is Executable" />
+      </div>
+      <div className="px-4 py-3 space-y-3 border-t" style={{ borderColor: "hsl(var(--border))" }}>
+        <Field label="Version Tag" hint="Camunda version tag for deployment">
+          <TextInput value={String(draft.versionTag ?? "")} onChange={v => handleChange("versionTag", v)} placeholder="release-1.0" mono />
+        </Field>
+        <Field label="History Time To Live" hint="Days to keep process history (e.g., 180)">
+          <TextInput value={String(draft.historyTimeToLive ?? "")} onChange={v => handleChange("historyTimeToLive", v)} placeholder="180" mono />
+        </Field>
+        <Field label="Candidate Starter Groups" hint="Comma-separated groups allowed to start this process">
+          <TextInput value={String(draft.candidateStarterGroups ?? "")} onChange={v => handleChange("candidateStarterGroups", v)} placeholder="managers, admins" />
+        </Field>
+        <Field label="Candidate Starter Users" hint="Comma-separated users allowed to start this process">
+          <TextInput value={String(draft.candidateStarterUsers ?? "")} onChange={v => handleChange("candidateStarterUsers", v)} placeholder="user1, user2" />
+        </Field>
+        <Field label="Default Job Priority" hint="Default priority for all jobs in this process">
+          <ExpressionInput value={String(draft.jobPriority ?? "")} onChange={v => handleChange("jobPriority", v)} placeholder="${priority}" />
+        </Field>
+        <Field label="Default Task Priority" hint="Default priority for external tasks">
+          <ExpressionInput value={String(draft.taskPriority ?? "")} onChange={v => handleChange("taskPriority", v)} placeholder="${priority}" />
+        </Field>
+      </div>
+      <div className="p-4 border-t mt-auto" style={{ borderColor: "hsl(var(--border))" }}>
+        <button className="w-full py-2 rounded-md text-sm font-semibold transition-all"
+          style={{ background: dirty ? "hsl(var(--primary))" : "hsl(var(--surface-raised))", color: dirty ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))", cursor: dirty ? "pointer" : "default" }}
+          onClick={handleSave}>
+          {dirty ? "Save Changes" : "No Changes"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Boundary Event properties panel ──────────────────────────────────────────
+
+function BoundaryEventPropertiesPanel({ boundaryEvent, basePath, onPatch }: { boundaryEvent: import("@/types/caseIr").BoundaryEvent; basePath: string; onPatch: (p: JsonPatch) => void }) {
+  const [draft, setDraft] = useState<Record<string, unknown>>(boundaryEvent as unknown as Record<string, unknown>);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setDraft(boundaryEvent as unknown as Record<string, unknown>);
+    setDirty(false);
+  }, [boundaryEvent.id]);
+
+  const handleChange = useCallback((key: string, value: unknown) => {
+    setDraft(d => deepSet(d, key, value));
+    setDirty(true);
+  }, []);
+
+  const handleSave = () => {
+    onPatch([{ op: "replace", path: basePath, value: draft }]);
+    setDirty(false);
+  };
+
+  const evtType = String(draft.eventType ?? "generic");
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
+        <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
+          style={{ background: "hsl(32 86% 48% / 0.15)", color: "hsl(32 86% 48%)" }}>
+          Boundary · {evtType}
+        </div>
+      </div>
+      <div className="px-4 py-3 space-y-3">
+        <Field label="Event Type">
+          <SelectInput value={evtType} onChange={v => handleChange("eventType", v)}
+            options={[
+              { label: "Timer", value: "timer" },
+              { label: "Message", value: "message" },
+              { label: "Signal", value: "signal" },
+              { label: "Error", value: "error" },
+              { label: "Escalation", value: "escalation" },
+              { label: "Conditional", value: "conditional" },
+            ]}
+          />
+        </Field>
+        <Field label="Name">
+          <TextInput value={String(draft.name ?? "")} onChange={v => handleChange("name", v)} placeholder="Boundary event name" />
+        </Field>
+        <Toggle checked={draft.cancelActivity !== false} onChange={v => handleChange("cancelActivity", v)} label="Interrupting (Cancel Activity)" />
+        {(evtType === "timer" || evtType === "error" || evtType === "message") && (
+          <Field label="Expression" hint={evtType === "timer" ? "Timer duration/cycle" : evtType === "error" ? "Error code" : "Message name"}>
+            <ExpressionInput value={String(draft.expression ?? "")} onChange={v => handleChange("expression", v)} placeholder={evtType === "timer" ? "PT5M" : "ref"} />
+          </Field>
+        )}
+      </div>
+      <div className="px-4 py-3 space-y-3 border-t" style={{ borderColor: "hsl(var(--border))" }}>
+        <Toggle checked={typeof deepGet(draft, "tech.asyncBefore") === "boolean" ? deepGet(draft, "tech.asyncBefore") as boolean : false}
+          onChange={v => handleChange("tech.asyncBefore", v)} label="Async Before" />
+        <Toggle checked={typeof deepGet(draft, "tech.asyncAfter") === "boolean" ? deepGet(draft, "tech.asyncAfter") as boolean : false}
+          onChange={v => handleChange("tech.asyncAfter", v)} label="Async After" />
+      </div>
+      <div className="p-4 border-t mt-auto" style={{ borderColor: "hsl(var(--border))" }}>
+        <button className="w-full py-2 rounded-md text-sm font-semibold transition-all"
+          style={{ background: dirty ? "hsl(var(--primary))" : "hsl(var(--surface-raised))", color: dirty ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))", cursor: dirty ? "pointer" : "default" }}
+          onClick={handleSave}>
+          {dirty ? "Save Changes" : "No Changes"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main panel ───────────────────────────────────────────────────────────────
 
 export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }: {
@@ -669,6 +908,85 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
     );
   }
 
+  // ── End Event properties ──────────────────────────────────────────────────
+  if (selection.kind === "endEvent") {
+    return (
+      <div className="h-full flex flex-col border-l" style={panelStyle}>
+        <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--border))" }}>
+          <div className="min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>End Event Properties</div>
+            <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>{caseIr.endEvent.name ?? "End Event"}</div>
+          </div>
+          <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
+            style={{ color: "hsl(var(--foreground-muted))" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            onClick={onClose}><X size={14} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <EndEventPropertiesPanel endEvent={caseIr.endEvent} onPatch={onPatch} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Process properties ────────────────────────────────────────────────────
+  if (selection.kind === "process") {
+    return (
+      <div className="h-full flex flex-col border-l" style={panelStyle}>
+        <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--border))" }}>
+          <div className="min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Process Properties</div>
+            <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>{caseIr.name}</div>
+          </div>
+          <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
+            style={{ color: "hsl(var(--foreground-muted))" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            onClick={onClose}><X size={14} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <ProcessPropertiesPanel caseIr={caseIr} onPatch={onPatch} />
+        </div>
+      </div>
+    );
+  }
+
+  // ── Boundary Event properties ─────────────────────────────────────────────
+  if (selection.kind === "boundaryEvent") {
+    const si2 = findStageIndex(caseIr, selection.stageId);
+    const stage2 = caseIr.stages[si2];
+    if (!stage2) return null;
+    const gi2 = findGroupIndex(stage2, selection.groupId);
+    const group2 = stage2.groups[gi2];
+    if (!group2) return null;
+    const sti2 = findStepIndex(group2, selection.stepId);
+    const step2 = group2.steps[sti2];
+    if (!step2 || !step2.boundaryEvents) return null;
+    const be = step2.boundaryEvents.find(b => b.id === selection.boundaryEventId);
+    if (!be) return null;
+    const bePath = `/stages/${si2}/groups/${gi2}/steps/${sti2}/boundaryEvents/${step2.boundaryEvents.indexOf(be)}`;
+    return (
+      <div className="h-full flex flex-col border-l" style={panelStyle}>
+        <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--border))" }}>
+          <div className="min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Boundary Event</div>
+            <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>{be.name}</div>
+          </div>
+          <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
+            style={{ color: "hsl(var(--foreground-muted))" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            onClick={onClose}><X size={14} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <BoundaryEventPropertiesPanel boundaryEvent={be} basePath={bePath} onPatch={onPatch} />
+        </div>
+      </div>
+    );
+  }
+
+  if (!('stageId' in selection)) return null;
   const si = findStageIndex(caseIr, selection.stageId);
   const stage = caseIr.stages[si];
   if (!stage) return null;
