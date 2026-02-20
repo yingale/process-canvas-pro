@@ -590,6 +590,11 @@ export default function LifecycleDiagram({
     return () => document.removeEventListener("keydown", handler);
   }, [fullscreen]);
 
+  // Close fullscreen when user selects an element (so properties panel is visible)
+  useEffect(() => {
+    if (selection && fullscreen) setFullscreen(false);
+  }, [selection]);
+
   const openStageCtx = useCallback((e: React.MouseEvent, stageId: string) => {
     e.preventDefault();
     const si = caseIr.stages.findIndex(s => s.id === stageId);
@@ -801,54 +806,50 @@ export default function LifecycleDiagram({
     </div>
   );
 
-  // Zoom control bar component
-  const renderZoomControls = (currentZoom: number, isFullscreen: boolean) => (
-    <div className="absolute bottom-4 right-4 z-40 flex items-center gap-1 rounded-lg border px-1 py-1"
-      style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", boxShadow: "var(--shadow-card)" }}>
-      <button onClick={zoomOut} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
-        style={{ color: "hsl(var(--foreground-muted))" }}
-        onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-        title="Zoom out"><ZoomOut size={14} /></button>
-      <span className="text-[10px] font-mono w-10 text-center" style={{ color: "hsl(var(--foreground-muted))" }}>
-        {Math.round(currentZoom * 100)}%
-      </span>
-      <button onClick={zoomIn} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
-        style={{ color: "hsl(var(--foreground-muted))" }}
-        onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-        title="Zoom in"><ZoomIn size={14} /></button>
-      <div className="w-px h-4 mx-0.5" style={{ background: "hsl(var(--border))" }} />
-      <button onClick={zoomReset} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
-        style={{ color: "hsl(var(--foreground-muted))" }}
-        onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-        title="Reset zoom"><Maximize2 size={13} /></button>
-      {!isFullscreen && (
-        <>
-          <div className="w-px h-4 mx-0.5" style={{ background: "hsl(var(--border))" }} />
-          <button onClick={() => setFullscreen(true)} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
-            style={{ color: "hsl(var(--foreground-muted))" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--primary-dim))"; e.currentTarget.style.color = "hsl(var(--primary))"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "hsl(var(--foreground-muted))"; }}
-            title="Open fullscreen view">
-            <Maximize2 size={13} />
-          </button>
-        </>
-      )}
-    </div>
-  );
 
   return (
     <>
       {/* Normal inline diagram */}
-      <div ref={containerRef} className="w-full h-full overflow-auto relative" style={{
+      <div ref={containerRef} className="w-full h-full overflow-auto relative flex flex-col" style={{
         background: "hsl(var(--canvas-bg))",
         backgroundImage: "radial-gradient(circle, hsl(var(--canvas-dot)) 1.2px, transparent 1.2px)",
         backgroundSize: "14px 14px",
       }}>
-        {renderZoomControls(zoom, false)}
-        {renderDiagramContent(zoom)}
+        <div className="flex-1 min-h-0">
+          {renderDiagramContent(zoom)}
+        </div>
+        <div className="sticky bottom-0 flex justify-end pointer-events-none p-4 z-40">
+          <div className="pointer-events-auto flex items-center gap-1 rounded-lg border px-1 py-1"
+            style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", boxShadow: "var(--shadow-card)" }}>
+            <button onClick={zoomOut} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+              style={{ color: "hsl(var(--foreground-muted))" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              title="Zoom out"><ZoomOut size={14} /></button>
+            <span className="text-[10px] font-mono w-10 text-center" style={{ color: "hsl(var(--foreground-muted))" }}>
+              {Math.round(zoom * 100)}%
+            </span>
+            <button onClick={zoomIn} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+              style={{ color: "hsl(var(--foreground-muted))" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              title="Zoom in"><ZoomIn size={14} /></button>
+            <div className="w-px h-4 mx-0.5" style={{ background: "hsl(var(--border))" }} />
+            <button onClick={zoomReset} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+              style={{ color: "hsl(var(--foreground-muted))" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              title="Reset zoom"><Maximize2 size={13} /></button>
+            <div className="w-px h-4 mx-0.5" style={{ background: "hsl(var(--border))" }} />
+            <button onClick={() => setFullscreen(true)} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+              style={{ color: "hsl(var(--foreground-muted))" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--primary-dim))"; e.currentTarget.style.color = "hsl(var(--primary))"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "hsl(var(--foreground-muted))"; }}
+              title="Open fullscreen view">
+              <Maximize2 size={13} />
+            </button>
+          </div>
+        </div>
 
         {ctxMenu && (
           <ContextMenu menu={ctxMenu} onRename={handleCtxRename} onDuplicate={handleCtxDuplicate}
@@ -886,13 +887,38 @@ export default function LifecycleDiagram({
           </div>
 
           {/* Overlay canvas */}
-          <div ref={fullRef} className="flex-1 overflow-auto relative" style={{
+          <div ref={fullRef} className="flex-1 overflow-auto flex flex-col" style={{
             background: "hsl(var(--canvas-bg))",
             backgroundImage: "radial-gradient(circle, hsl(var(--canvas-dot)) 1.2px, transparent 1.2px)",
             backgroundSize: "14px 14px",
           }}>
-            {renderZoomControls(fullZoom, true)}
-            {renderDiagramContent(fullZoom)}
+            <div className="flex-1 min-h-0">
+              {renderDiagramContent(fullZoom)}
+            </div>
+            <div className="sticky bottom-0 flex justify-end pointer-events-none p-4 z-40">
+              <div className="pointer-events-auto flex items-center gap-1 rounded-lg border px-1 py-1"
+                style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", boxShadow: "var(--shadow-card)" }}>
+                <button onClick={zoomOut} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+                  style={{ color: "hsl(var(--foreground-muted))" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  title="Zoom out"><ZoomOut size={14} /></button>
+                <span className="text-[10px] font-mono w-10 text-center" style={{ color: "hsl(var(--foreground-muted))" }}>
+                  {Math.round(fullZoom * 100)}%
+                </span>
+                <button onClick={zoomIn} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+                  style={{ color: "hsl(var(--foreground-muted))" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  title="Zoom in"><ZoomIn size={14} /></button>
+                <div className="w-px h-4 mx-0.5" style={{ background: "hsl(var(--border))" }} />
+                <button onClick={zoomReset} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+                  style={{ color: "hsl(var(--foreground-muted))" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  title="Reset zoom"><Maximize2 size={13} /></button>
+              </div>
+            </div>
           </div>
         </div>
       )}
