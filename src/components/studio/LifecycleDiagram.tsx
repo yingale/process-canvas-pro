@@ -17,21 +17,21 @@ import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, En
 // ─── Step type config ──────────────────────────────────────────────────────────
 
 const STEP_TYPE_META: Record<StepType, { label: string; color: string; Icon: LucideIcon }> = {
-  automation:        { label: "Automation",  color: "hsl(213 80% 50%)",  Icon: Bot },
-  user:              { label: "User Task",   color: "hsl(32 86% 48%)",   Icon: User },
-  decision:          { label: "Decision",    color: "hsl(134 58% 38%)",  Icon: GitBranch },
-  foreach:           { label: "For Each",    color: "hsl(268 60% 50%)",  Icon: Repeat2 },
-  callActivity:      { label: "Subprocess",  color: "hsl(193 70% 42%)",  Icon: ExternalLink },
+  automation:        { label: "Automation",  color: "hsl(213 88% 42%)",  Icon: Bot },
+  user:              { label: "User Task",   color: "hsl(32 90% 48%)",   Icon: User },
+  decision:          { label: "Decision",    color: "hsl(134 60% 42%)",  Icon: GitBranch },
+  foreach:           { label: "For Each",    color: "hsl(268 62% 52%)",  Icon: Repeat2 },
+  callActivity:      { label: "Subprocess",  color: "hsl(193 72% 40%)",  Icon: ExternalLink },
   intermediateEvent: { label: "Wait/Event",  color: "hsl(199 80% 42%)",  Icon: Bell },
 };
 
 const SECTION_COLORS = [
-  "hsl(213 80% 50%)",
-  "hsl(32 86% 48%)",
-  "hsl(268 60% 50%)",
-  "hsl(134 58% 38%)",
-  "hsl(193 70% 42%)",
-  "hsl(0 68% 50%)",
+  "hsl(152 68% 38%)",   /* green */
+  "hsl(252 60% 52%)",   /* purple/blue */
+  "hsl(180 60% 40%)",   /* teal */
+  "hsl(213 80% 52%)",   /* blue */
+  "hsl(32 88% 50%)",    /* orange */
+  "hsl(0 68% 50%)",     /* red */
 ];
 
 // ─── Context menu ──────────────────────────────────────────────────────────────
@@ -114,9 +114,9 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
       onClick={onSelect} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
     >
       <div className="flex items-start gap-2.5 px-2.5 py-2">
-        <div className="flex-shrink-0 rounded-sm flex items-center justify-center mt-0.5"
-          style={{ width: 16, height: 16, background: `${meta.color}22`, marginTop: 3 }}>
-          <meta.Icon size={9} style={{ color: meta.color }} />
+        {/* Solid colored square icon */}
+        <div className="flex-shrink-0 rounded-sm mt-0.5"
+          style={{ width: 18, height: 18, background: meta.color, marginTop: 3 }}>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -258,18 +258,20 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
   const totalSteps = stage.groups.reduce((n, g) => n + g.steps.length, 0);
 
   return (
-    <div className="flex-shrink-0 flex flex-col rounded-xl border transition-all"
+    <div className="flex-shrink-0 flex flex-col rounded-xl border transition-all overflow-hidden"
       style={{
         width: 290,
         background: "hsl(var(--surface))",
         borderColor: isStageSelected ? color : "hsl(var(--border))",
-        boxShadow: isStageSelected ? `0 0 0 2px ${color}30, 0 4px 16px hsl(0 0% 0% / 0.06)` : "0 2px 8px hsl(0 0% 0% / 0.04)",
-        borderTop: `3px solid ${color}`,
+        boxShadow: isStageSelected ? `0 0 0 2px ${color}30, 0 4px 16px hsl(0 0% 0% / 0.06)` : "var(--shadow-card)",
       }}>
 
-      {/* Stage header */}
-      <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer rounded-t-xl select-none"
-        style={{ background: headerHover || isStageSelected ? `color-mix(in srgb, ${color} 6%, hsl(var(--surface)))` : "transparent" }}
+      {/* Gradient header bar */}
+      <div style={{ height: 4, background: color }} />
+
+      {/* Stage header with gradient */}
+      <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none"
+        style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${color} 10%, hsl(var(--surface))) 0%, hsl(var(--surface)) 100%)` }}
         onClick={() => onSelectStage(stage.id)}
         onMouseEnter={() => setHeaderHover(true)}
         onMouseLeave={() => setHeaderHover(false)}
@@ -280,10 +282,6 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
           {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
         </button>
         <span className="flex-1 text-[13px] font-bold truncate" style={{ color: "hsl(var(--foreground))" }}>{stage.name}</span>
-        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md"
-          style={{ background: `color-mix(in srgb, ${color} 12%, transparent)`, color }}>
-          {stage.groups.length}g · {totalSteps}s
-        </span>
         {headerHover && (
           <button className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center opacity-60 hover:opacity-100"
             style={{ color: "hsl(var(--foreground-muted))" }}
@@ -293,7 +291,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
         )}
       </div>
 
-      <div className="mx-3" style={{ height: 1, background: `color-mix(in srgb, ${color} 20%, hsl(var(--border)))` }} />
+      <div className="mx-3" style={{ height: 1, background: "hsl(var(--border))" }} />
 
       {/* Groups */}
       {!collapsed && (
@@ -674,7 +672,11 @@ export default function LifecycleDiagram({
   const isTriggerSelected = selection?.kind === "trigger";
 
   return (
-    <div className="w-full h-full overflow-auto" style={{ background: "hsl(var(--canvas-bg))" }}>
+    <div className="w-full h-full overflow-auto" style={{
+      background: "hsl(var(--canvas-bg))",
+      backgroundImage: "radial-gradient(circle, hsl(var(--canvas-dot)) 1px, transparent 1px)",
+      backgroundSize: "20px 20px",
+    }}>
       <div className="p-6 min-w-max min-h-full">
 
         {/* Header – clickable for process properties */}
