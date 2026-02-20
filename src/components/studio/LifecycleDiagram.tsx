@@ -267,11 +267,11 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
       }}>
 
       {/* Gradient header bar */}
-      <div style={{ height: 4, background: color }} />
+      <div style={{ height: 4, background: `linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 50%, white))` }} />
 
-      {/* Stage header with gradient */}
+      {/* Stage header with horizontal gradient */}
       <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none"
-        style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${color} 10%, hsl(var(--surface))) 0%, hsl(var(--surface)) 100%)` }}
+        style={{ background: `linear-gradient(90deg, color-mix(in srgb, ${color} 12%, hsl(var(--surface))) 0%, hsl(var(--surface)) 100%)` }}
         onClick={() => onSelectStage(stage.id)}
         onMouseEnter={() => setHeaderHover(true)}
         onMouseLeave={() => setHeaderHover(false)}
@@ -717,7 +717,7 @@ export default function LifecycleDiagram({
                 key={stage.id}
                 stage={stage}
                 stageIdx={i}
-                color={SECTION_COLORS[i % SECTION_COLORS.length]}
+                color={stage.color || SECTION_COLORS[i % SECTION_COLORS.length]}
                 selection={selection}
                 onSelectStage={onSelectStage}
                 onSelectGroup={onSelectGroup}
@@ -763,7 +763,7 @@ export default function LifecycleDiagram({
                 key={stage.id}
                 stage={stage}
                 stageIdx={i}
-                color={SECTION_COLORS[(i + 3) % SECTION_COLORS.length]}
+                color={stage.color || SECTION_COLORS[(i + 3) % SECTION_COLORS.length]}
                 selection={selection}
                 onSelectStage={onSelectStage}
                 onSelectGroup={onSelectGroup}

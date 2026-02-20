@@ -220,6 +220,7 @@ export interface Group {
 export interface Stage {
   id: string;
   name: string;
+  color?: string;           // custom HSL color override
   groups: Group[];          // Section → Groups → Steps
   source?: SourceMeta;
 }
@@ -393,6 +394,7 @@ export const groupSchema = z.object({
 export const stageSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  color: z.string().optional(),
   groups: z.array(groupSchema),
   source: z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional(),
 });
