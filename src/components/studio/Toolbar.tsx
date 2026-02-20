@@ -3,23 +3,19 @@
  */
 import { useState, useRef } from "react";
 import {
-  Upload, FileJson, Code, AlertTriangle, CheckCircle, X, Loader2, LayoutGrid, Workflow
+  Upload, FileJson, Code, AlertTriangle, CheckCircle, X, Loader2
 } from "lucide-react";
 import type { CaseIR } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { exportBpmn } from "@/lib/bpmnExporter";
 
-export type DiagramView = "lifecycle" | "flow";
-
 interface ToolbarProps {
   caseIr: CaseIR | null;
   onImportBpmn: (ir: CaseIR, warnings: string[]) => void;
   onLoadSample: () => void;
-  diagramView: DiagramView;
-  onDiagramViewChange: (view: DiagramView) => void;
 }
 
-export default function Toolbar({ caseIr, onImportBpmn, onLoadSample, diagramView, onDiagramViewChange }: ToolbarProps) {
+export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarProps) {
   const [importing, setImporting] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error" | "warn"; msg: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -146,37 +142,7 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample, diagramVie
         </div>
       )}
 
-      {/* View toggle */}
-      {caseIr && (
-        <div
-          className="flex items-center rounded-lg p-0.5"
-          style={{ background: "hsl(var(--surface-raised))" }}
-        >
-          <button
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
-            style={{
-              background: diagramView === "lifecycle" ? "hsl(var(--primary))" : "transparent",
-              color: diagramView === "lifecycle" ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))",
-            }}
-            onClick={() => onDiagramViewChange("lifecycle")}
-          >
-            <LayoutGrid size={12} />
-            Cards
-          </button>
-          <button
-            className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
-            style={{
-              background: diagramView === "flow" ? "hsl(var(--primary))" : "transparent",
-              color: diagramView === "flow" ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))",
-            }}
-            onClick={() => onDiagramViewChange("flow")}
-          >
-            <Workflow size={12} />
-            Flow
-          </button>
-        </div>
-      )}
-
+      {/* Actions */}
       <input
         ref={fileRef}
         type="file"
