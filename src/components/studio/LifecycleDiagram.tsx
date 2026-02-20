@@ -586,23 +586,84 @@ export default function LifecycleDiagram({
           </div>
         </div>
 
-        {/* Alt Paths lane (empty placeholder) */}
-        <div>
-          <div className="flex items-center gap-2 mb-3 px-1">
-            <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
-            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Alternative Paths</span>
-            <div className="flex-1 h-px" style={{ background: `repeating-linear-gradient(90deg, hsl(var(--border)) 0, hsl(var(--border)) 6px, transparent 6px, transparent 12px)` }} />
-          </div>
-          <div className="flex gap-3">
-            <button
-              className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed"
-              style={{ width: 100, height: 80, borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
-            >
-              <Plus size={16} />
-              <span className="text-[10px]">Add Alt. Path</span>
-            </button>
-          </div>
-        </div>
+        {/* Alt Paths lane – shows boundary events (error/fallback flows) */}
+        {(() => {
+          const allBoundaryEvents: Array<{ stageId: string; groupId: string; stepId: string; stepName: string; be: import("@/types/caseIr").BoundaryEvent }> = [];
+          caseIr.stages.forEach(stage => {
+            stage.groups.forEach(group => {
+              group.steps.forEach(step => {
+                step.boundaryEvents?.forEach(be => {
+                  allBoundaryEvents.push({ stageId: stage.id, groupId: group.id, stepId: step.id, stepName: step.name, be });
+                });
+              });
+            });
+          });
+
+          return (
+            <div>
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
+                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>
+                  Alternative Paths
+                  {allBoundaryEvents.length > 0 && (
+                    <span className="ml-1.5 text-[9px] font-mono px-1 py-0.5 rounded" style={{ background: "hsl(var(--warning) / 0.12)", color: "hsl(var(--warning))" }}>
+                      {allBoundaryEvents.length}
+                    </span>
+                  )}
+                </span>
+                <div className="flex-1 h-px" style={{ background: `repeating-linear-gradient(90deg, hsl(var(--border)) 0, hsl(var(--border)) 6px, transparent 6px, transparent 12px)` }} />
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                {allBoundaryEvents.length === 0 ? (
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl border text-[11px]"
+                    style={{ borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "hsl(var(--surface))" }}>
+                    <AlertTriangle size={13} style={{ opacity: 0.5 }} />
+                    <span>No boundary events (error/fallback handlers) defined on any step. Add boundary events to steps to create alternative paths.</span>
+                  </div>
+                ) : (
+                  allBoundaryEvents.map(({ stageId, groupId, stepId, stepName, be }) => {
+                    const isSelected = selection?.kind === "boundaryEvent" && selection.boundaryEventId === be.id;
+                    const accentColor = be.cancelActivity !== false ? "hsl(0 68% 50%)" : "hsl(32 86% 48%)";
+                    return (
+                      <div
+                        key={be.id}
+                        className="flex-shrink-0 rounded-xl border cursor-pointer transition-all"
+                        style={{
+                          width: 220,
+                          background: isSelected ? `color-mix(in srgb, ${accentColor} 6%, hsl(var(--surface)))` : "hsl(var(--surface))",
+                          borderColor: isSelected ? accentColor : "hsl(var(--border))",
+                          boxShadow: isSelected ? `0 0 0 2px ${accentColor}30` : "0 2px 8px hsl(0 0% 0% / 0.04)",
+                          borderTop: `3px solid ${accentColor}`,
+                        }}
+                        onClick={() => onSelectBoundaryEvent(stageId, groupId, stepId, be.id)}
+                      >
+                        <div className="px-3 py-2.5">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <AlertTriangle size={11} style={{ color: accentColor }} />
+                            <span className="text-[11px] font-bold truncate" style={{ color: "hsl(var(--foreground))" }}>
+                              {be.name || `${be.eventType} handler`}
+                            </span>
+                          </div>
+                          <div className="text-[10px]" style={{ color: "hsl(var(--foreground-muted))" }}>
+                            {be.cancelActivity !== false ? "Interrupting" : "Non-interrupting"} · {be.eventType}
+                          </div>
+                          <div className="text-[9px] mt-1 truncate" style={{ color: "hsl(var(--foreground-subtle))" }}>
+                            on: {stepName}
+                          </div>
+                          {be.expression && (
+                            <div className="text-[9px] font-mono mt-0.5 truncate" style={{ color: "hsl(var(--foreground-subtle))" }}>
+                              {be.expression}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {ctxMenu && (
