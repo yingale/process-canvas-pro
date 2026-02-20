@@ -122,7 +122,6 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-semibold truncate" style={{ color: "hsl(var(--foreground))" }}>{step.name}</span>
-            {isAsync && <span title="Async"><Zap size={9} style={{ color: "hsl(var(--warning))", flexShrink: 0 }} /></span>}
           </div>
           <div className="text-[10px] mt-0.5 truncate" style={{ color: "hsl(var(--foreground-muted))" }}>{subLabel}</div>
           {(inputCount > 0 || outputCount > 0) && (
