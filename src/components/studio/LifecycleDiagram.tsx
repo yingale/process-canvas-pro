@@ -9,7 +9,7 @@ import {
   Pencil, Copy, Trash2, GitBranch, Bot, User,
   Repeat2, ExternalLink, Zap, AlignLeft, Bell, Layers,
   ArrowUp, ArrowDown, Timer, Mail, Radio, Play,
-  Square, AlertTriangle, Settings, ZoomIn, ZoomOut, Maximize2,
+  Square, AlertTriangle, Settings, ZoomIn, ZoomOut, Maximize2, Minimize2, X,
   type LucideIcon,
 } from "lucide-react";
 import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent } from "@/types/caseIr";
@@ -538,11 +538,20 @@ export default function LifecycleDiagram({
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [altCtxMenu, setAltCtxMenu] = useState<CtxMenu | null>(null);
   const [zoom, setZoom] = useState(0.85);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [fullZoom, setFullZoom] = useState(0.7);
 
-  const zoomIn = useCallback(() => setZoom(z => Math.min(z + 0.1, 1.5)), []);
-  const zoomOut = useCallback(() => setZoom(z => Math.max(z - 0.1, 0.4)), []);
-  const zoomReset = useCallback(() => setZoom(0.85), []);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fullRef = useRef<HTMLDivElement>(null);
+
+  const activeZoom = fullscreen ? fullZoom : zoom;
+  const setActiveZoom = fullscreen
+    ? (fn: (z: number) => number) => setFullZoom(z => fn(z))
+    : (fn: (z: number) => number) => setZoom(z => fn(z));
+
+  const zoomIn = useCallback(() => setActiveZoom(z => Math.min(z + 0.1, 1.5)), [fullscreen]);
+  const zoomOut = useCallback(() => setActiveZoom(z => Math.max(z - 0.1, 0.3)), [fullscreen]);
+  const zoomReset = useCallback(() => { if (fullscreen) setFullZoom(0.7); else setZoom(0.85); }, [fullscreen]);
 
   // Ctrl+scroll to zoom
   useEffect(() => {
@@ -551,12 +560,34 @@ export default function LifecycleDiagram({
     const handler = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        setZoom(z => Math.min(1.5, Math.max(0.4, z - e.deltaY * 0.002)));
+        setZoom(z => Math.min(1.5, Math.max(0.3, z - e.deltaY * 0.002)));
       }
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
   }, []);
+
+  // Ctrl+scroll on fullscreen overlay
+  useEffect(() => {
+    const el = fullRef.current;
+    if (!el || !fullscreen) return;
+    const handler = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        setFullZoom(z => Math.min(1.5, Math.max(0.3, z - e.deltaY * 0.002)));
+      }
+    };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+  }, [fullscreen]);
+
+  // Escape to close fullscreen
+  useEffect(() => {
+    if (!fullscreen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [fullscreen]);
 
   const openStageCtx = useCallback((e: React.MouseEvent, stageId: string) => {
     e.preventDefault();
@@ -691,177 +722,179 @@ export default function LifecycleDiagram({
   const TriggerIcon = TRIGGER_ICONS[caseIr.trigger.type] ?? Play;
   const isTriggerSelected = selection?.kind === "trigger";
 
-  return (
-    <div ref={containerRef} className="w-full h-full overflow-auto relative" style={{
-      background: "hsl(var(--canvas-bg))",
-      backgroundImage: "radial-gradient(circle, hsl(var(--canvas-dot)) 1.2px, transparent 1.2px)",
-      backgroundSize: "14px 14px",
-    }}>
-      {/* Zoom controls */}
-      <div className="absolute bottom-4 right-4 z-40 flex items-center gap-1 rounded-lg border px-1 py-1"
-        style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", boxShadow: "var(--shadow-card)" }}>
-        <button onClick={zoomOut} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
-          style={{ color: "hsl(var(--foreground-muted))" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-          title="Zoom out (Ctrl+Scroll)">
-          <ZoomOut size={14} />
-        </button>
-        <span className="text-[10px] font-mono w-10 text-center" style={{ color: "hsl(var(--foreground-muted))" }}>
-          {Math.round(zoom * 100)}%
-        </span>
-        <button onClick={zoomIn} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
-          style={{ color: "hsl(var(--foreground-muted))" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-          title="Zoom in (Ctrl+Scroll)">
-          <ZoomIn size={14} />
-        </button>
-        <div className="w-px h-4 mx-0.5" style={{ background: "hsl(var(--border))" }} />
-        <button onClick={zoomReset} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
-          style={{ color: "hsl(var(--foreground-muted))" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-          title="Reset zoom">
-          <Maximize2 size={13} />
-        </button>
-      </div>
-
-      <div className="p-4 min-w-max" style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}>
-
-        {/* Header – clickable for process properties */}
-        <div className="flex items-center gap-3 mb-3 cursor-pointer rounded-lg px-2 py-1 transition-colors"
-          style={{ background: selection?.kind === "process" ? "hsl(var(--primary) / 0.06)" : "transparent" }}
-          onClick={onSelectProcess}
-        >
-          <Settings size={14} style={{ color: "hsl(var(--primary))", flexShrink: 0 }} />
-          <div>
-            <h1 className="text-[15px] font-bold" style={{ color: "hsl(var(--foreground))" }}>{caseIr.name}</h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] font-mono" style={{ color: "hsl(var(--foreground-subtle))" }}>
-                {caseIr.id} · v{caseIr.version}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Flow lane */}
-        <div className="mb-3">
-          <div className="flex items-center gap-2 mb-3 px-1">
-            <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
-            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Main Flow</span>
-            <div className="flex-1 h-px" style={{ background: "hsl(var(--border))" }} />
-          </div>
-          <div className="flex gap-3 items-start">
-            {/* Trigger Card */}
-            <TriggerCard trigger={caseIr.trigger} selected={isTriggerSelected} onClick={onSelectTrigger} />
-
-            {/* Arrow connector */}
-            <div className="flex items-center self-center" style={{ color: "hsl(var(--foreground-subtle))" }}>
-              <div style={{ width: 24, height: 2, background: "hsl(var(--border))" }} />
-              <div style={{ width: 0, height: 0, borderTop: "5px solid transparent", borderBottom: "5px solid transparent", borderLeft: "6px solid hsl(var(--border))" }} />
-            </div>
-
-            {caseIr.stages.map((stage, i) => (
-              <SectionCard
-                key={stage.id}
-                stage={stage}
-                stageIdx={i}
-                color={stage.color || SECTION_COLORS[i % SECTION_COLORS.length]}
-                selection={selection}
-                onSelectStage={onSelectStage}
-                onSelectGroup={onSelectGroup}
-                onSelectStep={onSelectStep}
-                onAddStep={onAddStep}
-                onAddGroup={onAddGroup}
-                onStageCtx={openStageCtx}
-                onGroupCtx={openGroupCtx}
-                onStepCtx={openStepCtx}
-              />
-            ))}
-            {/* Add Section */}
-            <button
-              className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
-              style={{ width: 100, height: 90, borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "hsl(var(--primary))"; e.currentTarget.style.color = "hsl(var(--primary))"; e.currentTarget.style.background = "hsl(var(--primary-dim))"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
-              onClick={onAddStage}
-            >
-              <Plus size={20} />
-              <span className="text-[10px] font-medium">Add Section</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Alternative Paths lane – independent stages/groups/steps */}
+  // Shared diagram content renderer
+  const renderDiagramContent = (scale: number) => (
+    <div className="p-4 min-w-max" style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-3 cursor-pointer rounded-lg px-2 py-1 transition-colors"
+        style={{ background: selection?.kind === "process" ? "hsl(var(--primary) / 0.06)" : "transparent" }}
+        onClick={onSelectProcess}>
+        <Settings size={14} style={{ color: "hsl(var(--primary))", flexShrink: 0 }} />
         <div>
-          <div className="flex items-center gap-2 mb-3 px-1">
-            <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
-            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>
-              Alternative Paths
-              {altPaths.length > 0 && (
-                <span className="ml-1.5 text-[9px] font-mono px-1 py-0.5 rounded" style={{ background: "hsl(var(--warning) / 0.12)", color: "hsl(var(--warning))" }}>
-                  {altPaths.length}
-                </span>
-              )}
-            </span>
-            <div className="flex-1 h-px" style={{ background: `repeating-linear-gradient(90deg, hsl(var(--border)) 0, hsl(var(--border)) 6px, transparent 6px, transparent 12px)` }} />
-          </div>
-          <div className="flex gap-3 items-start">
-            {altPaths.map((stage, i) => (
-              <SectionCard
-                key={stage.id}
-                stage={stage}
-                stageIdx={i}
-                color={stage.color || SECTION_COLORS[(i + 3) % SECTION_COLORS.length]}
-                selection={selection}
-                onSelectStage={onSelectStage}
-                onSelectGroup={onSelectGroup}
-                onSelectStep={onSelectStep}
-                onAddStep={onAddAltStep}
-                onAddGroup={onAddAltGroup}
-                onStageCtx={openAltStageCtx}
-                onGroupCtx={openAltGroupCtx}
-                onStepCtx={openAltStepCtx}
-              />
-            ))}
-            {/* Add Section */}
-            <button
-              className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
-              style={{ width: 100, height: 90, borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "hsl(var(--warning))"; e.currentTarget.style.color = "hsl(var(--warning))"; e.currentTarget.style.background = "hsl(var(--warning) / 0.06)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
-              onClick={onAddAltStage}
-            >
-              <Plus size={20} />
-              <span className="text-[10px] font-medium">Add Section</span>
-            </button>
+          <h1 className="text-[15px] font-bold" style={{ color: "hsl(var(--foreground))" }}>{caseIr.name}</h1>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[10px] font-mono" style={{ color: "hsl(var(--foreground-subtle))" }}>{caseIr.id} · v{caseIr.version}</span>
           </div>
         </div>
       </div>
 
-      {ctxMenu && (
-        <ContextMenu
-          menu={ctxMenu}
-          onRename={handleCtxRename}
-          onDuplicate={handleCtxDuplicate}
-          onDelete={handleCtxDelete}
-          onMoveUp={handleCtxMoveUp}
-          onMoveDown={handleCtxMoveDown}
-          onClose={() => setCtxMenu(null)}
-        />
-      )}
-      {altCtxMenu && (
-        <ContextMenu
-          menu={altCtxMenu}
-          onRename={handleAltCtxRename}
-          onDuplicate={handleAltCtxDuplicate}
-          onDelete={handleAltCtxDelete}
-          onMoveUp={handleAltCtxMoveUp}
-          onMoveDown={handleAltCtxMoveDown}
-          onClose={() => setAltCtxMenu(null)}
-        />
+      {/* Main Flow lane */}
+      <div className="mb-3">
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
+          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Main Flow</span>
+          <div className="flex-1 h-px" style={{ background: "hsl(var(--border))" }} />
+        </div>
+        <div className="flex gap-3 items-start">
+          <TriggerCard trigger={caseIr.trigger} selected={isTriggerSelected} onClick={onSelectTrigger} />
+          <div className="flex items-center self-center" style={{ color: "hsl(var(--foreground-subtle))" }}>
+            <div style={{ width: 24, height: 2, background: "hsl(var(--border))" }} />
+            <div style={{ width: 0, height: 0, borderTop: "5px solid transparent", borderBottom: "5px solid transparent", borderLeft: "6px solid hsl(var(--border))" }} />
+          </div>
+          {caseIr.stages.map((stage, i) => (
+            <SectionCard key={stage.id} stage={stage} stageIdx={i}
+              color={stage.color || SECTION_COLORS[i % SECTION_COLORS.length]} selection={selection}
+              onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
+              onAddStep={onAddStep} onAddGroup={onAddGroup}
+              onStageCtx={openStageCtx} onGroupCtx={openGroupCtx} onStepCtx={openStepCtx} />
+          ))}
+          <button className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
+            style={{ width: 100, height: 90, borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "hsl(var(--primary))"; e.currentTarget.style.color = "hsl(var(--primary))"; e.currentTarget.style.background = "hsl(var(--primary-dim))"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
+            onClick={onAddStage}>
+            <Plus size={20} /><span className="text-[10px] font-medium">Add Section</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Alternative Paths lane */}
+      <div>
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
+          <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>
+            Alternative Paths
+            {altPaths.length > 0 && (
+              <span className="ml-1.5 text-[9px] font-mono px-1 py-0.5 rounded" style={{ background: "hsl(var(--warning) / 0.12)", color: "hsl(var(--warning))" }}>{altPaths.length}</span>
+            )}
+          </span>
+          <div className="flex-1 h-px" style={{ background: `repeating-linear-gradient(90deg, hsl(var(--border)) 0, hsl(var(--border)) 6px, transparent 6px, transparent 12px)` }} />
+        </div>
+        <div className="flex gap-3 items-start">
+          {altPaths.map((stage, i) => (
+            <SectionCard key={stage.id} stage={stage} stageIdx={i}
+              color={stage.color || SECTION_COLORS[(i + 3) % SECTION_COLORS.length]} selection={selection}
+              onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
+              onAddStep={onAddAltStep} onAddGroup={onAddAltGroup}
+              onStageCtx={openAltStageCtx} onGroupCtx={openAltGroupCtx} onStepCtx={openAltStepCtx} />
+          ))}
+          <button className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
+            style={{ width: 100, height: 90, borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "hsl(var(--warning))"; e.currentTarget.style.color = "hsl(var(--warning))"; e.currentTarget.style.background = "hsl(var(--warning) / 0.06)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
+            onClick={onAddAltStage}>
+            <Plus size={20} /><span className="text-[10px] font-medium">Add Section</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Zoom control bar component
+  const renderZoomControls = (currentZoom: number, isFullscreen: boolean) => (
+    <div className="absolute bottom-4 right-4 z-40 flex items-center gap-1 rounded-lg border px-1 py-1"
+      style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", boxShadow: "var(--shadow-card)" }}>
+      <button onClick={zoomOut} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+        style={{ color: "hsl(var(--foreground-muted))" }}
+        onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+        title="Zoom out"><ZoomOut size={14} /></button>
+      <span className="text-[10px] font-mono w-10 text-center" style={{ color: "hsl(var(--foreground-muted))" }}>
+        {Math.round(currentZoom * 100)}%
+      </span>
+      <button onClick={zoomIn} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+        style={{ color: "hsl(var(--foreground-muted))" }}
+        onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+        title="Zoom in"><ZoomIn size={14} /></button>
+      <div className="w-px h-4 mx-0.5" style={{ background: "hsl(var(--border))" }} />
+      <button onClick={zoomReset} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+        style={{ color: "hsl(var(--foreground-muted))" }}
+        onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+        title="Reset zoom"><Maximize2 size={13} /></button>
+      {!isFullscreen && (
+        <>
+          <div className="w-px h-4 mx-0.5" style={{ background: "hsl(var(--border))" }} />
+          <button onClick={() => setFullscreen(true)} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+            style={{ color: "hsl(var(--foreground-muted))" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--primary-dim))"; e.currentTarget.style.color = "hsl(var(--primary))"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "hsl(var(--foreground-muted))"; }}
+            title="Open fullscreen view">
+            <Maximize2 size={13} />
+          </button>
+        </>
       )}
     </div>
+  );
+
+  return (
+    <>
+      {/* Normal inline diagram */}
+      <div ref={containerRef} className="w-full h-full overflow-auto relative" style={{
+        background: "hsl(var(--canvas-bg))",
+        backgroundImage: "radial-gradient(circle, hsl(var(--canvas-dot)) 1.2px, transparent 1.2px)",
+        backgroundSize: "14px 14px",
+      }}>
+        {renderZoomControls(zoom, false)}
+        {renderDiagramContent(zoom)}
+
+        {ctxMenu && (
+          <ContextMenu menu={ctxMenu} onRename={handleCtxRename} onDuplicate={handleCtxDuplicate}
+            onDelete={handleCtxDelete} onMoveUp={handleCtxMoveUp} onMoveDown={handleCtxMoveDown}
+            onClose={() => setCtxMenu(null)} />
+        )}
+        {altCtxMenu && (
+          <ContextMenu menu={altCtxMenu} onRename={handleAltCtxRename} onDuplicate={handleAltCtxDuplicate}
+            onDelete={handleAltCtxDelete} onMoveUp={handleAltCtxMoveUp} onMoveDown={handleAltCtxMoveDown}
+            onClose={() => setAltCtxMenu(null)} />
+        )}
+      </div>
+
+      {/* Fullscreen overlay */}
+      {fullscreen && (
+        <div className="fixed inset-0 z-[100] flex flex-col" style={{ background: "hsl(var(--canvas-bg))" }}>
+          {/* Overlay header */}
+          <div className="flex items-center gap-3 px-5 py-3 border-b flex-shrink-0"
+            style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))" }}>
+            <Settings size={14} style={{ color: "hsl(var(--primary))" }} />
+            <span className="text-[14px] font-bold" style={{ color: "hsl(var(--foreground))" }}>{caseIr.name}</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "hsl(var(--surface-overlay))", color: "hsl(var(--foreground-muted))" }}>
+              Fullscreen View
+            </span>
+            <div className="flex-1" />
+            <span className="text-[10px]" style={{ color: "hsl(var(--foreground-subtle))" }}>Press Esc to close</span>
+            <button onClick={() => setFullscreen(false)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+              style={{ color: "hsl(var(--foreground-muted))" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--destructive) / 0.1)"; e.currentTarget.style.color = "hsl(var(--destructive))"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "hsl(var(--foreground-muted))"; }}
+              title="Close fullscreen">
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Overlay canvas */}
+          <div ref={fullRef} className="flex-1 overflow-auto relative" style={{
+            background: "hsl(var(--canvas-bg))",
+            backgroundImage: "radial-gradient(circle, hsl(var(--canvas-dot)) 1.2px, transparent 1.2px)",
+            backgroundSize: "14px 14px",
+          }}>
+            {renderZoomControls(fullZoom, true)}
+            {renderDiagramContent(fullZoom)}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
