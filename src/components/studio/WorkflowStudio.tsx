@@ -6,8 +6,9 @@ import { useState, useCallback, useRef } from "react";
 import type { CaseIR, SelectionTarget, JsonPatch, StepType } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
-import Toolbar from "./Toolbar";
+import Toolbar, { type DiagramView } from "./Toolbar";
 import LifecycleDiagram from "./LifecycleDiagram";
+import ProcessDiagram from "./ProcessDiagram";
 import PropertiesPanel from "./PropertiesPanel";
 import AiChatPanel from "./AiChatPanel";
 import { Upload, FileText } from "lucide-react";
@@ -86,7 +87,7 @@ export default function WorkflowStudio() {
   const [caseIr, setCaseIr] = useState<CaseIR | null>(null);
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-
+  const [diagramView, setDiagramView] = useState<DiagramView>("lifecycle");
   const handleImportBpmn = (ir: CaseIR, w: string[]) => { setCaseIr(ir); setWarnings(w); setSelection(null); };
 
   const handlePatch = useCallback((patch: JsonPatch) => {
@@ -223,7 +224,7 @@ export default function WorkflowStudio() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ background: "hsl(var(--background))" }}>
-      <Toolbar caseIr={caseIr} onImportBpmn={handleImportBpmn} onLoadSample={() => {}} />
+      <Toolbar caseIr={caseIr} onImportBpmn={handleImportBpmn} onLoadSample={() => {}} diagramView={diagramView} onDiagramViewChange={setDiagramView} />
 
       {warnings.length > 0 && (
         <div className="flex items-center gap-2 px-4 py-1.5 text-[12px] flex-shrink-0"
@@ -241,28 +242,47 @@ export default function WorkflowStudio() {
               <AiChatPanel caseIr={caseIr} onApplyPatch={handlePatch} onUndoTo={handleUndoTo} />
             </div>
             <div className="flex-1 overflow-hidden">
-              <LifecycleDiagram
-                caseIr={caseIr}
-                selection={selection}
-                onSelectTrigger={handleSelectTrigger}
-                onSelectEndEvent={handleSelectEndEvent}
-                onSelectProcess={handleSelectProcess}
-                onSelectBoundaryEvent={handleSelectBoundaryEvent}
-                onSelectStage={handleSelectStage}
-                onSelectGroup={handleSelectGroup}
-                onSelectStep={handleSelectStep}
-                onAddStep={handleAddStep}
-                onAddGroup={handleAddGroup}
-                onAddStage={handleAddStage}
-                onDeleteStage={handleDeleteStage}
-                onDeleteGroup={handleDeleteGroup}
-                onDeleteStep={handleDeleteStep}
-                onDuplicateStep={handleDuplicateStep}
-                onDuplicateStage={handleDuplicateStage}
-                onMoveStage={handleMoveStage}
-                onMoveGroup={handleMoveGroup}
-                onMoveStep={handleMoveStep}
-              />
+              {diagramView === "lifecycle" ? (
+                <LifecycleDiagram
+                  caseIr={caseIr}
+                  selection={selection}
+                  onSelectTrigger={handleSelectTrigger}
+                  onSelectEndEvent={handleSelectEndEvent}
+                  onSelectProcess={handleSelectProcess}
+                  onSelectBoundaryEvent={handleSelectBoundaryEvent}
+                  onSelectStage={handleSelectStage}
+                  onSelectGroup={handleSelectGroup}
+                  onSelectStep={handleSelectStep}
+                  onAddStep={handleAddStep}
+                  onAddGroup={handleAddGroup}
+                  onAddStage={handleAddStage}
+                  onDeleteStage={handleDeleteStage}
+                  onDeleteGroup={handleDeleteGroup}
+                  onDeleteStep={handleDeleteStep}
+                  onDuplicateStep={handleDuplicateStep}
+                  onDuplicateStage={handleDuplicateStage}
+                  onMoveStage={handleMoveStage}
+                  onMoveGroup={handleMoveGroup}
+                  onMoveStep={handleMoveStep}
+                />
+              ) : (
+                <ProcessDiagram
+                  caseIr={caseIr}
+                  selection={selection}
+                  onSelectStage={handleSelectStage}
+                  onSelectStep={(stageId, stepId) => {
+                    const stage = caseIr.stages.find(s => s.id === stageId);
+                    const group = stage?.groups.find(g => g.steps.some(s => s.id === stepId));
+                    if (group) handleSelectStep(stageId, group.id, stepId);
+                  }}
+                  onAddStep={(stageId) => {
+                    const stage = caseIr.stages.find(s => s.id === stageId);
+                    const group = stage?.groups[0];
+                    if (group) handleAddStep(stageId, group.id);
+                  }}
+                  onAddStage={handleAddStage}
+                />
+              )}
             </div>
             <PropertiesPanel
               caseIr={caseIr}
