@@ -689,15 +689,8 @@ export default function LifecycleDiagram({
                 </span>
                 <div className="flex-1 h-px" style={{ background: `repeating-linear-gradient(90deg, hsl(var(--border)) 0, hsl(var(--border)) 6px, transparent 6px, transparent 12px)` }} />
               </div>
-              <div className="flex gap-3 flex-wrap">
-                {allBoundaryEvents.length === 0 ? (
-                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl border text-[11px]"
-                    style={{ borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "hsl(var(--surface))" }}>
-                    <AlertTriangle size={13} style={{ opacity: 0.5 }} />
-                    <span>No boundary events (error/fallback handlers) defined on any step. Add boundary events to steps to create alternative paths.</span>
-                  </div>
-                ) : (
-                  allBoundaryEvents.map(({ stageId, groupId, stepId, stepName, be }) => {
+              <div className="flex gap-3 flex-wrap items-start">
+                {allBoundaryEvents.map(({ stageId, groupId, stepId, stepName, be }) => {
                     const isSelected = selection?.kind === "boundaryEvent" && selection.boundaryEventId === be.id;
                     const accentColor = be.cancelActivity !== false ? "hsl(0 68% 50%)" : "hsl(32 86% 48%)";
                     return (
@@ -734,8 +727,8 @@ export default function LifecycleDiagram({
                         </div>
                       </div>
                     );
-                  })
-                )}
+                  })}
+
 
                 {/* Add boundary event button + picker */}
                 <div className="relative">
