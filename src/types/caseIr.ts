@@ -246,6 +246,7 @@ export interface CaseIR {
   endEvent: EndEvent;
   processProperties?: ProcessProperties;
   stages: Stage[];
+  alternativePaths?: Stage[];   // independent alt-path stages (same structure as main flow)
   metadata: {
     createdAt: string;
     updatedAt: string;
@@ -439,6 +440,7 @@ export const caseIrSchema = z.object({
   endEvent: endEventSchema,
   processProperties: processPropertiesSchema,
   stages: z.array(stageSchema),
+  alternativePaths: z.array(stageSchema).optional(),
   metadata: z.object({
     createdAt: z.string(),
     updatedAt: z.string(),
