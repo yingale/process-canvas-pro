@@ -3,7 +3,7 @@
  * Hierarchy: Stage (Section) → Group → Step
  */
 import { useState, useCallback, useRef } from "react";
-import type { CaseIR, SelectionTarget, JsonPatch, StepType } from "@/types/caseIr";
+import type { CaseIR, SelectionTarget, JsonPatch, StepType, BoundaryEventType } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import Toolbar from "./Toolbar";
@@ -221,6 +221,30 @@ export default function WorkflowStudio() {
     handlePatch([{ op: "move", path: `/stages/${si}/groups/${ti}`, from: `/stages/${si}/groups/${gi}` }]);
   }, [caseIr, handlePatch]);
 
+  const handleAddBoundaryEvent = useCallback((stageId: string, groupId: string, stepId: string, eventType: BoundaryEventType) => {
+    if (!caseIr) return;
+    const si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const gi = caseIr.stages[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+    const sti = caseIr.stages[si].groups[gi].steps.findIndex(s => s.id === stepId);
+    if (sti < 0) return;
+    const step = caseIr.stages[si].groups[gi].steps[sti];
+    const existingCount = step.boundaryEvents?.length ?? 0;
+    const newBe = {
+      id: uid(),
+      name: `${eventType.charAt(0).toUpperCase() + eventType.slice(1)} Handler`,
+      eventType,
+      cancelActivity: true,
+    };
+    if (existingCount === 0) {
+      handlePatch([{ op: "add", path: `/stages/${si}/groups/${gi}/steps/${sti}/boundaryEvents`, value: [newBe] }]);
+    } else {
+      handlePatch([{ op: "add", path: `/stages/${si}/groups/${gi}/steps/${sti}/boundaryEvents/-`, value: newBe }]);
+    }
+    setSelection({ kind: "boundaryEvent", stageId, groupId, stepId, boundaryEventId: newBe.id });
+  }, [caseIr, handlePatch]);
+
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ background: "hsl(var(--background))" }}>
       <Toolbar caseIr={caseIr} onImportBpmn={handleImportBpmn} onLoadSample={() => {}} />
@@ -262,6 +286,7 @@ export default function WorkflowStudio() {
                 onMoveStage={handleMoveStage}
                 onMoveGroup={handleMoveGroup}
                 onMoveStep={handleMoveStep}
+                onAddBoundaryEvent={handleAddBoundaryEvent}
               />
             </div>
             <PropertiesPanel

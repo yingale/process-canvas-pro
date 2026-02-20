@@ -412,6 +412,79 @@ function EndEventCard({ endEvent, selected, onClick }: { endEvent: EndEvent; sel
   );
 }
 
+// ─── Add Boundary Event Picker ─────────────────────────────────────────────────
+
+function AddBoundaryPicker({ steps, eventTypes, onAdd, onClose }: {
+  steps: Array<{ stageId: string; groupId: string; stepId: string; stepName: string; stageName: string }>;
+  eventTypes: Array<{ value: import("@/types/caseIr").BoundaryEventType; label: string }>;
+  onAdd: (stageId: string, groupId: string, stepId: string, eventType: import("@/types/caseIr").BoundaryEventType) => void;
+  onClose: () => void;
+}) {
+  const [selectedStep, setSelectedStep] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [onClose]);
+
+  const step = steps.find(s => s.stepId === selectedStep);
+
+  return (
+    <div ref={ref} className="absolute bottom-full left-0 mb-2 z-50 rounded-xl shadow-lg border p-3 min-w-[240px]"
+      style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", boxShadow: "0 8px 24px hsl(0 0% 0% / 0.14)" }}>
+
+      {!selectedStep ? (
+        <>
+          <div className="text-[11px] font-bold mb-2" style={{ color: "hsl(var(--foreground))" }}>Select a step to attach to:</div>
+          {steps.length === 0 ? (
+            <div className="text-[10px] py-2" style={{ color: "hsl(var(--foreground-subtle))" }}>No steps available. Add steps first.</div>
+          ) : (
+            <div className="max-h-[200px] overflow-y-auto space-y-1">
+              {steps.map(s => (
+                <button key={s.stepId}
+                  className="w-full text-left px-2.5 py-1.5 rounded-md text-[11px] transition-colors"
+                  style={{ color: "hsl(var(--foreground))" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  onClick={() => setSelectedStep(s.stepId)}
+                >
+                  <div className="font-medium">{s.stepName}</div>
+                  <div className="text-[9px]" style={{ color: "hsl(var(--foreground-subtle))" }}>{s.stageName}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="text-[11px] font-bold mb-2" style={{ color: "hsl(var(--foreground))" }}>
+            Event type for "{step?.stepName}":
+          </div>
+          <div className="space-y-1">
+            {eventTypes.map(et => (
+              <button key={et.value}
+                className="w-full text-left px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-colors"
+                style={{ color: "hsl(var(--foreground))" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                onClick={() => {
+                  if (step) onAdd(step.stageId, step.groupId, step.stepId, et.value);
+                }}
+              >
+                {et.label}
+              </button>
+            ))}
+          </div>
+          <button className="mt-2 text-[10px] px-2 py-1 rounded" style={{ color: "hsl(var(--foreground-muted))" }}
+            onClick={() => setSelectedStep(null)}>← Back</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Main diagram ──────────────────────────────────────────────────────────────
 
 interface LifecycleDiagramProps {
@@ -435,6 +508,7 @@ interface LifecycleDiagramProps {
   onMoveStage: (stageId: string, dir: -1 | 1) => void;
   onMoveGroup: (stageId: string, groupId: string, dir: -1 | 1) => void;
   onMoveStep: (stageId: string, groupId: string, stepId: string, dir: -1 | 1) => void;
+  onAddBoundaryEvent: (stageId: string, groupId: string, stepId: string, eventType: import("@/types/caseIr").BoundaryEventType) => void;
 }
 
 export default function LifecycleDiagram({
@@ -445,8 +519,10 @@ export default function LifecycleDiagram({
   onDeleteStage, onDeleteGroup, onDeleteStep,
   onDuplicateStep, onDuplicateStage,
   onMoveStage, onMoveGroup, onMoveStep,
+  onAddBoundaryEvent,
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
+  const [showAddBoundary, setShowAddBoundary] = useState(false);
 
   const openStageCtx = useCallback((e: React.MouseEvent, stageId: string) => {
     e.preventDefault();
@@ -660,6 +736,51 @@ export default function LifecycleDiagram({
                     );
                   })
                 )}
+
+                {/* Add boundary event button + picker */}
+                <div className="relative">
+                  <button
+                    className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
+                    style={{ width: 100, height: 80, borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "hsl(var(--warning))"; e.currentTarget.style.color = "hsl(var(--warning))"; e.currentTarget.style.background = "hsl(var(--warning) / 0.06)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
+                    onClick={() => setShowAddBoundary(prev => !prev)}
+                  >
+                    <Plus size={16} />
+                    <span className="text-[10px]">Add Alt. Path</span>
+                  </button>
+
+                  {showAddBoundary && (() => {
+                    const allSteps: Array<{ stageId: string; groupId: string; stepId: string; stepName: string; stageName: string }> = [];
+                    caseIr.stages.forEach(stage => {
+                      stage.groups.forEach(group => {
+                        group.steps.forEach(step => {
+                          allSteps.push({ stageId: stage.id, groupId: group.id, stepId: step.id, stepName: step.name, stageName: stage.name });
+                        });
+                      });
+                    });
+
+                    const eventTypes: Array<{ value: import("@/types/caseIr").BoundaryEventType; label: string }> = [
+                      { value: "error", label: "Error" },
+                      { value: "timer", label: "Timer" },
+                      { value: "message", label: "Message" },
+                      { value: "signal", label: "Signal" },
+                      { value: "escalation", label: "Escalation" },
+                    ];
+
+                    return (
+                      <AddBoundaryPicker
+                        steps={allSteps}
+                        eventTypes={eventTypes}
+                        onAdd={(stageId, groupId, stepId, eventType) => {
+                          onAddBoundaryEvent(stageId, groupId, stepId, eventType);
+                          setShowAddBoundary(false);
+                        }}
+                        onClose={() => setShowAddBoundary(false)}
+                      />
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           );
