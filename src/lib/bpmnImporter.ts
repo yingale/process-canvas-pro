@@ -158,14 +158,21 @@ function parseTrigger(doc: Document): Trigger {
   if (!processEl) return { type: "none" };
   const startEvent = Array.from(processEl.children).find(el => lname(el) === "startEvent");
   if (!startEvent) return { type: "none" };
+
+  const tech = parseCamundaExtensions(startEvent);
+  const source: { bpmnElementId?: string; bpmnElementType?: string } = {
+    bpmnElementId: attr(startEvent, "id"),
+    bpmnElementType: "startEvent",
+  };
+
   if (firstChild(startEvent, "timerEventDefinition")) {
     const timer = firstChild(startEvent, "timerEventDefinition")!;
     const expr = textContent(firstChild(timer, "timeCycle")) || textContent(firstChild(timer, "timeDate")) || textContent(firstChild(timer, "timeDuration"));
-    return { type: "timer", expression: expr || undefined, name: attr(startEvent, "name") };
+    return { type: "timer", expression: expr || undefined, name: attr(startEvent, "name"), tech, source };
   }
-  if (firstChild(startEvent, "messageEventDefinition")) return { type: "message", name: attr(startEvent, "name") };
-  if (firstChild(startEvent, "signalEventDefinition")) return { type: "signal", name: attr(startEvent, "name") };
-  return { type: "none" };
+  if (firstChild(startEvent, "messageEventDefinition")) return { type: "message", name: attr(startEvent, "name"), tech, source };
+  if (firstChild(startEvent, "signalEventDefinition")) return { type: "signal", name: attr(startEvent, "name"), tech, source };
+  return { type: "none", name: attr(startEvent, "name"), tech, source };
 }
 
 function resolveMessageNames(steps: Step[], messageMap: Map<string, string>) {

@@ -158,14 +158,21 @@ function renderStageAsSubProcess(stage: Stage, preIds?: ChainIds): string {
 function renderTrigger(ir: CaseIR): { xml: string; id: string } {
   const id = ir.metadata.originalStartEventId ?? `start_${ir.id}`;
   const name = ir.trigger.name ? ` name="${escapeXml(ir.trigger.name)}"` : "";
+  const tech = ir.trigger.tech ?? {};
+  const asyncAttrs = [
+    tech.asyncBefore ? ` camunda:asyncBefore="true"` : "",
+    tech.asyncAfter ? ` camunda:asyncAfter="true"` : "",
+    tech.exclusive === false ? ` camunda:exclusive="false"` : "",
+    tech.jobPriority ? ` camunda:jobPriority="${escapeXml(tech.jobPriority)}"` : "",
+  ].join("");
   switch (ir.trigger.type) {
     case "timer": {
       const expr = ir.trigger.expression ?? "";
-      return { id, xml: `    <startEvent id="${id}"${name}>\n      <timerEventDefinition>\n        <timeCycle xsi:type="tFormalExpression">${escapeXml(expr)}</timeCycle>\n      </timerEventDefinition>\n    </startEvent>` };
+      return { id, xml: `    <startEvent id="${id}"${name}${asyncAttrs}>\n      <timerEventDefinition>\n        <timeCycle xsi:type="tFormalExpression">${escapeXml(expr)}</timeCycle>\n      </timerEventDefinition>\n    </startEvent>` };
     }
-    case "message": return { id, xml: `    <startEvent id="${id}"${name}>\n      <messageEventDefinition />\n    </startEvent>` };
-    case "signal": return { id, xml: `    <startEvent id="${id}"${name}>\n      <signalEventDefinition />\n    </startEvent>` };
-    default: return { id, xml: `    <startEvent id="${id}" />` };
+    case "message": return { id, xml: `    <startEvent id="${id}"${name}${asyncAttrs}>\n      <messageEventDefinition />\n    </startEvent>` };
+    case "signal": return { id, xml: `    <startEvent id="${id}"${name}${asyncAttrs}>\n      <signalEventDefinition />\n    </startEvent>` };
+    default: return { id, xml: `    <startEvent id="${id}"${asyncAttrs} />` };
   }
 }
 

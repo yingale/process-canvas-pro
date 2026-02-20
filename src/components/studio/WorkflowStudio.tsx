@@ -107,6 +107,8 @@ export default function WorkflowStudio() {
 
   const handleUndoTo = useCallback((snapshot: CaseIR) => { setCaseIr(snapshot); setSelection(null); }, []);
 
+  const handleSelectTrigger = useCallback(() => setSelection({ kind: "trigger" }), []);
+
   const handleSelectStage = useCallback((stageId: string) => setSelection({ kind: "stage", stageId }), []);
 
   const handleSelectGroup = useCallback((stageId: string, groupId: string) =>
@@ -238,6 +240,7 @@ export default function WorkflowStudio() {
               <LifecycleDiagram
                 caseIr={caseIr}
                 selection={selection}
+                onSelectTrigger={handleSelectTrigger}
                 onSelectStage={handleSelectStage}
                 onSelectGroup={handleSelectGroup}
                 onSelectStep={handleSelectStep}

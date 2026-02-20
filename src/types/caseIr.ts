@@ -191,6 +191,8 @@ export interface Trigger {
   type: TriggerType;
   expression?: string;   // e.g. cron for timer, message ref for message
   name?: string;
+  tech?: Camunda7Tech;
+  source?: SourceMeta;
 }
 
 // ─── Case IR Root ─────────────────────────────────────────────────────────────
@@ -264,6 +266,7 @@ export type SelectionTarget =
   | { kind: "stage"; stageId: string }
   | { kind: "group"; stageId: string; groupId: string }
   | { kind: "step"; stageId: string; groupId: string; stepId: string }
+  | { kind: "trigger" }
   | null;
 
 // ─── Zod Schemas ──────────────────────────────────────────────────────────────
@@ -366,6 +369,8 @@ export const caseIrSchema = z.object({
     type: z.enum(["none", "timer", "message", "signal", "manual"]),
     expression: z.string().optional(),
     name: z.string().optional(),
+    tech: camunda7TechSchema,
+    source: z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional(),
   }),
   stages: z.array(stageSchema),
   metadata: z.object({

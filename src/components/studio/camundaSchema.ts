@@ -233,3 +233,41 @@ export const CAMUNDA_PROP_GROUPS: PropGroup[] = [
     ],
   },
 ];
+
+// ─── Trigger (Start Event) property groups ────────────────────────────────────
+
+export const TRIGGER_PROP_GROUPS: PropGroup[] = [
+  {
+    id: "trigger-type",
+    title: "Trigger Definition",
+    appliesTo: [],
+    fields: [
+      {
+        key: "type",
+        label: "Trigger Type",
+        type: "select",
+        default: "none",
+        options: [
+          { label: "None (Manual)", value: "none" },
+          { label: "Timer", value: "timer" },
+          { label: "Message", value: "message" },
+          { label: "Signal", value: "signal" },
+        ],
+      },
+      { key: "name", label: "Name", type: "text", placeholder: "Start Event name" },
+      { key: "expression", label: "Timer Expression", type: "expression", placeholder: "R/PT5M", hint: "ISO 8601 cycle, date, or duration" },
+      { key: "messageRef", label: "Message Name", type: "text", placeholder: "myStartMessage", mono: true, hint: "Message reference for message start" },
+    ],
+  },
+  {
+    id: "trigger-async",
+    title: "Asynchronous Continuations",
+    appliesTo: [],
+    fields: [
+      { key: "tech.asyncBefore", label: "Async Before", type: "boolean", default: false, hint: "Execute before token moves to this element" },
+      { key: "tech.asyncAfter", label: "Async After", type: "boolean", default: false, hint: "Execute after token leaves this element" },
+      { key: "tech.exclusive", label: "Exclusive", type: "boolean", default: true, hint: "Limit to one active job" },
+      { key: "tech.jobPriority", label: "Job Priority", type: "expression", placeholder: "${priority}", hint: "Higher = executed first" },
+    ],
+  },
+];

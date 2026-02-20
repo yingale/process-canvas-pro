@@ -8,9 +8,10 @@ import {
   Plus, MoreHorizontal, ChevronDown, ChevronRight,
   Pencil, Copy, Trash2, GitBranch, Bot, User,
   Repeat2, ExternalLink, Zap, AlignLeft, Bell, Layers,
-  ArrowUp, ArrowDown, type LucideIcon,
+  ArrowUp, ArrowDown, Timer, Mail, Radio, Play,
+  type LucideIcon,
 } from "lucide-react";
-import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget } from "@/types/caseIr";
+import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger } from "@/types/caseIr";
 
 // ─── Step type config ──────────────────────────────────────────────────────────
 
@@ -230,7 +231,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [headerHover, setHeaderHover] = useState(false);
-  const isStageSelected = selection?.stageId === stage.id && selection?.kind === "stage";
+  const isStageSelected = selection?.kind === "stage" && selection.stageId === stage.id;
   const totalSteps = stage.groups.reduce((n, g) => n + g.steps.length, 0);
 
   return (
@@ -305,11 +306,59 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
   );
 }
 
+// ─── Trigger card ──────────────────────────────────────────────────────────────
+
+const TRIGGER_ICON_MAP: Record<string, LucideIcon> = { timer: Timer, message: Mail, signal: Radio, none: Play, manual: Play };
+
+function TriggerCard({ trigger, selected, onClick }: { trigger: Trigger; selected: boolean; onClick: () => void }) {
+  const [hover, setHover] = useState(false);
+  const Icon = TRIGGER_ICON_MAP[trigger.type] ?? Play;
+  const label = trigger.type === "none" ? "Manual Start"
+    : trigger.type === "timer" ? "Timer Start"
+    : trigger.type === "message" ? "Message Start"
+    : trigger.type === "signal" ? "Signal Start"
+    : "Start Event";
+  const subLabel = trigger.expression ?? trigger.name ?? "";
+  const accentColor = "hsl(var(--primary))";
+
+  return (
+    <div
+      className="flex-shrink-0 rounded-xl border cursor-pointer transition-all"
+      style={{
+        width: 160,
+        background: selected ? `color-mix(in srgb, ${accentColor} 6%, hsl(var(--surface)))` : hover ? "hsl(var(--surface-raised))" : "hsl(var(--surface))",
+        borderColor: selected ? accentColor : "hsl(var(--border))",
+        boxShadow: selected ? `0 0 0 2px hsl(var(--primary) / 0.3), 0 4px 16px hsl(0 0% 0% / 0.06)` : "0 2px 8px hsl(0 0% 0% / 0.04)",
+        borderTop: `3px solid ${accentColor}`,
+      }}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <div className="px-3 py-3 flex flex-col items-center gap-2 text-center">
+        <div className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: `hsl(var(--primary) / 0.12)` }}>
+          <Icon size={18} style={{ color: accentColor }} />
+        </div>
+        <div>
+          <div className="text-[11px] font-bold" style={{ color: "hsl(var(--foreground))" }}>{label}</div>
+          {subLabel && (
+            <div className="text-[10px] font-mono mt-0.5 truncate max-w-[130px]" style={{ color: "hsl(var(--foreground-muted))" }}>
+              {subLabel}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main diagram ──────────────────────────────────────────────────────────────
 
 interface LifecycleDiagramProps {
   caseIr: CaseIR;
   selection: SelectionTarget;
+  onSelectTrigger: () => void;
   onSelectStage: (stageId: string) => void;
   onSelectGroup: (stageId: string, groupId: string) => void;
   onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
@@ -328,7 +377,7 @@ interface LifecycleDiagramProps {
 
 export default function LifecycleDiagram({
   caseIr, selection,
-  onSelectStage, onSelectGroup, onSelectStep,
+  onSelectTrigger, onSelectStage, onSelectGroup, onSelectStep,
   onAddStep, onAddGroup, onAddStage,
   onDeleteStage, onDeleteGroup, onDeleteStep,
   onDuplicateStep, onDuplicateStage,
@@ -402,6 +451,10 @@ export default function LifecycleDiagram({
     : caseIr.trigger.type === "timer" ? `Timer: ${caseIr.trigger.expression ?? "scheduled"}`
     : caseIr.trigger.type.charAt(0).toUpperCase() + caseIr.trigger.type.slice(1);
 
+  const TRIGGER_ICONS: Record<string, LucideIcon> = { timer: Timer, message: Mail, signal: Radio, none: Play, manual: Play };
+  const TriggerIcon = TRIGGER_ICONS[caseIr.trigger.type] ?? Play;
+  const isTriggerSelected = selection?.kind === "trigger";
+
   return (
     <div className="w-full h-full overflow-auto" style={{ background: "hsl(var(--canvas-bg))" }}>
       <div className="p-6 min-w-max min-h-full">
@@ -411,10 +464,6 @@ export default function LifecycleDiagram({
           <div>
             <h1 className="text-[15px] font-bold" style={{ color: "hsl(var(--foreground))" }}>{caseIr.name}</h1>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium"
-                style={{ background: "hsl(var(--primary) / 0.1)", color: "hsl(var(--primary))" }}>
-                <Zap size={8} />{triggerLabel}
-              </span>
               <span className="text-[10px] font-mono" style={{ color: "hsl(var(--foreground-subtle))" }}>
                 {caseIr.id} · v{caseIr.version}
               </span>
@@ -430,6 +479,15 @@ export default function LifecycleDiagram({
             <div className="flex-1 h-px" style={{ background: "hsl(var(--border))" }} />
           </div>
           <div className="flex gap-3 items-start">
+            {/* Trigger Card */}
+            <TriggerCard trigger={caseIr.trigger} selected={isTriggerSelected} onClick={onSelectTrigger} />
+
+            {/* Arrow connector */}
+            <div className="flex items-center self-center" style={{ color: "hsl(var(--foreground-subtle))" }}>
+              <div style={{ width: 24, height: 2, background: "hsl(var(--border))" }} />
+              <div style={{ width: 0, height: 0, borderTop: "5px solid transparent", borderBottom: "5px solid transparent", borderLeft: "6px solid hsl(var(--border))" }} />
+            </div>
+
             {caseIr.stages.map((stage, i) => (
               <SectionCard
                 key={stage.id}
