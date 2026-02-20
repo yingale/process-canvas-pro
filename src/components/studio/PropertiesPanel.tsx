@@ -473,51 +473,15 @@ function StepPropertiesPanel({
 
 // ─── Stage properties ─────────────────────────────────────────────────────────
 
-const STAGE_COLOR_PRESETS = [
-  { label: "Green",  value: "hsl(152 68% 38%)" },
-  { label: "Purple", value: "hsl(252 60% 52%)" },
-  { label: "Teal",   value: "hsl(180 60% 40%)" },
-  { label: "Blue",   value: "hsl(213 80% 52%)" },
-  { label: "Orange", value: "hsl(32 88% 50%)" },
-  { label: "Red",    value: "hsl(0 68% 50%)" },
-  { label: "Pink",   value: "hsl(330 70% 50%)" },
-  { label: "Amber",  value: "hsl(45 90% 48%)" },
-];
-
 function StagePropertiesPanel({ stage, basePath, stageIndex, onPatch }: { stage: Stage; basePath: string; stageIndex: number; onPatch: (p: JsonPatch) => void }) {
   const [name, setName] = useState(stage.name);
-  const defaultColor = SECTION_COLORS_PANEL[stageIndex % SECTION_COLORS_PANEL.length];
-  const currentColor = stage.color || defaultColor;
   useEffect(() => setName(stage.name), [stage.id]);
   const totalSteps = stage.groups.reduce((n, g) => n + g.steps.length, 0);
-
-  const handleColorChange = (color: string) => {
-    onPatch([{ op: "replace", path: `${basePath}/color`, value: color }]);
-  };
 
   return (
     <div className="p-4 space-y-4">
       <Field label="Stage Name">
         <TextInput value={name} onChange={setName} />
-      </Field>
-
-      {/* Color picker */}
-      <Field label="Stage Color">
-        <div className="flex flex-wrap gap-2">
-          {STAGE_COLOR_PRESETS.map(preset => (
-            <button
-              key={preset.value}
-              className="w-7 h-7 rounded-full border-2 transition-all"
-              style={{
-                background: `linear-gradient(135deg, ${preset.value}, color-mix(in srgb, ${preset.value} 60%, white))`,
-                borderColor: currentColor === preset.value ? "hsl(var(--foreground))" : "transparent",
-                boxShadow: currentColor === preset.value ? "0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--foreground))" : "none",
-              }}
-              onClick={() => handleColorChange(preset.value)}
-              title={preset.label}
-            />
-          ))}
-        </div>
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
@@ -533,11 +497,7 @@ function StagePropertiesPanel({ stage, basePath, stageIndex, onPatch }: { stage:
       <button
         className="w-full py-2 rounded-md text-sm font-semibold"
         style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
-        onClick={() => {
-          const patches: any[] = [];
-          if (name !== stage.name) patches.push({ op: "replace", path: `${basePath}/name`, value: name });
-          if (patches.length) onPatch(patches);
-        }}
+        onClick={() => { if (name !== stage.name) onPatch([{ op: "replace", path: `${basePath}/name`, value: name }]); }}
       >
         Save Stage
       </button>
