@@ -86,7 +86,7 @@ export default function WorkflowStudio() {
   const [caseIr, setCaseIr] = useState<CaseIR | null>(null);
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [propsCollapsed, setPropsCollapsed] = useState(false);
+  const [propsCollapsed, setPropsCollapsed] = useState(true);
   
   const handleImportBpmn = (ir: CaseIR, w: string[]) => {
     // Ensure alternativePaths exists
@@ -112,19 +112,19 @@ export default function WorkflowStudio() {
 
   const handleUndoTo = useCallback((snapshot: CaseIR) => { setCaseIr(snapshot); setSelection(null); }, []);
 
-  const handleSelectTrigger = useCallback(() => setSelection({ kind: "trigger" }), []);
-  const handleSelectEndEvent = useCallback(() => setSelection({ kind: "endEvent" }), []);
-  const handleSelectProcess = useCallback(() => setSelection({ kind: "process" }), []);
+  const handleSelectTrigger = useCallback(() => { setSelection({ kind: "trigger" }); setPropsCollapsed(false); }, []);
+  const handleSelectEndEvent = useCallback(() => { setSelection({ kind: "endEvent" }); setPropsCollapsed(false); }, []);
+  const handleSelectProcess = useCallback(() => { setSelection({ kind: "process" }); setPropsCollapsed(false); }, []);
   const handleSelectBoundaryEvent = useCallback((stageId: string, groupId: string, stepId: string, boundaryEventId: string) =>
-    setSelection({ kind: "boundaryEvent", stageId, groupId, stepId, boundaryEventId }), []);
+    { setSelection({ kind: "boundaryEvent", stageId, groupId, stepId, boundaryEventId }); setPropsCollapsed(false); }, []);
 
-  const handleSelectStage = useCallback((stageId: string) => setSelection({ kind: "stage", stageId }), []);
+  const handleSelectStage = useCallback((stageId: string) => { setSelection({ kind: "stage", stageId }); setPropsCollapsed(false); }, []);
 
   const handleSelectGroup = useCallback((stageId: string, groupId: string) =>
-    setSelection({ kind: "group", stageId, groupId }), []);
+    { setSelection({ kind: "group", stageId, groupId }); setPropsCollapsed(false); }, []);
 
   const handleSelectStep = useCallback((stageId: string, groupId: string, stepId: string) =>
-    setSelection({ kind: "step", stageId, groupId, stepId }), []);
+    { setSelection({ kind: "step", stageId, groupId, stepId }); setPropsCollapsed(false); }, []);
 
   const handleAddStep = useCallback((stageId: string, groupId: string) => {
     if (!caseIr) return;
