@@ -87,14 +87,18 @@ export default function WorkflowStudio() {
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   
-  const handleImportBpmn = (ir: CaseIR, w: string[]) => { setCaseIr(ir); setWarnings(w); setSelection(null); };
+  const handleImportBpmn = (ir: CaseIR, w: string[]) => {
+    // Ensure alternativePaths exists
+    if (!ir.alternativePaths) ir.alternativePaths = [];
+    setCaseIr(ir); setWarnings(w); setSelection(null);
+  };
 
   const handlePatch = useCallback((patch: JsonPatch) => {
     if (!caseIr) return;
     try {
       const updated = applyCaseIRPatch(caseIr, patch);
-      // Clear ALL cached original XML/diagram data so the exporter fully
-      // regenerates from the edited IR – including diagram shapes for new steps.
+      // Ensure alternativePaths persists
+      if (!updated.alternativePaths) updated.alternativePaths = [];
       updated.metadata = {
         ...updated.metadata,
         updatedAt: new Date().toISOString(),
@@ -221,15 +225,132 @@ export default function WorkflowStudio() {
     handlePatch([{ op: "move", path: `/stages/${si}/groups/${ti}`, from: `/stages/${si}/groups/${gi}` }]);
   }, [caseIr, handlePatch]);
 
+  // ── Alt Path handlers (mirror main flow but target /alternativePaths) ───────
+  const handleAddAltStage = useCallback(() => {
+    if (!caseIr) return;
+    if (!caseIr.alternativePaths) {
+      handlePatch([
+        { op: "add", path: "/alternativePaths", value: [{ id: uid(), name: "New Alt Stage", groups: [{ id: uid(), name: "Main", steps: [] }] }] },
+      ]);
+    } else {
+      handlePatch([{ op: "add", path: "/alternativePaths/-", value: { id: uid(), name: "New Alt Stage", groups: [{ id: uid(), name: "Main", steps: [] }] } }]);
+    }
+  }, [caseIr, handlePatch]);
+
+  const handleAddAltGroup = useCallback((stageId: string) => {
+    if (!caseIr?.alternativePaths) return;
+    const si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    handlePatch([{ op: "add", path: `/alternativePaths/${si}/groups/-`, value: { id: uid(), name: "New Group", steps: [] } }]);
+  }, [caseIr, handlePatch]);
+
+  const handleAddAltStep = useCallback((stageId: string, groupId: string) => {
+    if (!caseIr?.alternativePaths) return;
+    const si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const gi = caseIr.alternativePaths[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+    const newStep = { id: uid(), name: "New Task", type: "automation" as StepType };
+    handlePatch([{ op: "add", path: `/alternativePaths/${si}/groups/${gi}/steps/-`, value: newStep }]);
+  }, [caseIr, handlePatch]);
+
+  const handleDeleteAltStage = useCallback((stageId: string) => {
+    if (!caseIr?.alternativePaths) return;
+    const si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    handlePatch([{ op: "remove", path: `/alternativePaths/${si}` }]);
+    setSelection(null);
+  }, [caseIr, handlePatch]);
+
+  const handleDeleteAltGroup = useCallback((stageId: string, groupId: string) => {
+    if (!caseIr?.alternativePaths) return;
+    const si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const gi = caseIr.alternativePaths[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+    handlePatch([{ op: "remove", path: `/alternativePaths/${si}/groups/${gi}` }]);
+    setSelection(null);
+  }, [caseIr, handlePatch]);
+
+  const handleDeleteAltStep = useCallback((stageId: string, groupId: string, stepId: string) => {
+    if (!caseIr?.alternativePaths) return;
+    const si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const gi = caseIr.alternativePaths[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+    const sti = caseIr.alternativePaths[si].groups[gi].steps.findIndex(s => s.id === stepId);
+    if (sti < 0) return;
+    handlePatch([{ op: "remove", path: `/alternativePaths/${si}/groups/${gi}/steps/${sti}` }]);
+    setSelection(null);
+  }, [caseIr, handlePatch]);
+
+  const handleDuplicateAltStep = useCallback((stageId: string, groupId: string, stepId: string) => {
+    if (!caseIr?.alternativePaths) return;
+    const si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const gi = caseIr.alternativePaths[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+    const step = caseIr.alternativePaths[si].groups[gi].steps.find(s => s.id === stepId);
+    if (!step) return;
+    handlePatch([{ op: "add", path: `/alternativePaths/${si}/groups/${gi}/steps/-`, value: { ...step, id: uid(), name: `${step.name} (copy)` } }]);
+  }, [caseIr, handlePatch]);
+
+  const handleDuplicateAltStage = useCallback((stageId: string) => {
+    if (!caseIr?.alternativePaths) return;
+    const stage = caseIr.alternativePaths.find(s => s.id === stageId);
+    if (!stage) return;
+    const cloned = { ...stage, id: uid(), name: `${stage.name} (copy)`, groups: stage.groups.map(g => ({ ...g, id: uid(), steps: g.steps.map(s => ({ ...s, id: uid() })) })) };
+    handlePatch([{ op: "add", path: "/alternativePaths/-", value: cloned }]);
+  }, [caseIr, handlePatch]);
+
+  const handleMoveAltStage = useCallback((stageId: string, dir: -1 | 1) => {
+    if (!caseIr?.alternativePaths) return;
+    const si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+    const ti = si + dir;
+    if (si < 0 || ti < 0 || ti >= caseIr.alternativePaths.length) return;
+    handlePatch([{ op: "move", path: `/alternativePaths/${ti}`, from: `/alternativePaths/${si}` }]);
+  }, [caseIr, handlePatch]);
+
+  const handleMoveAltStep = useCallback((stageId: string, groupId: string, stepId: string, dir: -1 | 1) => {
+    if (!caseIr?.alternativePaths) return;
+    const si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const gi = caseIr.alternativePaths[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+    const sti = caseIr.alternativePaths[si].groups[gi].steps.findIndex(s => s.id === stepId);
+    const ti = sti + dir;
+    if (sti < 0 || ti < 0 || ti >= caseIr.alternativePaths[si].groups[gi].steps.length) return;
+    handlePatch([{ op: "move", path: `/alternativePaths/${si}/groups/${gi}/steps/${ti}`, from: `/alternativePaths/${si}/groups/${gi}/steps/${sti}` }]);
+  }, [caseIr, handlePatch]);
+
+  const handleMoveAltGroup = useCallback((stageId: string, groupId: string, dir: -1 | 1) => {
+    if (!caseIr?.alternativePaths) return;
+    const si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+    if (si < 0) return;
+    const gi = caseIr.alternativePaths[si].groups.findIndex(g => g.id === groupId);
+    const ti = gi + dir;
+    if (gi < 0 || ti < 0 || ti >= caseIr.alternativePaths[si].groups.length) return;
+    handlePatch([{ op: "move", path: `/alternativePaths/${si}/groups/${ti}`, from: `/alternativePaths/${si}/groups/${gi}` }]);
+  }, [caseIr, handlePatch]);
+
   const handleAddBoundaryEvent = useCallback((stageId: string, groupId: string, stepId: string, eventType: BoundaryEventType) => {
     if (!caseIr) return;
-    const si = caseIr.stages.findIndex(s => s.id === stageId);
-    if (si < 0) return;
-    const gi = caseIr.stages[si].groups.findIndex(g => g.id === groupId);
+    // Search in both main stages and alternativePaths
+    let basePath = "";
+    let si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si >= 0) {
+      basePath = `/stages/${si}`;
+    } else if (caseIr.alternativePaths) {
+      si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+      if (si >= 0) basePath = `/alternativePaths/${si}`;
+    }
+    if (!basePath) return;
+    const stageArr = basePath.startsWith("/stages") ? caseIr.stages : caseIr.alternativePaths!;
+    const gi = stageArr[si].groups.findIndex(g => g.id === groupId);
     if (gi < 0) return;
-    const sti = caseIr.stages[si].groups[gi].steps.findIndex(s => s.id === stepId);
+    const sti = stageArr[si].groups[gi].steps.findIndex(s => s.id === stepId);
     if (sti < 0) return;
-    const step = caseIr.stages[si].groups[gi].steps[sti];
+    const step = stageArr[si].groups[gi].steps[sti];
     const existingCount = step.boundaryEvents?.length ?? 0;
     const newBe = {
       id: uid(),
@@ -238,9 +359,9 @@ export default function WorkflowStudio() {
       cancelActivity: true,
     };
     if (existingCount === 0) {
-      handlePatch([{ op: "add", path: `/stages/${si}/groups/${gi}/steps/${sti}/boundaryEvents`, value: [newBe] }]);
+      handlePatch([{ op: "add", path: `${basePath}/groups/${gi}/steps/${sti}/boundaryEvents`, value: [newBe] }]);
     } else {
-      handlePatch([{ op: "add", path: `/stages/${si}/groups/${gi}/steps/${sti}/boundaryEvents/-`, value: newBe }]);
+      handlePatch([{ op: "add", path: `${basePath}/groups/${gi}/steps/${sti}/boundaryEvents/-`, value: newBe }]);
     }
     setSelection({ kind: "boundaryEvent", stageId, groupId, stepId, boundaryEventId: newBe.id });
   }, [caseIr, handlePatch]);
@@ -287,6 +408,17 @@ export default function WorkflowStudio() {
                 onMoveGroup={handleMoveGroup}
                 onMoveStep={handleMoveStep}
                 onAddBoundaryEvent={handleAddBoundaryEvent}
+                onAddAltStage={handleAddAltStage}
+                onAddAltGroup={handleAddAltGroup}
+                onAddAltStep={handleAddAltStep}
+                onDeleteAltStage={handleDeleteAltStage}
+                onDeleteAltGroup={handleDeleteAltGroup}
+                onDeleteAltStep={handleDeleteAltStep}
+                onDuplicateAltStep={handleDuplicateAltStep}
+                onDuplicateAltStage={handleDuplicateAltStage}
+                onMoveAltStage={handleMoveAltStage}
+                onMoveAltGroup={handleMoveAltGroup}
+                onMoveAltStep={handleMoveAltStep}
               />
             </div>
             <PropertiesPanel

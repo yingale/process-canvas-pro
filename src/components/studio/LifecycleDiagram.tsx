@@ -509,6 +509,18 @@ interface LifecycleDiagramProps {
   onMoveGroup: (stageId: string, groupId: string, dir: -1 | 1) => void;
   onMoveStep: (stageId: string, groupId: string, stepId: string, dir: -1 | 1) => void;
   onAddBoundaryEvent: (stageId: string, groupId: string, stepId: string, eventType: import("@/types/caseIr").BoundaryEventType) => void;
+  // Alt path handlers
+  onAddAltStage: () => void;
+  onAddAltGroup: (stageId: string) => void;
+  onAddAltStep: (stageId: string, groupId: string) => void;
+  onDeleteAltStage: (stageId: string) => void;
+  onDeleteAltGroup: (stageId: string, groupId: string) => void;
+  onDeleteAltStep: (stageId: string, groupId: string, stepId: string) => void;
+  onDuplicateAltStep: (stageId: string, groupId: string, stepId: string) => void;
+  onDuplicateAltStage: (stageId: string) => void;
+  onMoveAltStage: (stageId: string, dir: -1 | 1) => void;
+  onMoveAltGroup: (stageId: string, groupId: string, dir: -1 | 1) => void;
+  onMoveAltStep: (stageId: string, groupId: string, stepId: string, dir: -1 | 1) => void;
 }
 
 export default function LifecycleDiagram({
@@ -520,9 +532,13 @@ export default function LifecycleDiagram({
   onDuplicateStep, onDuplicateStage,
   onMoveStage, onMoveGroup, onMoveStep,
   onAddBoundaryEvent,
+  onAddAltStage, onAddAltGroup, onAddAltStep,
+  onDeleteAltStage, onDeleteAltGroup, onDeleteAltStep,
+  onDuplicateAltStep, onDuplicateAltStage,
+  onMoveAltStage, onMoveAltGroup, onMoveAltStep,
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
-  const [showAddBoundary, setShowAddBoundary] = useState(false);
+  const [altCtxMenu, setAltCtxMenu] = useState<CtxMenu | null>(null);
 
   const openStageCtx = useCallback((e: React.MouseEvent, stageId: string) => {
     e.preventDefault();
@@ -585,6 +601,69 @@ export default function LifecycleDiagram({
     else if (ctxMenu.kind === "step" && ctxMenu.groupId && ctxMenu.stepId) onMoveStep(ctxMenu.stageId, ctxMenu.groupId, ctxMenu.stepId, 1);
     setCtxMenu(null);
   }, [ctxMenu, onMoveStage, onMoveGroup, onMoveStep]);
+
+  // ── Alt path context menu handlers ──
+  const altPaths = caseIr.alternativePaths ?? [];
+
+  const openAltStageCtx = useCallback((e: React.MouseEvent, stageId: string) => {
+    e.preventDefault();
+    const si = altPaths.findIndex(s => s.id === stageId);
+    setAltCtxMenu({ kind: "stage", stageId, x: e.clientX, y: e.clientY, canMoveUp: si > 0, canMoveDown: si < altPaths.length - 1 });
+  }, [altPaths]);
+
+  const openAltGroupCtx = useCallback((e: React.MouseEvent, stageId: string, groupId: string) => {
+    e.preventDefault();
+    const stage = altPaths.find(s => s.id === stageId);
+    const gi = stage ? stage.groups.findIndex(g => g.id === groupId) : -1;
+    setAltCtxMenu({ kind: "group", stageId, groupId, x: e.clientX, y: e.clientY, canMoveUp: gi > 0, canMoveDown: gi < (stage?.groups.length ?? 0) - 1 });
+  }, [altPaths]);
+
+  const openAltStepCtx = useCallback((e: React.MouseEvent, stageId: string, groupId: string, stepId: string) => {
+    e.preventDefault();
+    const stage = altPaths.find(s => s.id === stageId);
+    const group = stage?.groups.find(g => g.id === groupId);
+    const sti = group ? group.steps.findIndex(s => s.id === stepId) : -1;
+    setAltCtxMenu({ kind: "step", stageId, groupId, stepId, x: e.clientX, y: e.clientY, canMoveUp: sti > 0, canMoveDown: sti < (group?.steps.length ?? 0) - 1 });
+  }, [altPaths]);
+
+  const handleAltCtxRename = useCallback(() => {
+    if (!altCtxMenu) return;
+    if (altCtxMenu.kind === "stage") onSelectStage(altCtxMenu.stageId);
+    else if (altCtxMenu.kind === "group" && altCtxMenu.groupId) onSelectGroup(altCtxMenu.stageId, altCtxMenu.groupId);
+    else if (altCtxMenu.kind === "step" && altCtxMenu.groupId && altCtxMenu.stepId) onSelectStep(altCtxMenu.stageId, altCtxMenu.groupId, altCtxMenu.stepId);
+    setAltCtxMenu(null);
+  }, [altCtxMenu, onSelectStage, onSelectGroup, onSelectStep]);
+
+  const handleAltCtxDuplicate = useCallback(() => {
+    if (!altCtxMenu) return;
+    if (altCtxMenu.kind === "step" && altCtxMenu.groupId && altCtxMenu.stepId) onDuplicateAltStep(altCtxMenu.stageId, altCtxMenu.groupId, altCtxMenu.stepId);
+    else if (altCtxMenu.kind === "stage") onDuplicateAltStage(altCtxMenu.stageId);
+    setAltCtxMenu(null);
+  }, [altCtxMenu, onDuplicateAltStep, onDuplicateAltStage]);
+
+  const handleAltCtxDelete = useCallback(() => {
+    if (!altCtxMenu) return;
+    if (altCtxMenu.kind === "step" && altCtxMenu.groupId && altCtxMenu.stepId) onDeleteAltStep(altCtxMenu.stageId, altCtxMenu.groupId, altCtxMenu.stepId);
+    else if (altCtxMenu.kind === "group" && altCtxMenu.groupId) onDeleteAltGroup(altCtxMenu.stageId, altCtxMenu.groupId);
+    else if (altCtxMenu.kind === "stage") onDeleteAltStage(altCtxMenu.stageId);
+    setAltCtxMenu(null);
+  }, [altCtxMenu, onDeleteAltStep, onDeleteAltGroup, onDeleteAltStage]);
+
+  const handleAltCtxMoveUp = useCallback(() => {
+    if (!altCtxMenu) return;
+    if (altCtxMenu.kind === "stage") onMoveAltStage(altCtxMenu.stageId, -1);
+    else if (altCtxMenu.kind === "group" && altCtxMenu.groupId) onMoveAltGroup(altCtxMenu.stageId, altCtxMenu.groupId, -1);
+    else if (altCtxMenu.kind === "step" && altCtxMenu.groupId && altCtxMenu.stepId) onMoveAltStep(altCtxMenu.stageId, altCtxMenu.groupId, altCtxMenu.stepId, -1);
+    setAltCtxMenu(null);
+  }, [altCtxMenu, onMoveAltStage, onMoveAltGroup, onMoveAltStep]);
+
+  const handleAltCtxMoveDown = useCallback(() => {
+    if (!altCtxMenu) return;
+    if (altCtxMenu.kind === "stage") onMoveAltStage(altCtxMenu.stageId, 1);
+    else if (altCtxMenu.kind === "group" && altCtxMenu.groupId) onMoveAltGroup(altCtxMenu.stageId, altCtxMenu.groupId, 1);
+    else if (altCtxMenu.kind === "step" && altCtxMenu.groupId && altCtxMenu.stepId) onMoveAltStep(altCtxMenu.stageId, altCtxMenu.groupId, altCtxMenu.stepId, 1);
+    setAltCtxMenu(null);
+  }, [altCtxMenu, onMoveAltStage, onMoveAltGroup, onMoveAltStep]);
 
   const triggerLabel = caseIr.trigger.type === "none" ? "Manual Start"
     : caseIr.trigger.type === "timer" ? `Timer: ${caseIr.trigger.expression ?? "scheduled"}`
@@ -662,122 +741,51 @@ export default function LifecycleDiagram({
           </div>
         </div>
 
-        {/* Alt Paths lane – shows boundary events (error/fallback flows) */}
-        {(() => {
-          const allBoundaryEvents: Array<{ stageId: string; groupId: string; stepId: string; stepName: string; be: import("@/types/caseIr").BoundaryEvent }> = [];
-          caseIr.stages.forEach(stage => {
-            stage.groups.forEach(group => {
-              group.steps.forEach(step => {
-                step.boundaryEvents?.forEach(be => {
-                  allBoundaryEvents.push({ stageId: stage.id, groupId: group.id, stepId: step.id, stepName: step.name, be });
-                });
-              });
-            });
-          });
-
-          return (
-            <div>
-              <div className="flex items-center gap-2 mb-3 px-1">
-                <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
-                <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>
-                  Alternative Paths
-                  {allBoundaryEvents.length > 0 && (
-                    <span className="ml-1.5 text-[9px] font-mono px-1 py-0.5 rounded" style={{ background: "hsl(var(--warning) / 0.12)", color: "hsl(var(--warning))" }}>
-                      {allBoundaryEvents.length}
-                    </span>
-                  )}
+        {/* Alternative Paths lane – independent stages/groups/steps */}
+        <div>
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
+            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>
+              Alternative Paths
+              {altPaths.length > 0 && (
+                <span className="ml-1.5 text-[9px] font-mono px-1 py-0.5 rounded" style={{ background: "hsl(var(--warning) / 0.12)", color: "hsl(var(--warning))" }}>
+                  {altPaths.length}
                 </span>
-                <div className="flex-1 h-px" style={{ background: `repeating-linear-gradient(90deg, hsl(var(--border)) 0, hsl(var(--border)) 6px, transparent 6px, transparent 12px)` }} />
-              </div>
-              <div className="flex gap-3 flex-wrap items-start">
-                {allBoundaryEvents.map(({ stageId, groupId, stepId, stepName, be }) => {
-                    const isSelected = selection?.kind === "boundaryEvent" && selection.boundaryEventId === be.id;
-                    const accentColor = be.cancelActivity !== false ? "hsl(0 68% 50%)" : "hsl(32 86% 48%)";
-                    return (
-                      <div
-                        key={be.id}
-                        className="flex-shrink-0 rounded-xl border cursor-pointer transition-all"
-                        style={{
-                          width: 220,
-                          background: isSelected ? `color-mix(in srgb, ${accentColor} 6%, hsl(var(--surface)))` : "hsl(var(--surface))",
-                          borderColor: isSelected ? accentColor : "hsl(var(--border))",
-                          boxShadow: isSelected ? `0 0 0 2px ${accentColor}30` : "0 2px 8px hsl(0 0% 0% / 0.04)",
-                          borderTop: `3px solid ${accentColor}`,
-                        }}
-                        onClick={() => onSelectBoundaryEvent(stageId, groupId, stepId, be.id)}
-                      >
-                        <div className="px-3 py-2.5">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <AlertTriangle size={11} style={{ color: accentColor }} />
-                            <span className="text-[11px] font-bold truncate" style={{ color: "hsl(var(--foreground))" }}>
-                              {be.name || `${be.eventType} handler`}
-                            </span>
-                          </div>
-                          <div className="text-[10px]" style={{ color: "hsl(var(--foreground-muted))" }}>
-                            {be.cancelActivity !== false ? "Interrupting" : "Non-interrupting"} · {be.eventType}
-                          </div>
-                          <div className="text-[9px] mt-1 truncate" style={{ color: "hsl(var(--foreground-subtle))" }}>
-                            on: {stepName}
-                          </div>
-                          {be.expression && (
-                            <div className="text-[9px] font-mono mt-0.5 truncate" style={{ color: "hsl(var(--foreground-subtle))" }}>
-                              {be.expression}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-
-                {/* Add boundary event button + picker */}
-                <div className="relative">
-                  <button
-                    className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
-                    style={{ width: 100, height: 80, borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "hsl(var(--warning))"; e.currentTarget.style.color = "hsl(var(--warning))"; e.currentTarget.style.background = "hsl(var(--warning) / 0.06)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
-                    onClick={() => setShowAddBoundary(prev => !prev)}
-                  >
-                    <Plus size={16} />
-                    <span className="text-[10px]">Add Alt. Path</span>
-                  </button>
-
-                  {showAddBoundary && (() => {
-                    const allSteps: Array<{ stageId: string; groupId: string; stepId: string; stepName: string; stageName: string }> = [];
-                    caseIr.stages.forEach(stage => {
-                      stage.groups.forEach(group => {
-                        group.steps.forEach(step => {
-                          allSteps.push({ stageId: stage.id, groupId: group.id, stepId: step.id, stepName: step.name, stageName: stage.name });
-                        });
-                      });
-                    });
-
-                    const eventTypes: Array<{ value: import("@/types/caseIr").BoundaryEventType; label: string }> = [
-                      { value: "error", label: "Error" },
-                      { value: "timer", label: "Timer" },
-                      { value: "message", label: "Message" },
-                      { value: "signal", label: "Signal" },
-                      { value: "escalation", label: "Escalation" },
-                    ];
-
-                    return (
-                      <AddBoundaryPicker
-                        steps={allSteps}
-                        eventTypes={eventTypes}
-                        onAdd={(stageId, groupId, stepId, eventType) => {
-                          onAddBoundaryEvent(stageId, groupId, stepId, eventType);
-                          setShowAddBoundary(false);
-                        }}
-                        onClose={() => setShowAddBoundary(false)}
-                      />
-                    );
-                  })()}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+              )}
+            </span>
+            <div className="flex-1 h-px" style={{ background: `repeating-linear-gradient(90deg, hsl(var(--border)) 0, hsl(var(--border)) 6px, transparent 6px, transparent 12px)` }} />
+          </div>
+          <div className="flex gap-3 items-start">
+            {altPaths.map((stage, i) => (
+              <SectionCard
+                key={stage.id}
+                stage={stage}
+                stageIdx={i}
+                color={SECTION_COLORS[(i + 3) % SECTION_COLORS.length]}
+                selection={selection}
+                onSelectStage={onSelectStage}
+                onSelectGroup={onSelectGroup}
+                onSelectStep={onSelectStep}
+                onAddStep={onAddAltStep}
+                onAddGroup={onAddAltGroup}
+                onStageCtx={openAltStageCtx}
+                onGroupCtx={openAltGroupCtx}
+                onStepCtx={openAltStepCtx}
+              />
+            ))}
+            {/* Add Section */}
+            <button
+              className="flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
+              style={{ width: 100, height: 90, borderColor: "hsl(var(--border))", color: "hsl(var(--foreground-subtle))", background: "transparent" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "hsl(var(--warning))"; e.currentTarget.style.color = "hsl(var(--warning))"; e.currentTarget.style.background = "hsl(var(--warning) / 0.06)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
+              onClick={onAddAltStage}
+            >
+              <Plus size={20} />
+              <span className="text-[10px] font-medium">Add Section</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {ctxMenu && (
@@ -791,7 +799,17 @@ export default function LifecycleDiagram({
           onClose={() => setCtxMenu(null)}
         />
       )}
+      {altCtxMenu && (
+        <ContextMenu
+          menu={altCtxMenu}
+          onRename={handleAltCtxRename}
+          onDuplicate={handleAltCtxDuplicate}
+          onDelete={handleAltCtxDelete}
+          onMoveUp={handleAltCtxMoveUp}
+          onMoveDown={handleAltCtxMoveDown}
+          onClose={() => setAltCtxMenu(null)}
+        />
+      )}
     </div>
   );
 }
-
