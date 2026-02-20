@@ -9,7 +9,7 @@ import {
   Pencil, Copy, Trash2, GitBranch, Bot, User,
   Repeat2, ExternalLink, Zap, AlignLeft, Bell, Layers,
   ArrowUp, ArrowDown, Timer, Mail, Radio, Play,
-  Square, AlertTriangle, Settings,
+  Square, AlertTriangle, Settings, ZoomIn, ZoomOut, Maximize2,
   type LucideIcon,
 } from "lucide-react";
 import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent } from "@/types/caseIr";
@@ -260,7 +260,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
   return (
     <div className="flex-shrink-0 flex flex-col rounded-xl border transition-all overflow-hidden"
       style={{
-        width: 290,
+        width: 260,
         background: "hsl(var(--surface))",
         borderColor: isStageSelected ? color : "hsl(var(--border))",
         boxShadow: isStageSelected ? `0 0 0 2px ${color}30, 0 4px 16px hsl(0 0% 0% / 0.06)` : "var(--shadow-card)",
@@ -537,6 +537,26 @@ export default function LifecycleDiagram({
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [altCtxMenu, setAltCtxMenu] = useState<CtxMenu | null>(null);
+  const [zoom, setZoom] = useState(0.85);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const zoomIn = useCallback(() => setZoom(z => Math.min(z + 0.1, 1.5)), []);
+  const zoomOut = useCallback(() => setZoom(z => Math.max(z - 0.1, 0.4)), []);
+  const zoomReset = useCallback(() => setZoom(0.85), []);
+
+  // Ctrl+scroll to zoom
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        setZoom(z => Math.min(1.5, Math.max(0.4, z - e.deltaY * 0.002)));
+      }
+    };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+  }, []);
 
   const openStageCtx = useCallback((e: React.MouseEvent, stageId: string) => {
     e.preventDefault();
@@ -672,15 +692,45 @@ export default function LifecycleDiagram({
   const isTriggerSelected = selection?.kind === "trigger";
 
   return (
-    <div className="w-full h-full overflow-auto" style={{
+    <div ref={containerRef} className="w-full h-full overflow-auto relative" style={{
       background: "hsl(var(--canvas-bg))",
       backgroundImage: "radial-gradient(circle, hsl(var(--canvas-dot)) 1.2px, transparent 1.2px)",
       backgroundSize: "14px 14px",
     }}>
-      <div className="p-6 min-w-max min-h-full">
+      {/* Zoom controls */}
+      <div className="absolute bottom-4 right-4 z-40 flex items-center gap-1 rounded-lg border px-1 py-1"
+        style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", boxShadow: "var(--shadow-card)" }}>
+        <button onClick={zoomOut} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+          style={{ color: "hsl(var(--foreground-muted))" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          title="Zoom out (Ctrl+Scroll)">
+          <ZoomOut size={14} />
+        </button>
+        <span className="text-[10px] font-mono w-10 text-center" style={{ color: "hsl(var(--foreground-muted))" }}>
+          {Math.round(zoom * 100)}%
+        </span>
+        <button onClick={zoomIn} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+          style={{ color: "hsl(var(--foreground-muted))" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          title="Zoom in (Ctrl+Scroll)">
+          <ZoomIn size={14} />
+        </button>
+        <div className="w-px h-4 mx-0.5" style={{ background: "hsl(var(--border))" }} />
+        <button onClick={zoomReset} className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+          style={{ color: "hsl(var(--foreground-muted))" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          title="Reset zoom">
+          <Maximize2 size={13} />
+        </button>
+      </div>
+
+      <div className="p-4 min-w-max" style={{ transform: `scale(${zoom})`, transformOrigin: "top left" }}>
 
         {/* Header – clickable for process properties */}
-        <div className="flex items-center gap-3 mb-5 cursor-pointer rounded-lg px-2 py-1 transition-colors"
+        <div className="flex items-center gap-3 mb-3 cursor-pointer rounded-lg px-2 py-1 transition-colors"
           style={{ background: selection?.kind === "process" ? "hsl(var(--primary) / 0.06)" : "transparent" }}
           onClick={onSelectProcess}
         >
@@ -696,7 +746,7 @@ export default function LifecycleDiagram({
         </div>
 
         {/* Main Flow lane */}
-        <div className="mb-6">
+        <div className="mb-3">
           <div className="flex items-center gap-2 mb-3 px-1">
             <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
             <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Main Flow</span>
