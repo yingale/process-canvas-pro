@@ -108,6 +108,10 @@ export default function WorkflowStudio() {
   const handleUndoTo = useCallback((snapshot: CaseIR) => { setCaseIr(snapshot); setSelection(null); }, []);
 
   const handleSelectTrigger = useCallback(() => setSelection({ kind: "trigger" }), []);
+  const handleSelectEndEvent = useCallback(() => setSelection({ kind: "endEvent" }), []);
+  const handleSelectProcess = useCallback(() => setSelection({ kind: "process" }), []);
+  const handleSelectBoundaryEvent = useCallback((stageId: string, groupId: string, stepId: string, boundaryEventId: string) =>
+    setSelection({ kind: "boundaryEvent", stageId, groupId, stepId, boundaryEventId }), []);
 
   const handleSelectStage = useCallback((stageId: string) => setSelection({ kind: "stage", stageId }), []);
 
@@ -241,6 +245,9 @@ export default function WorkflowStudio() {
                 caseIr={caseIr}
                 selection={selection}
                 onSelectTrigger={handleSelectTrigger}
+                onSelectEndEvent={handleSelectEndEvent}
+                onSelectProcess={handleSelectProcess}
+                onSelectBoundaryEvent={handleSelectBoundaryEvent}
                 onSelectStage={handleSelectStage}
                 onSelectGroup={handleSelectGroup}
                 onSelectStep={handleSelectStep}

@@ -106,6 +106,46 @@ export interface SourceMeta {
   bpmnElementType?: string;
 }
 
+// ─── Boundary Event ───────────────────────────────────────────────────────────
+
+export type BoundaryEventType = "timer" | "message" | "signal" | "error" | "escalation" | "conditional" | "generic";
+
+export interface BoundaryEvent {
+  id: string;
+  name: string;
+  eventType: BoundaryEventType;
+  cancelActivity?: boolean;       // interrupting (default true) vs non-interrupting
+  expression?: string;            // timer expression, error code, message name, etc.
+  tech?: Camunda7Tech;
+  source?: SourceMeta;
+}
+
+// ─── End Event ────────────────────────────────────────────────────────────────
+
+export type EndEventType = "none" | "message" | "signal" | "error" | "escalation" | "terminate" | "compensate";
+
+export interface EndEvent {
+  id: string;
+  name?: string;
+  eventType: EndEventType;
+  /** Error/escalation code, message ref, etc. */
+  expression?: string;
+  tech?: Camunda7Tech;
+  source?: SourceMeta;
+}
+
+// ─── Process Properties ───────────────────────────────────────────────────────
+
+export interface ProcessProperties {
+  isExecutable?: boolean;
+  versionTag?: string;
+  historyTimeToLive?: string;
+  candidateStarterGroups?: string;
+  candidateStarterUsers?: string;
+  jobPriority?: string;
+  taskPriority?: string;
+}
+
 // Base step fields (all step types share these)
 export interface BaseStep {
   id: string;
@@ -113,6 +153,7 @@ export interface BaseStep {
   description?: string;
   tech?: Camunda7Tech;
   source?: SourceMeta;
+  boundaryEvents?: BoundaryEvent[];
 }
 
 export interface AutomationStep extends BaseStep {
@@ -202,30 +243,21 @@ export interface CaseIR {
   name: string;
   version: string;          // semver string
   trigger: Trigger;
+  endEvent: EndEvent;
+  processProperties?: ProcessProperties;
   stages: Stage[];
   metadata: {
     createdAt: string;
     updatedAt: string;
     sourceFile?: string;
     exportedFrom?: "bpmn" | "manual";
-    /** Verbatim bpmndi:BPMNDiagram XML block captured from the original file */
     originalDiagramXml?: string;
-    /** Original definitions-level attributes (targetNamespace, id, etc.) */
     originalDefinitionsAttrs?: Record<string, string>;
-    /** Original top-level sequence flow IDs captured for edge references */
     originalSequenceFlowIds?: Record<string, { sourceRef: string; targetRef: string }>;
-    /** Original start event ID from the process (to preserve round-trip) */
     originalStartEventId?: string;
-    /** Original end event ID from the process (to preserve round-trip) */
     originalEndEventId?: string;
-    /** Original inner start/end event IDs per subProcess stage */
     originalSubProcessEventIds?: Record<string, { startId: string; endId: string; flowIds: string[] }>;
-    /** Original top-level sequence flow IDs in document order */
     originalTopLevelFlowIds?: string[];
-    /**
-     * Verbatim original BPMN XML (full file content).
-     * When set, export re-emits this exactly for a lossless round-trip.
-     */
     originalBpmnXml?: string;
   };
 }
@@ -267,6 +299,9 @@ export type SelectionTarget =
   | { kind: "group"; stageId: string; groupId: string }
   | { kind: "step"; stageId: string; groupId: string; stepId: string }
   | { kind: "trigger" }
+  | { kind: "endEvent" }
+  | { kind: "process" }
+  | { kind: "boundaryEvent"; stageId: string; groupId: string; stepId: string; boundaryEventId: string }
   | null;
 
 // ─── Zod Schemas ──────────────────────────────────────────────────────────────
@@ -361,6 +396,35 @@ export const stageSchema = z.object({
   source: z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional(),
 });
 
+const boundaryEventSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  eventType: z.string(),
+  cancelActivity: z.boolean().optional(),
+  expression: z.string().optional(),
+  tech: camunda7TechSchema,
+  source: sourceSchema,
+});
+
+const endEventSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().optional(),
+  eventType: z.string(),
+  expression: z.string().optional(),
+  tech: camunda7TechSchema,
+  source: sourceSchema,
+});
+
+const processPropertiesSchema = z.object({
+  isExecutable: z.boolean().optional(),
+  versionTag: z.string().optional(),
+  historyTimeToLive: z.string().optional(),
+  candidateStarterGroups: z.string().optional(),
+  candidateStarterUsers: z.string().optional(),
+  jobPriority: z.string().optional(),
+  taskPriority: z.string().optional(),
+}).optional();
+
 export const caseIrSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -372,6 +436,8 @@ export const caseIrSchema = z.object({
     tech: camunda7TechSchema,
     source: z.object({ bpmnElementId: z.string().optional(), bpmnElementType: z.string().optional() }).optional(),
   }),
+  endEvent: endEventSchema,
+  processProperties: processPropertiesSchema,
   stages: z.array(stageSchema),
   metadata: z.object({
     createdAt: z.string(),

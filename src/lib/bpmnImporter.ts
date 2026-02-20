@@ -7,6 +7,7 @@ import type {
   CaseIR, Stage, Step, AutomationStep, UserStep, DecisionStep,
   ForeachStep, CallActivityStep, IntermediateEventStep,
   Trigger, ImportResult, Camunda7Tech, DecisionBranch, IoParam,
+  BoundaryEvent, EndEvent, ProcessProperties,
 } from "@/types/caseIr";
 
 function uid(): string { return `ir_${Math.random().toString(36).slice(2, 10)}`; }
@@ -182,6 +183,123 @@ function resolveMessageNames(steps: Step[], messageMap: Map<string, string>) {
   }
 }
 
+// ─── Boundary event parser ────────────────────────────────────────────────────
+
+function parseBoundaryEvents(container: Element): BoundaryEvent[] {
+  const events: BoundaryEvent[] = [];
+  for (const el of Array.from(container.children)) {
+    if (lname(el) !== "boundaryEvent") continue;
+    const id = attr(el, "id") ?? uid();
+    const name = attr(el, "name") ?? "Boundary Event";
+    const attachedTo = attr(el, "attachedToRef");
+    const cancelActivity = attr(el, "cancelActivity") !== "false"; // default true
+    const { subType, messageRef, timerExpr } = getEventSubType(el);
+    const tech = parseCamundaExtensions(el);
+    events.push({
+      id,
+      name,
+      eventType: subType as BoundaryEvent["eventType"],
+      cancelActivity,
+      expression: timerExpr ?? messageRef,
+      tech,
+      source: { bpmnElementId: id, bpmnElementType: `boundaryEvent:${subType}` },
+    });
+    // Store attachedToRef as a custom property for later wiring
+    (events[events.length - 1] as any)._attachedTo = attachedTo;
+  }
+  return events;
+}
+
+function attachBoundaryEventsToSteps(stages: Stage[], boundaryEvents: BoundaryEvent[]) {
+  const beMap = new Map<string, BoundaryEvent[]>();
+  for (const be of boundaryEvents) {
+    const attachedTo = (be as any)._attachedTo;
+    if (!attachedTo) continue;
+    delete (be as any)._attachedTo;
+    if (!beMap.has(attachedTo)) beMap.set(attachedTo, []);
+    beMap.get(attachedTo)!.push(be);
+  }
+  if (beMap.size === 0) return;
+  for (const stage of stages) {
+    for (const group of stage.groups) {
+      for (const step of group.steps) {
+        const matching = beMap.get(step.source?.bpmnElementId ?? "");
+        if (matching) step.boundaryEvents = matching;
+        if (step.type === "foreach") {
+          // Also check nested steps
+          for (const nested of step.steps) {
+            const m = beMap.get(nested.source?.bpmnElementId ?? "");
+            if (m) nested.boundaryEvents = m;
+          }
+        }
+      }
+    }
+    // Also check if boundary is attached to the stage (subProcess) itself
+    const stageBeList = beMap.get(stage.source?.bpmnElementId ?? "");
+    if (stageBeList) {
+      // Add as steps in a special "Boundary Events" group or attach to first group
+      if (stage.groups.length > 0) {
+        for (const be of stageBeList) {
+          // Convert boundary event to an intermediateEvent step for visibility
+          stage.groups[0].steps.push({
+            id: be.id,
+            name: be.name,
+            type: "intermediateEvent",
+            eventSubType: be.eventType,
+            timerExpression: be.expression,
+            tech: be.tech,
+            source: be.source,
+            boundaryEvents: [],
+          } as IntermediateEventStep);
+        }
+      }
+    }
+  }
+}
+
+// ─── End event parser ─────────────────────────────────────────────────────────
+
+function parseEndEvent(processEl: Element): EndEvent {
+  const endEl = Array.from(processEl.children).find(el => lname(el) === "endEvent");
+  if (!endEl) return { id: uid(), eventType: "none" };
+  const id = attr(endEl, "id") ?? uid();
+  const name = attr(endEl, "name");
+  const tech = parseCamundaExtensions(endEl);
+  const source = { bpmnElementId: id, bpmnElementType: "endEvent" };
+  
+  if (firstChild(endEl, "terminateEventDefinition")) return { id, name, eventType: "terminate", tech, source };
+  if (firstChild(endEl, "errorEventDefinition")) {
+    const errDef = firstChild(endEl, "errorEventDefinition")!;
+    return { id, name, eventType: "error", expression: attr(errDef, "errorRef"), tech, source };
+  }
+  if (firstChild(endEl, "messageEventDefinition")) return { id, name, eventType: "message", tech, source };
+  if (firstChild(endEl, "signalEventDefinition")) return { id, name, eventType: "signal", tech, source };
+  if (firstChild(endEl, "escalationEventDefinition")) return { id, name, eventType: "escalation", tech, source };
+  if (firstChild(endEl, "compensateEventDefinition")) return { id, name, eventType: "compensate", tech, source };
+  return { id, name, eventType: "none", tech, source };
+}
+
+// ─── Process properties parser ────────────────────────────────────────────────
+
+function parseProcessProperties(processEl: Element): ProcessProperties {
+  const props: ProcessProperties = {};
+  if (attr(processEl, "isExecutable") === "true") props.isExecutable = true;
+  if (attr(processEl, "isExecutable") === "false") props.isExecutable = false;
+  const vt = attr(processEl, "camunda:versionTag");
+  if (vt) props.versionTag = vt;
+  const htl = attr(processEl, "camunda:historyTimeToLive");
+  if (htl) props.historyTimeToLive = htl;
+  const csg = attr(processEl, "camunda:candidateStarterGroups");
+  if (csg) props.candidateStarterGroups = csg;
+  const csu = attr(processEl, "camunda:candidateStarterUsers");
+  if (csu) props.candidateStarterUsers = csu;
+  const jp = attr(processEl, "camunda:jobPriority");
+  if (jp) props.jobPriority = jp;
+  const tp = attr(processEl, "camunda:taskPriority");
+  if (tp) props.taskPriority = tp;
+  return props;
+}
+
 /** Wrap steps into a single default "Main" group */
 function makeGroup(name: string, steps: Step[], bpmnId?: string) {
   return { id: bpmnId ? `grp_${bpmnId}` : uid(), name, steps };
@@ -335,11 +453,22 @@ export async function importBpmn(bpmnXml: string, fileName?: string): Promise<Im
     .filter(el => lname(el) === "sequenceFlow")
     .map(el => attr(el, "id") ?? uid());
 
+  // Parse end event, process properties, and boundary events
+  const endEvent = parseEndEvent(processEl);
+  const processProperties = parseProcessProperties(processEl);
+  const boundaryEvents = parseBoundaryEvents(processEl);
+  // Also parse boundary events inside subProcesses
+  for (const child of Array.from(processEl.children)) {
+    if (lname(child) === "subProcess") {
+      boundaryEvents.push(...parseBoundaryEvents(child));
+    }
+  }
+  attachBoundaryEventsToSteps(stages, boundaryEvents);
+
   const caseIr: CaseIR = {
-    id: processId, name: processName, version: "1.0.0", trigger, stages,
+    id: processId, name: processName, version: "1.0.0", trigger, endEvent, processProperties, stages,
     metadata: {
       createdAt: now(), updatedAt: now(), sourceFile: fileName, exportedFrom: "bpmn",
-      // Store the complete original XML for lossless verbatim round-trip export
       originalBpmnXml: bpmnXml,
       originalDiagramXml,
       originalDefinitionsAttrs,
