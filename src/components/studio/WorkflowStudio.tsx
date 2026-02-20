@@ -86,6 +86,7 @@ export default function WorkflowStudio() {
   const [caseIr, setCaseIr] = useState<CaseIR | null>(null);
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [propsCollapsed, setPropsCollapsed] = useState(false);
   
   const handleImportBpmn = (ir: CaseIR, w: string[]) => {
     // Ensure alternativePaths exists
@@ -426,6 +427,8 @@ export default function WorkflowStudio() {
               selection={selection}
               onClose={() => setSelection(null)}
               onPatch={handlePatch}
+              collapsed={propsCollapsed}
+              onToggleCollapse={() => setPropsCollapsed(c => !c)}
             />
           </>
         ) : (

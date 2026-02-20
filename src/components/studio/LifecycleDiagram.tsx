@@ -674,8 +674,8 @@ export default function LifecycleDiagram({
   return (
     <div className="w-full h-full overflow-auto" style={{
       background: "hsl(var(--canvas-bg))",
-      backgroundImage: "radial-gradient(circle, hsl(var(--canvas-dot)) 1px, transparent 1px)",
-      backgroundSize: "20px 20px",
+      backgroundImage: "radial-gradient(circle, hsl(var(--canvas-dot)) 1.2px, transparent 1.2px)",
+      backgroundSize: "14px 14px",
     }}>
       <div className="p-6 min-w-max min-h-full">
 

@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import {
-  X, ChevronRight, Plus, Trash2, ArrowRight, ChevronDown, Settings2,
+  X, ChevronRight, Plus, Trash2, ArrowRight, ChevronDown, Settings2, PanelRightClose, PanelRightOpen,
 } from "lucide-react";
 import type { CaseIR, SelectionTarget, Stage, Group, Step, IoParam, EndEvent, ProcessProperties } from "@/types/caseIr";
 import { STEP_TYPE_CONFIG } from "./FlowNodes";
@@ -14,6 +14,16 @@ import { CAMUNDA_PROP_GROUPS, TRIGGER_PROP_GROUPS, type PropField } from "./camu
 import type { JsonPatch, Trigger } from "@/types/caseIr";
 
 // ─── Path helpers ─────────────────────────────────────────────────────────────
+
+/** Search both main stages and alternativePaths for a stage by id */
+function findStageLocation(caseIr: CaseIR, stageId: string): { arrayPath: string; index: number; stage: Stage } | null {
+  const si = caseIr.stages.findIndex(s => s.id === stageId);
+  if (si >= 0) return { arrayPath: "/stages", index: si, stage: caseIr.stages[si] };
+  const altPaths = caseIr.alternativePaths ?? [];
+  const ai = altPaths.findIndex(s => s.id === stageId);
+  if (ai >= 0) return { arrayPath: "/alternativePaths", index: ai, stage: altPaths[ai] };
+  return null;
+}
 
 function findStageIndex(caseIr: CaseIR, stageId: string) { return caseIr.stages.findIndex(s => s.id === stageId); }
 function findGroupIndex(stage: Stage, groupId: string) { return stage.groups.findIndex(g => g.id === groupId); }
@@ -463,7 +473,7 @@ function StepPropertiesPanel({
 
 // ─── Stage properties ─────────────────────────────────────────────────────────
 
-function StagePropertiesPanel({ stage, stageIdx, onPatch }: { stage: Stage; stageIdx: number; onPatch: (p: JsonPatch) => void }) {
+function StagePropertiesPanel({ stage, basePath, onPatch }: { stage: Stage; basePath: string; onPatch: (p: JsonPatch) => void }) {
   const [name, setName] = useState(stage.name);
   useEffect(() => setName(stage.name), [stage.id]);
   const totalSteps = stage.groups.reduce((n, g) => n + g.steps.length, 0);
@@ -485,7 +495,7 @@ function StagePropertiesPanel({ stage, stageIdx, onPatch }: { stage: Stage; stag
       <button
         className="w-full py-2 rounded-md text-sm font-semibold"
         style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
-        onClick={() => { if (name !== stage.name) onPatch([{ op: "replace", path: `/stages/${stageIdx}/name`, value: name }]); }}
+        onClick={() => { if (name !== stage.name) onPatch([{ op: "replace", path: `${basePath}/name`, value: name }]); }}
       >
         Save Stage
       </button>
@@ -495,7 +505,7 @@ function StagePropertiesPanel({ stage, stageIdx, onPatch }: { stage: Stage; stag
 
 // ─── Group properties ─────────────────────────────────────────────────────────
 
-function GroupPropertiesPanel({ group, stageIdx, groupIdx, onPatch }: { group: Group; stageIdx: number; groupIdx: number; onPatch: (p: JsonPatch) => void }) {
+function GroupPropertiesPanel({ group, basePath, onPatch }: { group: Group; basePath: string; onPatch: (p: JsonPatch) => void }) {
   const [name, setName] = useState(group.name);
   useEffect(() => setName(group.name), [group.id]);
   return (
@@ -510,7 +520,7 @@ function GroupPropertiesPanel({ group, stageIdx, groupIdx, onPatch }: { group: G
       <button
         className="w-full py-2 rounded-md text-sm font-semibold"
         style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
-        onClick={() => { if (name !== group.name) onPatch([{ op: "replace", path: `/stages/${stageIdx}/groups/${groupIdx}/name`, value: name }]); }}
+        onClick={() => { if (name !== group.name) onPatch([{ op: "replace", path: `${basePath}/name`, value: name }]); }}
       >
         Save Group
       </button>
@@ -856,9 +866,27 @@ function BoundaryEventPropertiesPanel({ boundaryEvent, basePath, onPatch }: { bo
 
 // ─── Main panel ───────────────────────────────────────────────────────────────
 
-export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }: {
+export default function PropertiesPanel({ caseIr, selection, onClose, onPatch, collapsed, onToggleCollapse }: {
   caseIr: CaseIR; selection: SelectionTarget; onClose: () => void; onPatch: (p: JsonPatch) => void;
+  collapsed: boolean; onToggleCollapse: () => void;
 }) {
+  // Collapsed state: show a thin vertical bar with expand button
+  if (collapsed) {
+    return (
+      <div className="h-full flex flex-col items-center border-l py-3 px-1" style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", width: 36, minWidth: 36 }}>
+        <button className="w-7 h-7 rounded flex items-center justify-center transition-colors"
+          style={{ color: "hsl(var(--foreground-muted))" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          onClick={onToggleCollapse}
+          title="Expand Properties Panel"
+        >
+          <PanelRightOpen size={14} />
+        </button>
+      </div>
+    );
+  }
+
   const panelStyle: React.CSSProperties = {
     background: "hsl(var(--surface))",
     borderColor: "hsl(var(--border))",
@@ -866,11 +894,25 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
     minWidth: 310,
   };
 
+  // Helper to render the collapse button in panel headers
+  const CollapseBtn = () => (
+    <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
+      style={{ color: "hsl(var(--foreground-muted))" }}
+      onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+      onClick={onToggleCollapse}
+      title="Collapse Properties Panel"
+    >
+      <PanelRightClose size={14} />
+    </button>
+  );
+
   if (!selection) {
     return (
       <div className="h-full flex flex-col border-l" style={panelStyle}>
-        <div className="px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
+        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
           <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Properties</span>
+          <CollapseBtn />
         </div>
         <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "hsl(var(--surface-raised))", border: "1px solid hsl(var(--border))" }}>
@@ -893,13 +935,16 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
             <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Trigger Properties</div>
             <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>Start Event</div>
           </div>
-          <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
-            style={{ color: "hsl(var(--foreground-muted))" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-            onClick={onClose}>
-            <X size={14} />
-          </button>
+          <div className="flex items-center gap-1">
+            <CollapseBtn />
+            <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
+              style={{ color: "hsl(var(--foreground-muted))" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              onClick={onClose}>
+              <X size={14} />
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           <TriggerPropertiesPanel trigger={caseIr.trigger} onPatch={onPatch} />
@@ -917,11 +962,14 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
             <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>End Event Properties</div>
             <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>{caseIr.endEvent.name ?? "End Event"}</div>
           </div>
-          <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
-            style={{ color: "hsl(var(--foreground-muted))" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-            onClick={onClose}><X size={14} /></button>
+          <div className="flex items-center gap-1">
+            <CollapseBtn />
+            <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
+              style={{ color: "hsl(var(--foreground-muted))" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              onClick={onClose}><X size={14} /></button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           <EndEventPropertiesPanel endEvent={caseIr.endEvent} onPatch={onPatch} />
@@ -939,11 +987,14 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
             <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Process Properties</div>
             <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>{caseIr.name}</div>
           </div>
-          <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
-            style={{ color: "hsl(var(--foreground-muted))" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-            onClick={onClose}><X size={14} /></button>
+          <div className="flex items-center gap-1">
+            <CollapseBtn />
+            <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
+              style={{ color: "hsl(var(--foreground-muted))" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              onClick={onClose}><X size={14} /></button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           <ProcessPropertiesPanel caseIr={caseIr} onPatch={onPatch} />
@@ -954,18 +1005,17 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
 
   // ── Boundary Event properties ─────────────────────────────────────────────
   if (selection.kind === "boundaryEvent") {
-    const si2 = findStageIndex(caseIr, selection.stageId);
-    const stage2 = caseIr.stages[si2];
-    if (!stage2) return null;
-    const gi2 = findGroupIndex(stage2, selection.groupId);
-    const group2 = stage2.groups[gi2];
+    const loc = findStageLocation(caseIr, selection.stageId);
+    if (!loc) return null;
+    const gi2 = findGroupIndex(loc.stage, selection.groupId);
+    const group2 = loc.stage.groups[gi2];
     if (!group2) return null;
     const sti2 = findStepIndex(group2, selection.stepId);
     const step2 = group2.steps[sti2];
     if (!step2 || !step2.boundaryEvents) return null;
     const be = step2.boundaryEvents.find(b => b.id === selection.boundaryEventId);
     if (!be) return null;
-    const bePath = `/stages/${si2}/groups/${gi2}/steps/${sti2}/boundaryEvents/${step2.boundaryEvents.indexOf(be)}`;
+    const bePath = `${loc.arrayPath}/${loc.index}/groups/${gi2}/steps/${sti2}/boundaryEvents/${step2.boundaryEvents.indexOf(be)}`;
     return (
       <div className="h-full flex flex-col border-l" style={panelStyle}>
         <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--border))" }}>
@@ -973,11 +1023,14 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
             <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Boundary Event</div>
             <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>{be.name}</div>
           </div>
-          <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
-            style={{ color: "hsl(var(--foreground-muted))" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-            onClick={onClose}><X size={14} /></button>
+          <div className="flex items-center gap-1">
+            <CollapseBtn />
+            <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
+              style={{ color: "hsl(var(--foreground-muted))" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              onClick={onClose}><X size={14} /></button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           <BoundaryEventPropertiesPanel boundaryEvent={be} basePath={bePath} onPatch={onPatch} />
@@ -987,13 +1040,14 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
   }
 
   if (!('stageId' in selection)) return null;
-  const si = findStageIndex(caseIr, selection.stageId);
-  const stage = caseIr.stages[si];
-  if (!stage) return null;
+  const loc = findStageLocation(caseIr, selection.stageId);
+  if (!loc) return null;
+  const { stage, arrayPath, index: si } = loc;
 
   let title = "Stage";
   let subtitle = stage.name;
-  let content: React.ReactNode = <StagePropertiesPanel stage={stage} stageIdx={si} onPatch={onPatch} />;
+  const stagePath = `${arrayPath}/${si}`;
+  let content: React.ReactNode = <StagePropertiesPanel stage={stage} basePath={stagePath} onPatch={onPatch} />;
 
   if (selection.kind === "group" || selection.kind === "step") {
     const gi = findGroupIndex(stage, selection.groupId);
@@ -1003,14 +1057,14 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
     if (selection.kind === "group") {
       title = "Group";
       subtitle = group.name;
-      content = <GroupPropertiesPanel group={group} stageIdx={si} groupIdx={gi} onPatch={onPatch} />;
+      content = <GroupPropertiesPanel group={group} basePath={`${stagePath}/groups/${gi}`} onPatch={onPatch} />;
     } else {
       const sti = findStepIndex(group, selection.stepId);
       const step = group.steps[sti];
       if (!step) return null;
       title = "Step";
       subtitle = step.name;
-      const basePath = `/stages/${si}/groups/${gi}/steps/${sti}`;
+      const basePath = `${stagePath}/groups/${gi}/steps/${sti}`;
       content = <StepPropertiesPanel step={step} basePath={basePath} onPatch={onPatch} />;
     }
   }
@@ -1030,6 +1084,7 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch }:
           onClick={onClose}>
           <X size={14} />
         </button>
+        <CollapseBtn />
       </div>
 
       {/* Scrollable content */}
