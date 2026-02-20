@@ -7,9 +7,10 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Plus, MoreHorizontal, ChevronDown, ChevronRight,
   Pencil, Copy, Trash2, GitBranch, Bot, User,
-  Repeat2, ExternalLink, Zap, AlignLeft, Bell, Layers,
+  Repeat2, ExternalLink, Zap, Bell, Layers,
   ArrowUp, ArrowDown, Timer, Mail, Radio, Play,
   Square, AlertTriangle, Settings, ZoomIn, ZoomOut, Maximize2, Minimize2, X,
+  Workflow, GripVertical,
   type LucideIcon,
 } from "lucide-react";
 import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent } from "@/types/caseIr";
@@ -276,12 +277,13 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
         onMouseEnter={() => setHeaderHover(true)}
         onMouseLeave={() => setHeaderHover(false)}
       >
+        <GripVertical size={12} style={{ color: "hsl(var(--foreground-subtle))", flexShrink: 0, opacity: 0.5 }} />
+        <span className="flex-1 text-[13px] font-bold truncate" style={{ color: "hsl(var(--foreground))" }}>{stage.name}</span>
         <button className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity"
           onClick={e => { e.stopPropagation(); setCollapsed(c => !c); }}
           style={{ color: "hsl(var(--foreground-muted))" }}>
           {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
         </button>
-        <span className="flex-1 text-[13px] font-bold truncate" style={{ color: "hsl(var(--foreground))" }}>{stage.name}</span>
         {headerHover && (
           <button className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center opacity-60 hover:opacity-100"
             style={{ color: "hsl(var(--foreground-muted))" }}
@@ -741,7 +743,7 @@ export default function LifecycleDiagram({
       {/* Main Flow lane */}
       <div className="mb-3">
         <div className="flex items-center gap-2 mb-3 px-1">
-          <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
+          <Workflow size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
           <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Main Flow</span>
           <div className="flex-1 h-px" style={{ background: "hsl(var(--border))" }} />
         </div>
@@ -763,7 +765,7 @@ export default function LifecycleDiagram({
             onMouseEnter={e => { e.currentTarget.style.borderColor = "hsl(var(--primary))"; e.currentTarget.style.color = "hsl(var(--primary))"; e.currentTarget.style.background = "hsl(var(--primary-dim))"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
             onClick={onAddStage}>
-            <Plus size={20} /><span className="text-[10px] font-medium">Add Section</span>
+            <Plus size={18} /><span className="text-[10px] font-medium">Add Section</span>
           </button>
         </div>
       </div>
@@ -771,7 +773,7 @@ export default function LifecycleDiagram({
       {/* Alternative Paths lane */}
       <div>
         <div className="flex items-center gap-2 mb-3 px-1">
-          <AlignLeft size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
+          <Workflow size={14} style={{ color: "hsl(var(--foreground-muted))" }} />
           <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>
             Alternative Paths
             {altPaths.length > 0 && (
@@ -793,7 +795,7 @@ export default function LifecycleDiagram({
             onMouseEnter={e => { e.currentTarget.style.borderColor = "hsl(var(--warning))"; e.currentTarget.style.color = "hsl(var(--warning))"; e.currentTarget.style.background = "hsl(var(--warning) / 0.06)"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.color = "hsl(var(--foreground-subtle))"; e.currentTarget.style.background = "transparent"; }}
             onClick={onAddAltStage}>
-            <Plus size={20} /><span className="text-[10px] font-medium">Add Section</span>
+            <Workflow size={18} /><span className="text-[10px] font-medium">Add Alt. Path</span>
           </button>
         </div>
       </div>
