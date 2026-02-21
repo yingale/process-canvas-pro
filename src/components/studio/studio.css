@@ -1,0 +1,682 @@
+/* =============================================
+   Studio Component Styles
+   Extracted from inline styles for separation of concerns.
+   ============================================= */
+
+/* ─── Canvas ──────────────────────────────────────────────────────────────── */
+
+.studio-canvas {
+  background: hsl(var(--canvas-bg));
+  background-image: radial-gradient(circle, hsl(var(--canvas-dot)) 1.2px, transparent 1.2px);
+  background-size: 14px 14px;
+}
+
+/* ─── Context Menu ────────────────────────────────────────────────────────── */
+
+.ctx-menu {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+  box-shadow: 0 8px 24px hsl(0 0% 0% / 0.14);
+}
+
+.ctx-menu-item {
+  color: hsl(var(--foreground));
+  cursor: pointer;
+}
+
+.ctx-menu-item:hover {
+  background: hsl(var(--surface-raised));
+}
+
+.ctx-menu-item--danger {
+  color: hsl(var(--destructive));
+}
+
+.ctx-menu-item--danger:hover {
+  background: hsl(var(--destructive) / 0.08);
+}
+
+.ctx-menu-item--disabled {
+  color: hsl(var(--foreground-subtle));
+  cursor: default;
+}
+
+.ctx-menu-divider {
+  border-color: hsl(var(--border));
+}
+
+/* ─── Step Row ────────────────────────────────────────────────────────────── */
+
+.step-row {
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  margin-bottom: 5px;
+}
+
+.step-row:hover {
+  background: hsl(var(--surface-raised));
+}
+
+.step-io-badge--input {
+  background: hsl(213 80% 50% / 0.12);
+  color: hsl(213 80% 50%);
+}
+
+.step-io-badge--output {
+  background: hsl(134 58% 38% / 0.12);
+  color: hsl(134 58% 38%);
+}
+
+/* ─── Boundary Event Badges ───────────────────────────────────────────────── */
+
+.boundary-badge--interrupting {
+  background: hsl(0 68% 50% / 0.12);
+  color: hsl(0 68% 50%);
+  border: 1px solid hsl(0 68% 50% / 0.3);
+}
+
+.boundary-badge--non-interrupting {
+  background: hsl(32 86% 48% / 0.12);
+  color: hsl(32 86% 48%);
+  border: 1px solid hsl(32 86% 48% / 0.3);
+}
+
+/* ─── Section Card (Stage) ────────────────────────────────────────────────── */
+
+.section-card {
+  width: 260px;
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+  box-shadow: var(--shadow-card);
+}
+
+.section-divider {
+  height: 1px;
+  background: hsl(var(--border));
+}
+
+/* ─── Event Cards (Trigger / End) ─────────────────────────────────────────── */
+
+.event-card {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.04);
+}
+
+.event-card:hover {
+  background: hsl(var(--surface-raised));
+}
+
+.event-icon-circle--primary {
+  background: hsl(var(--primary) / 0.12);
+}
+
+.event-icon-circle--end {
+  background: hsl(0 68% 50% / 0.12);
+}
+
+/* ─── Add Buttons (dashed) ────────────────────────────────────────────────── */
+
+.add-btn-dashed {
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground-subtle));
+  background: transparent;
+}
+
+.add-section-btn {
+  width: 100px;
+  height: 90px;
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground-subtle));
+  background: transparent;
+}
+
+.add-section-btn:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+  background: hsl(var(--primary-dim));
+}
+
+.add-alt-btn:hover {
+  border-color: hsl(var(--warning));
+  color: hsl(var(--warning));
+  background: hsl(var(--warning) / 0.06);
+}
+
+/* ─── Zoom Controls ───────────────────────────────────────────────────────── */
+
+.zoom-controls {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+  box-shadow: var(--shadow-card);
+}
+
+.zoom-btn {
+  color: hsl(var(--foreground-muted));
+}
+
+.zoom-btn:hover {
+  background: hsl(var(--surface-raised));
+}
+
+.zoom-btn--expand:hover {
+  background: hsl(var(--primary-dim));
+  color: hsl(var(--primary));
+}
+
+.zoom-label {
+  color: hsl(var(--foreground-muted));
+}
+
+.zoom-divider {
+  background: hsl(var(--border));
+}
+
+/* ─── Diagram Header ─────────────────────────────────────────────────────── */
+
+.diagram-header--selected {
+  background: hsl(var(--primary) / 0.06);
+}
+
+/* ─── Lane Headers ────────────────────────────────────────────────────────── */
+
+.lane-divider--solid {
+  background: hsl(var(--border));
+}
+
+.lane-divider--dashed {
+  background: repeating-linear-gradient(
+    90deg,
+    hsl(var(--border)) 0,
+    hsl(var(--border)) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+/* ─── Connector Arrow ─────────────────────────────────────────────────────── */
+
+.connector-line {
+  width: 24px;
+  height: 2px;
+  background: hsl(var(--border));
+}
+
+.connector-arrowhead {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid hsl(var(--border));
+}
+
+/* ─── Fullscreen Overlay ──────────────────────────────────────────────────── */
+
+.fullscreen-overlay {
+  background: hsl(var(--canvas-bg));
+}
+
+.fullscreen-header {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+}
+
+.fullscreen-close:hover {
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+}
+
+/* ─── Properties Panel ────────────────────────────────────────────────────── */
+
+.props-panel {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+  width: 310px;
+  min-width: 310px;
+}
+
+.props-collapsed {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+  width: 36px;
+  min-width: 36px;
+}
+
+.props-empty-icon {
+  background: hsl(var(--surface-raised));
+  border: 1px solid hsl(var(--border));
+}
+
+/* ─── Properties Section Header ───────────────────────────────────────────── */
+
+.section-header-btn {
+  border-color: hsl(var(--border));
+}
+
+.section-header-btn--open {
+  background: hsl(var(--surface-raised));
+}
+
+.section-header-btn--closed {
+  background: hsl(var(--surface));
+}
+
+/* ─── Form Inputs ─────────────────────────────────────────────────────────── */
+
+.studio-input {
+  background: hsl(var(--surface-overlay));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.studio-input:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.25);
+}
+
+.studio-select {
+  background: hsl(var(--surface-overlay));
+  border-color: hsl(var(--border));
+}
+
+.studio-select:focus {
+  border-color: hsl(var(--primary));
+}
+
+.studio-select--empty {
+  color: hsl(var(--foreground-subtle));
+}
+
+.expression-prefix {
+  color: hsl(var(--primary) / 0.6);
+}
+
+/* ─── Toggle Switch ───────────────────────────────────────────────────────── */
+
+.toggle-track--on {
+  background: hsl(var(--primary));
+}
+
+.toggle-track--off {
+  background: hsl(var(--border));
+}
+
+.toggle-thumb {
+  background: white;
+}
+
+/* ─── Save Button ─────────────────────────────────────────────────────────── */
+
+.save-btn--active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  cursor: pointer;
+}
+
+.save-btn--inactive {
+  background: hsl(var(--surface-raised));
+  color: hsl(var(--foreground-muted));
+  cursor: default;
+}
+
+/* ─── Type Badge ──────────────────────────────────────────────────────────── */
+
+.type-badge--primary {
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+}
+
+.type-badge--end {
+  background: hsl(0 68% 50% / 0.15);
+  color: hsl(0 68% 50%);
+}
+
+.type-badge--boundary {
+  background: hsl(32 86% 48% / 0.15);
+  color: hsl(32 86% 48%);
+}
+
+/* ─── Stat Card ───────────────────────────────────────────────────────────── */
+
+.stat-card {
+  background: hsl(var(--surface-overlay));
+  border: 1px solid hsl(var(--border));
+}
+
+/* ─── IO Parameter Table ──────────────────────────────────────────────────── */
+
+.io-param-row {
+  background: hsl(var(--surface-overlay));
+  border: 1px solid hsl(var(--border));
+}
+
+.io-param-input {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.io-empty {
+  color: hsl(var(--foreground-subtle));
+  border-color: hsl(var(--border));
+}
+
+/* ─── Hover Button (generic) ──────────────────────────────────────────────── */
+
+.hover-btn {
+  color: hsl(var(--foreground-muted));
+}
+
+.hover-btn:hover {
+  background: hsl(var(--surface-raised));
+}
+
+/* ─── Description Box ─────────────────────────────────────────────────────── */
+
+.desc-box {
+  background: hsl(var(--surface-overlay));
+  color: hsl(var(--foreground-muted));
+  border: 1px solid hsl(var(--border));
+}
+
+/* ─── Branch/Mapping Rows ─────────────────────────────────────────────────── */
+
+.branch-card {
+  border-color: hsl(var(--border));
+  background: hsl(var(--surface-overlay));
+}
+
+.mapping-row {
+  color: hsl(var(--foreground-muted));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* ─── In/Out Mapping Labels ───────────────────────────────────────────────── */
+
+.mapping-label--in {
+  color: hsl(213 80% 50%);
+}
+
+.mapping-label--out {
+  color: hsl(134 58% 38%);
+}
+
+/* ─── AI Chat Panel ───────────────────────────────────────────────────────── */
+
+.chat-panel {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+}
+
+.chat-avatar {
+  background: hsl(var(--primary));
+}
+
+.chat-bubble--user {
+  background: hsl(var(--primary));
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-bubble--assistant {
+  background: hsl(var(--surface-overlay));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  border-bottom-left-radius: 4px;
+}
+
+.chat-system-badge {
+  background: hsl(var(--primary-dim));
+  color: hsl(var(--primary));
+}
+
+.chat-suggestion-btn {
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground-muted));
+  background: hsl(var(--surface-overlay));
+}
+
+.chat-suggestion-btn:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.chat-input-container {
+  background: hsl(var(--surface-overlay));
+  border: 1.5px solid hsl(var(--border));
+}
+
+.chat-send-btn--active {
+  background: hsl(var(--primary));
+}
+
+.chat-send-btn--inactive {
+  background: hsl(var(--border));
+}
+
+.chat-loading-bubble {
+  background: hsl(var(--surface-overlay));
+  border: 1px solid hsl(var(--border));
+  border-bottom-left-radius: 4px;
+}
+
+.chat-undo-btn {
+  color: hsl(var(--foreground-muted));
+}
+
+.chat-undo-btn:hover {
+  color: hsl(var(--primary));
+}
+
+/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+}
+
+.toolbar-brand-icon {
+  background: hsl(var(--primary));
+}
+
+.toolbar-brand-icon-inner {
+  background: hsl(var(--primary-foreground));
+}
+
+.toolbar-badge {
+  background: hsl(var(--surface-overlay));
+  color: hsl(var(--foreground-muted));
+}
+
+.toolbar-separator {
+  background: hsl(var(--border));
+}
+
+.toolbar-btn {
+  background: hsl(var(--surface-raised));
+  color: hsl(var(--foreground-muted));
+}
+
+.toolbar-btn:hover {
+  color: hsl(var(--primary));
+}
+
+.toolbar-btn--primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.toolbar-btn--primary:hover {
+  opacity: 0.9;
+}
+
+.toolbar-notification--error {
+  background: hsl(var(--destructive) / 0.15);
+  color: hsl(var(--destructive));
+}
+
+.toolbar-notification--warn {
+  background: hsl(var(--warning) / 0.15);
+  color: hsl(var(--warning));
+}
+
+.toolbar-notification--success {
+  background: hsl(var(--success) / 0.15);
+  color: hsl(var(--success));
+}
+
+/* ─── AI Prompt Bar ───────────────────────────────────────────────────────── */
+
+.prompt-bar {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+}
+
+.prompt-status-dot--active {
+  background: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary));
+}
+
+.prompt-status-dot--inactive {
+  background: hsl(var(--foreground-muted));
+}
+
+.prompt-ops-badge--active {
+  background: hsl(var(--primary-dim));
+  color: hsl(var(--primary));
+}
+
+.prompt-ops-badge--inactive {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.prompt-discard-btn {
+  background: hsl(var(--destructive) / 0.15);
+  color: hsl(var(--destructive));
+}
+
+.prompt-apply-btn--active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.prompt-apply-btn--inactive {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.prompt-error-banner {
+  background: hsl(var(--destructive) / 0.08);
+  border-bottom: 1px solid hsl(var(--destructive) / 0.2);
+}
+
+.prompt-preview {
+  background: hsl(var(--surface-overlay));
+  color: hsl(var(--foreground));
+}
+
+.prompt-model-badge {
+  background: hsl(var(--surface-overlay));
+  color: hsl(var(--foreground-muted));
+}
+
+/* ─── Flow Node Styles ────────────────────────────────────────────────────── */
+
+.flow-step-card {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+  border-left-width: 3px;
+  box-shadow: var(--shadow-card);
+}
+
+.flow-trigger-pill {
+  background: hsl(var(--primary));
+}
+
+.flow-end-pill {
+  border: 2px solid hsl(var(--foreground-subtle));
+  background: hsl(var(--surface));
+}
+
+.flow-add-step-btn {
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground-muted));
+  background: transparent;
+  font-size: 11px;
+}
+
+.flow-add-stage-btn {
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground-muted));
+  background: transparent;
+}
+
+.flow-add-stage-btn:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+  background: hsl(var(--primary-dim));
+}
+
+/* ─── Warning Banner ──────────────────────────────────────────────────────── */
+
+.warning-banner {
+  background: hsl(var(--warning) / 0.08);
+  color: hsl(var(--warning));
+  border-bottom: 1px solid hsl(var(--warning) / 0.2);
+}
+
+/* ─── Empty State ─────────────────────────────────────────────────────────── */
+
+.empty-state-icon {
+  background: hsl(var(--primary-dim));
+  border: 2px solid hsl(var(--primary) / 0.2);
+}
+
+.empty-dropzone {
+  border-color: hsl(var(--border));
+  background: hsl(var(--surface));
+}
+
+.empty-dropzone--dragging {
+  border-color: hsl(var(--primary));
+  background: hsl(var(--primary-dim));
+}
+
+.empty-spinner {
+  border-color: hsl(var(--border));
+  border-top-color: hsl(var(--primary));
+}
+
+.empty-upload-icon {
+  background: hsl(var(--primary-dim));
+}
+
+.empty-error {
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+  border: 1px solid hsl(var(--destructive) / 0.2);
+}
+
+/* ─── Picker (Boundary Event) ─────────────────────────────────────────────── */
+
+.picker-panel {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+  box-shadow: 0 8px 24px hsl(0 0% 0% / 0.14);
+}
+
+.picker-item {
+  color: hsl(var(--foreground));
+}
+
+.picker-item:hover {
+  background: hsl(var(--surface-raised));
+}
+
+/* ─── Alt Path Badge ──────────────────────────────────────────────────────── */
+
+.alt-path-count {
+  background: hsl(var(--warning) / 0.12);
+  color: hsl(var(--warning));
+}

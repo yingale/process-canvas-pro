@@ -1,11 +1,11 @@
 /**
  * AI Chat Panel – conversational workflow editing assistant
- * Full chat UI replacing the old single-line prompt bar
  */
 import { useState, useRef, useEffect } from "react";
 import { Sparkles, Send, RotateCcw, Loader2 } from "lucide-react";
 import type { CaseIR, JsonPatch } from "@/types/caseIr";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
+import "./studio.css";
 
 interface ChatMessage {
   id: string;
@@ -59,10 +59,7 @@ function MessageBubble({ msg, onUndo }: { msg: ChatMessage; onUndo?: () => void 
   if (isSystem) {
     return (
       <div className="flex justify-center my-1">
-        <span
-          className="text-[11px] px-3 py-1 rounded-full"
-          style={{ background: "hsl(var(--primary-dim))", color: "hsl(var(--primary))" }}
-        >
+        <span className="chat-system-badge text-[11px] px-3 py-1 rounded-full">
           {msg.content}
         </span>
       </div>
@@ -72,30 +69,18 @@ function MessageBubble({ msg, onUndo }: { msg: ChatMessage; onUndo?: () => void 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-3`}>
       {!isUser && (
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 mt-0.5"
-          style={{ background: "hsl(var(--primary))" }}
-        >
+        <div className="chat-avatar w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 mt-0.5">
           <Sparkles size={13} color="white" />
         </div>
       )}
 
       <div style={{ maxWidth: "85%" }}>
-        <div
-          className="rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed"
-          style={
-            isUser
-              ? { background: "hsl(var(--primary))", color: "white", borderBottomRightRadius: 4 }
-              : { background: "hsl(var(--surface-overlay))", color: "hsl(var(--foreground))", border: "1px solid hsl(var(--border))", borderBottomLeftRadius: 4 }
-          }
-        >
-          {/* Render simple markdown-ish: bold, italic, bullets */}
+        <div className={`rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${isUser ? "chat-bubble--user" : "chat-bubble--assistant"}`}>
           <div className="whitespace-pre-wrap">
             {msg.content.split("\n").map((line, i) => {
               const trimmed = line.trim();
               const isBullet = trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("*");
               const content = isBullet ? trimmed.slice(1).trim() : line;
-              // Render italic (wrapped in *)
               const rendered = content.replace(/\*(.*?)\*/g, (_, t) => t);
               return (
                 <div key={i} className={isBullet ? "flex items-start gap-1.5 mt-0.5" : ""}>
@@ -112,13 +97,9 @@ function MessageBubble({ msg, onUndo }: { msg: ChatMessage; onUndo?: () => void 
           </div>
         </div>
 
-        {/* Undo button after assistant applied a patch */}
         {!isUser && msg.patch && msg.patch.length > 0 && onUndo && (
           <button
-            className="flex items-center gap-1 mt-1.5 ml-1 text-[11px] transition-colors"
-            style={{ color: "hsl(var(--foreground-muted))" }}
-            onMouseEnter={e => { e.currentTarget.style.color = "hsl(var(--primary))"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "hsl(var(--foreground-muted))"; }}
+            className="chat-undo-btn flex items-center gap-1 mt-1.5 ml-1 text-[11px] transition-colors"
             onClick={onUndo}
           >
             <RotateCcw size={10} />
@@ -152,7 +133,6 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
     setInput("");
     setIsLoading(true);
 
-    // Snapshot for undo
     const snapshot = JSON.parse(JSON.stringify(caseIr)) as CaseIR;
 
     try {
@@ -201,26 +181,17 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
   ];
 
   return (
-    <div
-      className="flex flex-col h-full border-r"
-      style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))" }}
-    >
+    <div className="chat-panel flex flex-col h-full border-r">
       {/* Header */}
-      <div
-        className="px-4 py-3 border-b flex items-center gap-2.5 flex-shrink-0"
-        style={{ borderColor: "hsl(var(--border))" }}
-      >
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center"
-          style={{ background: "hsl(var(--primary))" }}
-        >
+      <div className="px-4 py-3 border-b border-border flex items-center gap-2.5 flex-shrink-0">
+        <div className="chat-avatar w-7 h-7 rounded-full flex items-center justify-center">
           <Sparkles size={14} color="white" />
         </div>
         <div>
-          <div className="text-[13px] font-semibold" style={{ color: "hsl(var(--foreground))" }}>
+          <div className="text-[13px] font-semibold text-foreground">
             Workflow Assistant
           </div>
-          <div className="text-[10px]" style={{ color: "hsl(var(--foreground-muted))" }}>
+          <div className="text-[10px] text-foreground-muted">
             Powered by AI · ask anything
           </div>
         </div>
@@ -242,18 +213,12 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
 
         {isLoading && (
           <div className="flex justify-start mb-3">
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 mt-0.5"
-              style={{ background: "hsl(var(--primary))" }}
-            >
+            <div className="chat-avatar w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mr-2 mt-0.5">
               <Sparkles size={13} color="white" />
             </div>
-            <div
-              className="rounded-2xl px-4 py-3 flex items-center gap-2"
-              style={{ background: "hsl(var(--surface-overlay))", border: "1px solid hsl(var(--border))", borderBottomLeftRadius: 4 }}
-            >
-              <Loader2 size={13} className="animate-spin" style={{ color: "hsl(var(--primary))" }} />
-              <span className="text-[12px]" style={{ color: "hsl(var(--foreground-muted))" }}>Thinking…</span>
+            <div className="chat-loading-bubble rounded-2xl px-4 py-3 flex items-center gap-2">
+              <Loader2 size={13} className="animate-spin text-primary" />
+              <span className="text-[12px] text-foreground-muted">Thinking…</span>
             </div>
           </div>
         )}
@@ -265,20 +230,7 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
           {SUGGESTIONS.map(s => (
             <button
               key={s}
-              className="text-[11px] px-2.5 py-1 rounded-full border transition-colors"
-              style={{
-                borderColor: "hsl(var(--border))",
-                color: "hsl(var(--foreground-muted))",
-                background: "hsl(var(--surface-overlay))",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = "hsl(var(--primary))";
-                e.currentTarget.style.color = "hsl(var(--primary))";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = "hsl(var(--border))";
-                e.currentTarget.style.color = "hsl(var(--foreground-muted))";
-              }}
+              className="chat-suggestion-btn text-[11px] px-2.5 py-1 rounded-full border transition-colors"
               onClick={() => setInput(s)}
             >
               {s}
@@ -288,22 +240,11 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
       )}
 
       {/* Input row */}
-      <div
-        className="px-3 pb-3 pt-2 border-t flex-shrink-0"
-        style={{ borderColor: "hsl(var(--border))" }}
-      >
-        <div
-          className="flex items-center gap-2 rounded-xl px-3 py-2"
-          style={{
-            background: "hsl(var(--surface-overlay))",
-            border: "1.5px solid hsl(var(--border))",
-          }}
-          onFocus={() => {}}
-        >
+      <div className="px-3 pb-3 pt-2 border-t border-border flex-shrink-0">
+        <div className="chat-input-container flex items-center gap-2 rounded-xl px-3 py-2">
           <input
             ref={inputRef}
-            className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-foreground-muted"
-            style={{ color: "hsl(var(--foreground))" }}
+            className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-foreground-muted text-foreground"
             placeholder="Describe a change…"
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -316,10 +257,7 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
             disabled={isLoading}
           />
           <button
-            className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all disabled:opacity-40"
-            style={{
-              background: input.trim() ? "hsl(var(--primary))" : "hsl(var(--border))",
-            }}
+            className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all disabled:opacity-40 ${input.trim() ? "chat-send-btn--active" : "chat-send-btn--inactive"}`}
             onClick={handleSend}
             disabled={isLoading || !input.trim()}
           >

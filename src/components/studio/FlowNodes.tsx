@@ -4,6 +4,7 @@
 import { Handle, Position, type NodeProps } from "reactflow";
 import { Bot, User, GitBranch, Repeat2, ExternalLink, Zap, Plus, Bell, type LucideIcon } from "lucide-react";
 import type { Step, StepType } from "@/types/caseIr";
+import "./studio.css";
 
 // ─── Step type configuration ──────────────────────────────────────────────────
 
@@ -41,13 +42,11 @@ export function StepNode({ data }: NodeProps<StepNodeData>) {
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
 
       <div
-        className="rounded border transition-all duration-150"
+        className="flow-step-card rounded border transition-all duration-150"
         style={{
-          background: "hsl(var(--surface))",
-          borderColor: selected ? stageColor : "hsl(var(--border))",
-          borderLeftWidth: 3,
+          borderColor: selected ? stageColor : undefined,
           borderLeftColor: stageColor,
-          boxShadow: selected ? `0 0 0 2px ${stageColor}40` : "var(--shadow-card)",
+          boxShadow: selected ? `0 0 0 2px ${stageColor}40` : undefined,
         }}
       >
         <div className="px-3 py-2.5">
@@ -58,12 +57,12 @@ export function StepNode({ data }: NodeProps<StepNodeData>) {
             </span>
             {isAsync && (
               <div className="ml-auto" title="Async">
-                <Zap size={10} style={{ color: "hsl(var(--warning))" }} className="opacity-70" />
+                <Zap size={10} className="text-warning opacity-70" />
               </div>
             )}
           </div>
 
-          <p className="text-[12px] font-medium leading-snug line-clamp-2" style={{ color: "hsl(var(--foreground))" }}>
+          <p className="text-[12px] font-medium leading-snug line-clamp-2 text-foreground">
             {step.name}
           </p>
 
@@ -72,23 +71,23 @@ export function StepNode({ data }: NodeProps<StepNodeData>) {
               {step.branches.slice(0, 2).map(b => (
                 <div key={b.id} className="flex items-center gap-1">
                   <div className="w-1 h-1 rounded-full" style={{ background: stageColor, opacity: 0.6 }} />
-                  <span className="text-[9px] truncate" style={{ color: "hsl(var(--foreground-muted))" }}>{b.label}</span>
+                  <span className="text-[9px] truncate text-foreground-muted">{b.label}</span>
                 </div>
               ))}
               {step.branches.length > 2 && (
-                <span className="text-[9px]" style={{ color: "hsl(var(--foreground-subtle))" }}>+{step.branches.length - 2} more</span>
+                <span className="text-[9px] text-foreground-subtle">+{step.branches.length - 2} more</span>
               )}
             </div>
           )}
 
           {step.type === "foreach" && (
-            <div className="mt-1 font-mono text-[9px] truncate" style={{ color: "hsl(var(--foreground-muted))" }}>
+            <div className="mt-1 font-mono text-[9px] truncate text-foreground-muted">
               ∀ {step.collectionExpression}
             </div>
           )}
 
           {step.type === "callActivity" && step.calledElement && (
-            <div className="mt-1 font-mono text-[9px] truncate" style={{ color: "hsl(var(--foreground-muted))" }}>
+            <div className="mt-1 font-mono text-[9px] truncate text-foreground-muted">
               → {step.calledElement}
             </div>
           )}
@@ -180,21 +179,15 @@ export function AddStepNode({ data }: NodeProps<AddStepNodeData>) {
   return (
     <div style={{ width: 188 }}>
       <button
-        className="w-full flex items-center justify-center gap-2 rounded border-dashed border transition-all duration-150 py-2"
-        style={{
-          borderColor: "hsl(var(--border))",
-          color: "hsl(var(--foreground-muted))",
-          background: "transparent",
-          fontSize: 11,
-        }}
+        className="flow-add-step-btn w-full flex items-center justify-center gap-2 rounded border-dashed border transition-all duration-150 py-2"
         onMouseEnter={e => {
           e.currentTarget.style.borderColor = stageColor;
           e.currentTarget.style.color = stageColor;
           e.currentTarget.style.background = `${stageColor}0d`;
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.borderColor = "hsl(var(--border))";
-          e.currentTarget.style.color = "hsl(var(--foreground-muted))";
+          e.currentTarget.style.borderColor = "";
+          e.currentTarget.style.color = "";
           e.currentTarget.style.background = "transparent";
         }}
         onClick={() => onAddStep(stageId)}
@@ -220,22 +213,7 @@ export function AddStageNode({ data }: NodeProps<AddStageNodeData>) {
   return (
     <div style={{ width: W, height: H }}>
       <button
-        className="w-full h-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-all duration-150"
-        style={{
-          borderColor: "hsl(var(--border))",
-          color: "hsl(var(--foreground-muted))",
-          background: "transparent",
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.borderColor = "hsl(var(--primary))";
-          e.currentTarget.style.color = "hsl(var(--primary))";
-          e.currentTarget.style.background = "hsl(var(--primary-dim))";
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.borderColor = "hsl(var(--border))";
-          e.currentTarget.style.color = "hsl(var(--foreground-muted))";
-          e.currentTarget.style.background = "transparent";
-        }}
+        className="flow-add-stage-btn w-full h-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center transition-all duration-150"
         onClick={onAddStage}
         title="Add new stage"
       >
@@ -257,17 +235,7 @@ export interface TriggerNodeData {
 export function TriggerNode({ data }: NodeProps<TriggerNodeData>) {
   return (
     <div style={{ width: 72 }}>
-      <div
-        style={{
-          width: 72,
-          height: 36,
-          borderRadius: 18,
-          background: "hsl(var(--primary))",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <div className="flow-trigger-pill" style={{ width: 72, height: 36, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em" }}>
           {data.triggerType === "none" ? "Start" : data.triggerType}
         </span>
@@ -283,19 +251,8 @@ export function EndNode() {
   return (
     <div style={{ width: 60 }}>
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
-      <div
-        style={{
-          width: 60,
-          height: 36,
-          borderRadius: 18,
-          border: "2px solid hsl(var(--foreground-subtle))",
-          background: "hsl(var(--surface))",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <span style={{ fontSize: 10, fontWeight: 700, color: "hsl(var(--foreground-muted))", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+      <div className="flow-end-pill" style={{ width: 60, height: 36, borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span className="text-foreground-muted" style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           End
         </span>
       </div>
