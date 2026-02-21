@@ -12,10 +12,10 @@ import type { CaseIR, SelectionTarget, Stage, Group, Step, IoParam, EndEvent, Pr
 import { STEP_TYPE_CONFIG } from "./FlowNodes";
 import { CAMUNDA_PROP_GROUPS, TRIGGER_PROP_GROUPS, type PropField } from "./camundaSchema";
 import type { JsonPatch, Trigger } from "@/types/caseIr";
+import "./studio.css";
 
 // ─── Path helpers ─────────────────────────────────────────────────────────────
 
-/** Search both main stages and alternativePaths for a stage by id */
 function findStageLocation(caseIr: CaseIR, stageId: string): { arrayPath: string; index: number; stage: Stage } | null {
   const si = caseIr.stages.findIndex(s => s.id === stageId);
   if (si >= 0) return { arrayPath: "/stages", index: si, stage: caseIr.stages[si] };
@@ -29,7 +29,6 @@ function findStageIndex(caseIr: CaseIR, stageId: string) { return caseIr.stages.
 function findGroupIndex(stage: Stage, groupId: string) { return stage.groups.findIndex(g => g.id === groupId); }
 function findStepIndex(group: Group, stepId: string) { return group.steps.findIndex(s => s.id === stepId); }
 
-/** Deep-get a dot-notation key from an object */
 function deepGet(obj: Record<string, unknown>, key: string): unknown {
   return key.split(".").reduce<unknown>((cur, k) => {
     if (cur && typeof cur === "object") return (cur as Record<string, unknown>)[k];
@@ -37,7 +36,6 @@ function deepGet(obj: Record<string, unknown>, key: string): unknown {
   }, obj);
 }
 
-/** Deep-set a dot-notation key, returning a new object (immutable) */
 function deepSet(obj: Record<string, unknown>, key: string, value: unknown): Record<string, unknown> {
   const parts = key.split(".");
   if (parts.length === 1) return { ...obj, [key]: value };
@@ -51,13 +49,12 @@ function deepSet(obj: Record<string, unknown>, key: string, value: unknown): Rec
 function SectionHeader({ title, open, onToggle }: { title: string; open: boolean; onToggle: () => void }) {
   return (
     <button
-      className="w-full flex items-center gap-2 px-4 py-2 border-b text-left transition-colors"
-      style={{ borderColor: "hsl(var(--border))", background: open ? "hsl(var(--surface-raised))" : "hsl(var(--surface))" }}
+      className={`section-header-btn w-full flex items-center gap-2 px-4 py-2 border-b text-left transition-colors ${open ? "section-header-btn--open" : "section-header-btn--closed"}`}
       onClick={onToggle}
     >
-      <Settings2 size={11} style={{ color: "hsl(var(--foreground-muted))", flexShrink: 0 }} />
-      <span className="flex-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>{title}</span>
-      {open ? <ChevronDown size={12} style={{ color: "hsl(var(--foreground-subtle))" }} /> : <ChevronRight size={12} style={{ color: "hsl(var(--foreground-subtle))" }} />}
+      <Settings2 size={11} className="text-foreground-muted flex-shrink-0" />
+      <span className="flex-1 text-[10px] font-bold uppercase tracking-widest text-foreground-muted">{title}</span>
+      {open ? <ChevronDown size={12} className="text-foreground-subtle" /> : <ChevronRight size={12} className="text-foreground-subtle" />}
     </button>
   );
 }
@@ -65,9 +62,9 @@ function SectionHeader({ title, open, onToggle }: { title: string; open: boolean
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-[11px] font-medium" style={{ color: "hsl(var(--foreground-muted))" }}>{label}</label>
+      <label className="text-[11px] font-medium text-foreground-muted">{label}</label>
       {children}
-      {hint && <p className="text-[10px] leading-relaxed" style={{ color: "hsl(var(--foreground-subtle))" }}>{hint}</p>}
+      {hint && <p className="text-[10px] leading-relaxed text-foreground-subtle">{hint}</p>}
     </div>
   );
 }
@@ -77,10 +74,8 @@ interface InputProps { value: string; onChange: (v: string) => void; placeholder
 function TextInput({ value, onChange, placeholder, mono }: InputProps) {
   return (
     <input
-      className="w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none"
-      style={{ background: "hsl(var(--surface-overlay))", borderColor: "hsl(var(--border))", color: "hsl(var(--foreground))", fontFamily: mono ? "monospace" : undefined }}
-      onFocus={e => { e.currentTarget.style.borderColor = "hsl(var(--primary))"; e.currentTarget.style.boxShadow = "0 0 0 1px hsl(var(--primary) / 0.25)"; }}
-      onBlur={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.boxShadow = "none"; }}
+      className="studio-input w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none"
+      style={{ fontFamily: mono ? "monospace" : undefined }}
       value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
     />
   );
@@ -90,10 +85,8 @@ function MultilineInput({ value, onChange, placeholder, mono }: InputProps) {
   return (
     <textarea
       rows={5}
-      className="w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none resize-y"
-      style={{ background: "hsl(var(--surface-overlay))", borderColor: "hsl(var(--border))", color: "hsl(var(--foreground))", fontFamily: mono ? "monospace" : undefined, minHeight: 80 }}
-      onFocus={e => { e.currentTarget.style.borderColor = "hsl(var(--primary))"; e.currentTarget.style.boxShadow = "0 0 0 1px hsl(var(--primary) / 0.25)"; }}
-      onBlur={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.boxShadow = "none"; }}
+      className="studio-input w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none resize-y"
+      style={{ fontFamily: mono ? "monospace" : undefined, minHeight: 80 }}
       value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
     />
   );
@@ -102,12 +95,9 @@ function MultilineInput({ value, onChange, placeholder, mono }: InputProps) {
 function ExpressionInput({ value, onChange, placeholder }: InputProps) {
   return (
     <div className="relative">
-      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono select-none" style={{ color: "hsl(var(--primary) / 0.6)" }}>fx</span>
+      <span className="expression-prefix absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono select-none">fx</span>
       <input
-        className="w-full pl-7 pr-2.5 py-1.5 rounded-md border text-[12px] font-mono transition-colors focus:outline-none"
-        style={{ background: "hsl(var(--surface-overlay))", borderColor: "hsl(var(--border))", color: "hsl(var(--foreground))" }}
-        onFocus={e => { e.currentTarget.style.borderColor = "hsl(var(--primary))"; e.currentTarget.style.boxShadow = "0 0 0 1px hsl(var(--primary) / 0.25)"; }}
-        onBlur={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; e.currentTarget.style.boxShadow = "none"; }}
+        className="studio-input w-full pl-7 pr-2.5 py-1.5 rounded-md border text-[12px] font-mono transition-colors focus:outline-none"
         value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
       />
     </div>
@@ -117,9 +107,9 @@ function ExpressionInput({ value, onChange, placeholder }: InputProps) {
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <label className="flex items-center justify-between gap-2 cursor-pointer py-0.5">
-      <span className="text-[12px]" style={{ color: "hsl(var(--foreground))" }}>{label}</span>
-      <div className="relative flex-shrink-0 w-8 h-4 rounded-full transition-colors" style={{ background: checked ? "hsl(var(--primary))" : "hsl(var(--border))" }} onClick={() => onChange(!checked)}>
-        <div className="absolute top-0.5 w-3 h-3 rounded-full transition-transform" style={{ background: "white", transform: checked ? "translateX(17px)" : "translateX(2px)" }} />
+      <span className="text-[12px] text-foreground">{label}</span>
+      <div className={`relative flex-shrink-0 w-8 h-4 rounded-full transition-colors ${checked ? "toggle-track--on" : "toggle-track--off"}`} onClick={() => onChange(!checked)}>
+        <div className="toggle-thumb absolute top-0.5 w-3 h-3 rounded-full transition-transform" style={{ transform: checked ? "translateX(17px)" : "translateX(2px)" }} />
       </div>
     </label>
   );
@@ -128,10 +118,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 function SelectInput({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: { label: string; value: string }[]; placeholder?: string }) {
   return (
     <select
-      className="w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none"
-      style={{ background: "hsl(var(--surface-overlay))", borderColor: "hsl(var(--border))", color: value ? "hsl(var(--foreground))" : "hsl(var(--foreground-subtle))" }}
-      onFocus={e => { e.currentTarget.style.borderColor = "hsl(var(--primary))"; }}
-      onBlur={e => { e.currentTarget.style.borderColor = "hsl(var(--border))"; }}
+      className={`studio-select w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none ${!value ? "studio-select--empty" : ""}`}
       value={value} onChange={e => onChange(e.target.value)}
     >
       {placeholder && <option value="">{placeholder}</option>}
@@ -166,27 +153,24 @@ function IoParamTable({ params, label, accent, onChange }: {
         </button>
       </div>
       {params.length === 0 ? (
-        <div className="text-[11px] text-center py-3 rounded-lg border border-dashed" style={{ color: "hsl(var(--foreground-subtle))", borderColor: "hsl(var(--border))" }}>
+        <div className="io-empty text-[11px] text-center py-3 rounded-lg border border-dashed">
           No {label.toLowerCase()} — click Add
         </div>
       ) : (
         <div className="space-y-1.5">
           {params.map((p, i) => (
-            <div key={i} className="flex items-center gap-1.5 rounded-lg p-2"
-              style={{ background: "hsl(var(--surface-overlay))", border: "1px solid hsl(var(--border))" }}>
+            <div key={i} className="io-param-row flex items-center gap-1.5 rounded-lg p-2">
               <input
-                className="flex-1 min-w-0 px-2 py-1 rounded text-[11px] font-mono focus:outline-none border"
-                style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", color: "hsl(var(--foreground))" }}
+                className="io-param-input flex-1 min-w-0 px-2 py-1 rounded text-[11px] font-mono focus:outline-none border"
                 value={p.name} onChange={e => update(i, "name", e.target.value)} placeholder="name"
               />
-              <ArrowRight size={9} style={{ color: "hsl(var(--foreground-subtle))", flexShrink: 0 }} />
+              <ArrowRight size={9} className="text-foreground-subtle flex-shrink-0" />
               <input
-                className="flex-1 min-w-0 px-2 py-1 rounded text-[11px] font-mono focus:outline-none border"
-                style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", color: "hsl(var(--foreground))" }}
+                className="io-param-input flex-1 min-w-0 px-2 py-1 rounded text-[11px] font-mono focus:outline-none border"
                 value={p.value} onChange={e => update(i, "value", e.target.value)} placeholder="${expression}"
               />
-              <button className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/20"
-                style={{ color: "hsl(var(--destructive))" }} onClick={() => remove(i)}>
+              <button className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/20 text-destructive"
+                onClick={() => remove(i)}>
                 <Trash2 size={9} />
               </button>
             </div>
@@ -242,7 +226,6 @@ function StepPropertiesPanel({
   basePath: string;
   onPatch: (p: JsonPatch) => void;
 }) {
-  // Local draft of the whole step
   const [draft, setDraft] = useState<Record<string, unknown>>(step as unknown as Record<string, unknown>);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(["service-task", "user-task", "call-activity", "foreach", "intermediate-event", "async", "gateway"]));
   const [inputParams, setInputParams] = useState<IoParam[]>(step.tech?.inputParameters ?? []);
@@ -269,8 +252,6 @@ function StepPropertiesPanel({
 
   const handleSave = () => {
     const patch: JsonPatch = [];
-
-    // Build full updated step from draft
     const updated = {
       ...draft,
       tech: {
@@ -279,8 +260,6 @@ function StepPropertiesPanel({
         outputParameters: outputParams,
       },
     };
-
-    // Replace the whole step via patch (simplest correct approach)
     patch.push({ op: "replace", path: basePath, value: updated });
     onPatch(patch);
     setDirty(false);
@@ -289,17 +268,14 @@ function StepPropertiesPanel({
   const cfg = STEP_TYPE_CONFIG[step.type];
   const bpmnType = step.source?.bpmnElementType ?? "";
 
-  // Determine which groups are applicable
   const applicableGroups = CAMUNDA_PROP_GROUPS.filter(group => {
     if (!group.appliesTo.includes(step.type) && group.appliesTo.length > 0) return false;
     if (group.appliesIfBpmnType?.length && !group.appliesIfBpmnType.some(t => bpmnType.includes(t))) {
-      // Still show it if bpmnType is unknown (manual step), just not if known and doesn't match
       if (bpmnType) return false;
     }
     return true;
   });
 
-  // Deduplicate async group (decision has its own)
   const groups = step.type === "decision"
     ? applicableGroups.filter(g => g.id !== "async" && g.id !== "job")
     : applicableGroups.filter(g => g.id !== "gateway");
@@ -307,29 +283,25 @@ function StepPropertiesPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Type badge + BPMN id */}
-      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
+      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b border-border">
         <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
           style={{ background: `color-mix(in srgb, ${cfg.colorVar} 15%, transparent)`, color: cfg.colorVar }}>
           {cfg.label}
         </div>
         {bpmnType && (
-          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded"
-            style={{ background: "hsl(var(--surface-raised))", color: "hsl(var(--foreground-subtle))" }}>
+          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-surface-raised text-foreground-subtle">
             {bpmnType}
           </span>
         )}
         {step.source?.bpmnElementId && (
-          <span className="font-mono text-[10px] opacity-60 truncate max-w-full"
-            style={{ color: "hsl(var(--foreground-subtle))" }} title={step.source.bpmnElementId}>
+          <span className="font-mono text-[10px] opacity-60 truncate max-w-full text-foreground-subtle" title={step.source.bpmnElementId}>
             #{step.source.bpmnElementId}
           </span>
         )}
       </div>
 
-      {/* Description */}
       {step.description && (
-        <div className="mx-4 my-3 text-[11px] italic px-3 py-2 rounded-lg"
-          style={{ background: "hsl(var(--surface-overlay))", color: "hsl(var(--foreground-muted))", border: "1px solid hsl(var(--border))" }}>
+        <div className="desc-box mx-4 my-3 text-[11px] italic px-3 py-2 rounded-lg">
           {step.description}
         </div>
       )}
@@ -372,19 +344,18 @@ function StepPropertiesPanel({
         );
       })}
 
-      {/* Decision branches (read-only view, always shown for decision) */}
+      {/* Decision branches */}
       {step.type === "decision" && step.branches.length > 0 && (
         <div>
           <SectionHeader title="Branches" open={openGroups.has("branches")} onToggle={() => toggleGroup("branches")} />
           {openGroups.has("branches") && (
             <div className="px-4 py-3 space-y-2">
               {step.branches.map(branch => (
-                <div key={branch.id} className="rounded-lg border p-3 space-y-1.5"
-                  style={{ borderColor: "hsl(var(--border))", background: "hsl(var(--surface-overlay))" }}>
-                  <div className="text-[11px] font-semibold" style={{ color: "hsl(var(--foreground))" }}>{branch.label}</div>
-                  <div className="font-mono text-[10px] break-all" style={{ color: "hsl(var(--foreground-muted))" }}>{branch.condition}</div>
+                <div key={branch.id} className="branch-card rounded-lg border p-3 space-y-1.5">
+                  <div className="text-[11px] font-semibold text-foreground">{branch.label}</div>
+                  <div className="font-mono text-[10px] break-all text-foreground-muted">{branch.condition}</div>
                   {branch.targetStepId && (
-                    <div className="text-[10px]" style={{ color: "hsl(var(--foreground-subtle))" }}>→ {branch.targetStepId}</div>
+                    <div className="text-[10px] text-foreground-subtle">→ {branch.targetStepId}</div>
                   )}
                 </div>
               ))}
@@ -400,31 +371,29 @@ function StepPropertiesPanel({
           {openGroups.has("ca-mappings") && (
             <div className="px-4 py-3 space-y-3">
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "hsl(213 80% 50%)" }}>In Mappings</div>
+                <div className="mapping-label--in text-[10px] font-bold uppercase tracking-widest mb-2">In Mappings</div>
                 {(step.inMappings ?? []).map((m, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-[11px] font-mono py-1"
-                    style={{ color: "hsl(var(--foreground-muted))", borderBottom: "1px solid hsl(var(--border))" }}>
-                    <span style={{ color: "hsl(var(--foreground))" }}>{m.source}</span>
-                    <ArrowRight size={9} style={{ color: "hsl(var(--foreground-subtle))" }} />
+                  <div key={i} className="mapping-row flex items-center gap-1.5 text-[11px] font-mono py-1">
+                    <span className="text-foreground">{m.source}</span>
+                    <ArrowRight size={9} className="text-foreground-subtle" />
                     <span>{m.target}</span>
                   </div>
                 ))}
                 {(!step.inMappings || step.inMappings.length === 0) && (
-                  <div className="text-[11px]" style={{ color: "hsl(var(--foreground-subtle))" }}>No in mappings</div>
+                  <div className="text-[11px] text-foreground-subtle">No in mappings</div>
                 )}
               </div>
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "hsl(134 58% 38%)" }}>Out Mappings</div>
+                <div className="mapping-label--out text-[10px] font-bold uppercase tracking-widest mb-2">Out Mappings</div>
                 {(step.outMappings ?? []).map((m, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-[11px] font-mono py-1"
-                    style={{ color: "hsl(var(--foreground-muted))", borderBottom: "1px solid hsl(var(--border))" }}>
-                    <span style={{ color: "hsl(var(--foreground))" }}>{m.source}</span>
-                    <ArrowRight size={9} style={{ color: "hsl(var(--foreground-subtle))" }} />
+                  <div key={i} className="mapping-row flex items-center gap-1.5 text-[11px] font-mono py-1">
+                    <span className="text-foreground">{m.source}</span>
+                    <ArrowRight size={9} className="text-foreground-subtle" />
                     <span>{m.target}</span>
                   </div>
                 ))}
                 {(!step.outMappings || step.outMappings.length === 0) && (
-                  <div className="text-[11px]" style={{ color: "hsl(var(--foreground-subtle))" }}>No out mappings</div>
+                  <div className="text-[11px] text-foreground-subtle">No out mappings</div>
                 )}
               </div>
             </div>
@@ -432,7 +401,7 @@ function StepPropertiesPanel({
         </div>
       )}
 
-      {/* IO Parameters – always shown, editable */}
+      {/* IO Parameters */}
       <div>
         <SectionHeader title="Input / Output Parameters" open={openGroups.has("io")} onToggle={() => toggleGroup("io")} />
         {openGroups.has("io") && (
@@ -454,14 +423,9 @@ function StepPropertiesPanel({
       </div>
 
       {/* Save button */}
-      <div className="p-4 border-t mt-auto" style={{ borderColor: "hsl(var(--border))" }}>
+      <div className="p-4 border-t border-border mt-auto">
         <button
-          className="w-full py-2 rounded-md text-sm font-semibold transition-all"
-          style={{
-            background: dirty ? "hsl(var(--primary))" : "hsl(var(--surface-raised))",
-            color: dirty ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))",
-            cursor: dirty ? "pointer" : "default",
-          }}
+          className={`w-full py-2 rounded-md text-sm font-semibold transition-all ${dirty ? "save-btn--active" : "save-btn--inactive"}`}
           onClick={handleSave}
         >
           {dirty ? "Save Changes" : "No Changes"}
@@ -485,18 +449,17 @@ function StagePropertiesPanel({ stage, basePath, stageIndex, onPatch }: { stage:
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg p-3 text-center" style={{ background: "hsl(var(--surface-overlay))", border: "1px solid hsl(var(--border))" }}>
-          <div className="text-lg font-bold" style={{ color: "hsl(var(--foreground))" }}>{stage.groups.length}</div>
-          <div className="text-[10px]" style={{ color: "hsl(var(--foreground-muted))" }}>Groups</div>
+        <div className="stat-card rounded-lg p-3 text-center">
+          <div className="text-lg font-bold text-foreground">{stage.groups.length}</div>
+          <div className="text-[10px] text-foreground-muted">Groups</div>
         </div>
-        <div className="rounded-lg p-3 text-center" style={{ background: "hsl(var(--surface-overlay))", border: "1px solid hsl(var(--border))" }}>
-          <div className="text-lg font-bold" style={{ color: "hsl(var(--foreground))" }}>{totalSteps}</div>
-          <div className="text-[10px]" style={{ color: "hsl(var(--foreground-muted))" }}>Steps</div>
+        <div className="stat-card rounded-lg p-3 text-center">
+          <div className="text-lg font-bold text-foreground">{totalSteps}</div>
+          <div className="text-[10px] text-foreground-muted">Steps</div>
         </div>
       </div>
       <button
-        className="w-full py-2 rounded-md text-sm font-semibold"
-        style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+        className="save-btn--active w-full py-2 rounded-md text-sm font-semibold"
         onClick={() => { if (name !== stage.name) onPatch([{ op: "replace", path: `${basePath}/name`, value: name }]); }}
       >
         Save Stage
@@ -524,13 +487,12 @@ function GroupPropertiesPanel({ group, basePath, onPatch }: { group: Group; base
       <Field label="Group Name">
         <TextInput value={name} onChange={setName} />
       </Field>
-      <div className="rounded-lg p-3 text-center" style={{ background: "hsl(var(--surface-overlay))", border: "1px solid hsl(var(--border))" }}>
-        <div className="text-lg font-bold" style={{ color: "hsl(var(--foreground))" }}>{group.steps.length}</div>
-        <div className="text-[10px]" style={{ color: "hsl(var(--foreground-muted))" }}>Steps</div>
+      <div className="stat-card rounded-lg p-3 text-center">
+        <div className="text-lg font-bold text-foreground">{group.steps.length}</div>
+        <div className="text-[10px] text-foreground-muted">Steps</div>
       </div>
       <button
-        className="w-full py-2 rounded-md text-sm font-semibold"
-        style={{ background: "hsl(var(--primary))", color: "hsl(var(--primary-foreground))" }}
+        className="save-btn--active w-full py-2 rounded-md text-sm font-semibold"
         onClick={() => { if (name !== group.name) onPatch([{ op: "replace", path: `${basePath}/name`, value: name }]); }}
       >
         Save Group
@@ -572,21 +534,17 @@ function TriggerPropertiesPanel({ trigger, onPatch }: { trigger: Trigger; onPatc
 
   return (
     <div className="flex flex-col h-full">
-      {/* Type badge */}
-      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
-        <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
-          style={{ background: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}>
+      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b border-border">
+        <div className="type-badge--primary px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">
           Start Event
         </div>
         {(trigger.source?.bpmnElementId) && (
-          <span className="font-mono text-[10px] opacity-60 truncate max-w-full"
-            style={{ color: "hsl(var(--foreground-subtle))" }} title={trigger.source.bpmnElementId}>
+          <span className="font-mono text-[10px] opacity-60 truncate max-w-full text-foreground-subtle" title={trigger.source.bpmnElementId}>
             #{trigger.source.bpmnElementId}
           </span>
         )}
       </div>
 
-      {/* Schema-driven groups */}
       {TRIGGER_PROP_GROUPS.map(group => {
         const isOpen = openGroups.has(group.id);
         return (
@@ -595,7 +553,6 @@ function TriggerPropertiesPanel({ trigger, onPatch }: { trigger: Trigger; onPatc
             {isOpen && (
               <div className="px-4 py-3 space-y-3">
                 {group.fields.map(field => {
-                  // Conditionally show fields based on trigger type
                   if (field.key === "expression" && triggerType !== "timer") return null;
                   if (field.key === "messageRef" && triggerType !== "message") return null;
 
@@ -618,15 +575,9 @@ function TriggerPropertiesPanel({ trigger, onPatch }: { trigger: Trigger; onPatc
         );
       })}
 
-      {/* Save button */}
-      <div className="p-4 border-t mt-auto" style={{ borderColor: "hsl(var(--border))" }}>
+      <div className="p-4 border-t border-border mt-auto">
         <button
-          className="w-full py-2 rounded-md text-sm font-semibold transition-all"
-          style={{
-            background: dirty ? "hsl(var(--primary))" : "hsl(var(--surface-raised))",
-            color: dirty ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))",
-            cursor: dirty ? "pointer" : "default",
-          }}
+          className={`w-full py-2 rounded-md text-sm font-semibold transition-all ${dirty ? "save-btn--active" : "save-btn--inactive"}`}
           onClick={handleSave}
         >
           {dirty ? "Save Changes" : "No Changes"}
@@ -661,13 +612,12 @@ function EndEventPropertiesPanel({ endEvent, onPatch }: { endEvent: EndEvent; on
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
-        <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
-          style={{ background: "hsl(0 68% 50% / 0.15)", color: "hsl(0 68% 50%)" }}>
+      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b border-border">
+        <div className="type-badge--end px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">
           End Event
         </div>
         {endEvent.source?.bpmnElementId && (
-          <span className="font-mono text-[10px] opacity-60" style={{ color: "hsl(var(--foreground-subtle))" }}>
+          <span className="font-mono text-[10px] opacity-60 text-foreground-subtle">
             #{endEvent.source.bpmnElementId}
           </span>
         )}
@@ -697,15 +647,14 @@ function EndEventPropertiesPanel({ endEvent, onPatch }: { endEvent: EndEvent; on
           </Field>
         )}
       </div>
-      <div className="px-4 py-3 space-y-3 border-t" style={{ borderColor: "hsl(var(--border))" }}>
+      <div className="px-4 py-3 space-y-3 border-t border-border">
         <Toggle checked={typeof deepGet(draft, "tech.asyncBefore") === "boolean" ? deepGet(draft, "tech.asyncBefore") as boolean : false}
           onChange={v => handleChange("tech.asyncBefore", v)} label="Async Before" />
         <Toggle checked={typeof deepGet(draft, "tech.asyncAfter") === "boolean" ? deepGet(draft, "tech.asyncAfter") as boolean : false}
           onChange={v => handleChange("tech.asyncAfter", v)} label="Async After" />
       </div>
-      <div className="p-4 border-t mt-auto" style={{ borderColor: "hsl(var(--border))" }}>
-        <button className="w-full py-2 rounded-md text-sm font-semibold transition-all"
-          style={{ background: dirty ? "hsl(var(--primary))" : "hsl(var(--surface-raised))", color: dirty ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))", cursor: dirty ? "pointer" : "default" }}
+      <div className="p-4 border-t border-border mt-auto">
+        <button className={`w-full py-2 rounded-md text-sm font-semibold transition-all ${dirty ? "save-btn--active" : "save-btn--inactive"}`}
           onClick={handleSave}>
           {dirty ? "Save Changes" : "No Changes"}
         </button>
@@ -755,12 +704,11 @@ function ProcessPropertiesPanel({ caseIr, onPatch }: { caseIr: CaseIR; onPatch: 
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
-        <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
-          style={{ background: "hsl(var(--primary) / 0.15)", color: "hsl(var(--primary))" }}>
+      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b border-border">
+        <div className="type-badge--primary px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">
           Process
         </div>
-        <span className="font-mono text-[10px] opacity-60" style={{ color: "hsl(var(--foreground-subtle))" }}>
+        <span className="font-mono text-[10px] opacity-60 text-foreground-subtle">
           {caseIr.id}
         </span>
       </div>
@@ -773,7 +721,7 @@ function ProcessPropertiesPanel({ caseIr, onPatch }: { caseIr: CaseIR; onPatch: 
         </Field>
         <Toggle checked={draft.isExecutable === true} onChange={v => handleChange("isExecutable", v)} label="Is Executable" />
       </div>
-      <div className="px-4 py-3 space-y-3 border-t" style={{ borderColor: "hsl(var(--border))" }}>
+      <div className="px-4 py-3 space-y-3 border-t border-border">
         <Field label="Version Tag" hint="Camunda version tag for deployment">
           <TextInput value={String(draft.versionTag ?? "")} onChange={v => handleChange("versionTag", v)} placeholder="release-1.0" mono />
         </Field>
@@ -793,9 +741,8 @@ function ProcessPropertiesPanel({ caseIr, onPatch }: { caseIr: CaseIR; onPatch: 
           <ExpressionInput value={String(draft.taskPriority ?? "")} onChange={v => handleChange("taskPriority", v)} placeholder="${priority}" />
         </Field>
       </div>
-      <div className="p-4 border-t mt-auto" style={{ borderColor: "hsl(var(--border))" }}>
-        <button className="w-full py-2 rounded-md text-sm font-semibold transition-all"
-          style={{ background: dirty ? "hsl(var(--primary))" : "hsl(var(--surface-raised))", color: dirty ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))", cursor: dirty ? "pointer" : "default" }}
+      <div className="p-4 border-t border-border mt-auto">
+        <button className={`w-full py-2 rounded-md text-sm font-semibold transition-all ${dirty ? "save-btn--active" : "save-btn--inactive"}`}
           onClick={handleSave}>
           {dirty ? "Save Changes" : "No Changes"}
         </button>
@@ -829,9 +776,8 @@ function BoundaryEventPropertiesPanel({ boundaryEvent, basePath, onPatch }: { bo
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
-        <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
-          style={{ background: "hsl(32 86% 48% / 0.15)", color: "hsl(32 86% 48%)" }}>
+      <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b border-border">
+        <div className="type-badge--boundary px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">
           Boundary · {evtType}
         </div>
       </div>
@@ -858,15 +804,14 @@ function BoundaryEventPropertiesPanel({ boundaryEvent, basePath, onPatch }: { bo
           </Field>
         )}
       </div>
-      <div className="px-4 py-3 space-y-3 border-t" style={{ borderColor: "hsl(var(--border))" }}>
+      <div className="px-4 py-3 space-y-3 border-t border-border">
         <Toggle checked={typeof deepGet(draft, "tech.asyncBefore") === "boolean" ? deepGet(draft, "tech.asyncBefore") as boolean : false}
           onChange={v => handleChange("tech.asyncBefore", v)} label="Async Before" />
         <Toggle checked={typeof deepGet(draft, "tech.asyncAfter") === "boolean" ? deepGet(draft, "tech.asyncAfter") as boolean : false}
           onChange={v => handleChange("tech.asyncAfter", v)} label="Async After" />
       </div>
-      <div className="p-4 border-t mt-auto" style={{ borderColor: "hsl(var(--border))" }}>
-        <button className="w-full py-2 rounded-md text-sm font-semibold transition-all"
-          style={{ background: dirty ? "hsl(var(--primary))" : "hsl(var(--surface-raised))", color: dirty ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground-muted))", cursor: dirty ? "pointer" : "default" }}
+      <div className="p-4 border-t border-border mt-auto">
+        <button className={`w-full py-2 rounded-md text-sm font-semibold transition-all ${dirty ? "save-btn--active" : "save-btn--inactive"}`}
           onClick={handleSave}>
           {dirty ? "Save Changes" : "No Changes"}
         </button>
@@ -881,14 +826,10 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch, c
   caseIr: CaseIR; selection: SelectionTarget; onClose: () => void; onPatch: (p: JsonPatch) => void;
   collapsed: boolean; onToggleCollapse: () => void;
 }) {
-  // Collapsed state: show a thin vertical bar with expand button
   if (collapsed) {
     return (
-      <div className="h-full flex flex-col items-center border-l py-3 px-1" style={{ background: "hsl(var(--surface))", borderColor: "hsl(var(--border))", width: 36, minWidth: 36 }}>
-        <button className="w-7 h-7 rounded flex items-center justify-center transition-colors"
-          style={{ color: "hsl(var(--foreground-muted))" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+      <div className="props-collapsed h-full flex flex-col items-center border-l py-3 px-1">
+        <button className="hover-btn w-7 h-7 rounded flex items-center justify-center transition-colors"
           onClick={onToggleCollapse}
           title="Expand Properties Panel"
         >
@@ -898,19 +839,8 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch, c
     );
   }
 
-  const panelStyle: React.CSSProperties = {
-    background: "hsl(var(--surface))",
-    borderColor: "hsl(var(--border))",
-    width: 310,
-    minWidth: 310,
-  };
-
-  // Helper to render the collapse button in panel headers
   const CollapseBtn = () => (
-    <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
-      style={{ color: "hsl(var(--foreground-muted))" }}
-      onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+    <button className="hover-btn flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
       onClick={onToggleCollapse}
       title="Collapse Properties Panel"
     >
@@ -920,16 +850,16 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch, c
 
   if (!selection) {
     return (
-      <div className="h-full flex flex-col border-l" style={panelStyle}>
-        <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "hsl(var(--border))" }}>
-          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Properties</span>
+      <div className="props-panel h-full flex flex-col border-l">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-foreground-muted">Properties</span>
           <CollapseBtn />
         </div>
         <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "hsl(var(--surface-raised))", border: "1px solid hsl(var(--border))" }}>
-            <Settings2 size={18} style={{ color: "hsl(var(--foreground-subtle))" }} />
+          <div className="props-empty-icon w-10 h-10 rounded-xl flex items-center justify-center">
+            <Settings2 size={18} className="text-foreground-subtle" />
           </div>
-          <p className="text-[12px] leading-relaxed" style={{ color: "hsl(var(--foreground-muted))" }}>
+          <p className="text-[12px] leading-relaxed text-foreground-muted">
             Select a trigger, stage, group, or step to view and edit its Camunda 7 properties
           </p>
         </div>
@@ -940,18 +870,15 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch, c
   // ── Trigger properties ────────────────────────────────────────────────────
   if (selection.kind === "trigger") {
     return (
-      <div className="h-full flex flex-col border-l" style={panelStyle}>
-        <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--border))" }}>
+      <div className="props-panel h-full flex flex-col border-l">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Trigger Properties</div>
-            <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>Start Event</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-foreground-muted">Trigger Properties</div>
+            <div className="text-[13px] font-semibold mt-0.5 truncate text-foreground">Start Event</div>
           </div>
           <div className="flex items-center gap-1">
             <CollapseBtn />
-            <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
-              style={{ color: "hsl(var(--foreground-muted))" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            <button className="hover-btn flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
               onClick={onClose}>
               <X size={14} />
             </button>
@@ -967,18 +894,15 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch, c
   // ── End Event properties ──────────────────────────────────────────────────
   if (selection.kind === "endEvent") {
     return (
-      <div className="h-full flex flex-col border-l" style={panelStyle}>
-        <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--border))" }}>
+      <div className="props-panel h-full flex flex-col border-l">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>End Event Properties</div>
-            <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>{caseIr.endEvent.name ?? "End Event"}</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-foreground-muted">End Event Properties</div>
+            <div className="text-[13px] font-semibold mt-0.5 truncate text-foreground">{caseIr.endEvent.name ?? "End Event"}</div>
           </div>
           <div className="flex items-center gap-1">
             <CollapseBtn />
-            <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
-              style={{ color: "hsl(var(--foreground-muted))" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            <button className="hover-btn flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
               onClick={onClose}><X size={14} /></button>
           </div>
         </div>
@@ -992,18 +916,15 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch, c
   // ── Process properties ────────────────────────────────────────────────────
   if (selection.kind === "process") {
     return (
-      <div className="h-full flex flex-col border-l" style={panelStyle}>
-        <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--border))" }}>
+      <div className="props-panel h-full flex flex-col border-l">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Process Properties</div>
-            <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>{caseIr.name}</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-foreground-muted">Process Properties</div>
+            <div className="text-[13px] font-semibold mt-0.5 truncate text-foreground">{caseIr.name}</div>
           </div>
           <div className="flex items-center gap-1">
             <CollapseBtn />
-            <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
-              style={{ color: "hsl(var(--foreground-muted))" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            <button className="hover-btn flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
               onClick={onClose}><X size={14} /></button>
           </div>
         </div>
@@ -1028,18 +949,15 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch, c
     if (!be) return null;
     const bePath = `${loc.arrayPath}/${loc.index}/groups/${gi2}/steps/${sti2}/boundaryEvents/${step2.boundaryEvents.indexOf(be)}`;
     return (
-      <div className="h-full flex flex-col border-l" style={panelStyle}>
-        <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--border))" }}>
+      <div className="props-panel h-full flex flex-col border-l">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>Boundary Event</div>
-            <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>{be.name}</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-foreground-muted">Boundary Event</div>
+            <div className="text-[13px] font-semibold mt-0.5 truncate text-foreground">{be.name}</div>
           </div>
           <div className="flex items-center gap-1">
             <CollapseBtn />
-            <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
-              style={{ color: "hsl(var(--foreground-muted))" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            <button className="hover-btn flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
               onClick={onClose}><X size={14} /></button>
           </div>
         </div>
@@ -1081,25 +999,21 @@ export default function PropertiesPanel({ caseIr, selection, onClose, onPatch, c
   }
 
   return (
-    <div className="h-full flex flex-col border-l" style={panelStyle}>
-      {/* Panel header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--border))" }}>
+    <div className="props-panel h-full flex flex-col border-l">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
         <div className="min-w-0">
-          <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "hsl(var(--foreground-muted))" }}>{title} Properties</div>
-          <div className="text-[13px] font-semibold mt-0.5 truncate" style={{ color: "hsl(var(--foreground))" }}>{subtitle}</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-foreground-muted">{title} Properties</div>
+          <div className="text-[13px] font-semibold mt-0.5 truncate text-foreground">{subtitle}</div>
         </div>
-        <button className="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
-          style={{ color: "hsl(var(--foreground-muted))" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "hsl(var(--surface-raised))"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-          onClick={onClose}>
-          <X size={14} />
-        </button>
-        <CollapseBtn />
+        <div className="flex items-center gap-1">
+          <CollapseBtn />
+          <button className="hover-btn flex-shrink-0 w-7 h-7 rounded flex items-center justify-center transition-colors"
+            onClick={onClose}><X size={14} /></button>
+        </div>
       </div>
-
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto">{content}</div>
+      <div className="flex-1 overflow-y-auto">
+        {content}
+      </div>
     </div>
   );
 }

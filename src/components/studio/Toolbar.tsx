@@ -8,6 +8,7 @@ import {
 import type { CaseIR } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { exportBpmn } from "@/lib/bpmnExporter";
+import "./studio.css";
 
 interface ToolbarProps {
   caseIr: CaseIR | null;
@@ -77,20 +78,11 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
   };
 
   return (
-    <div
-      className="h-12 flex items-center gap-3 px-4 border-b flex-shrink-0"
-      style={{
-        background: "hsl(var(--surface))",
-        borderColor: "hsl(var(--border))",
-      }}
-    >
+    <div className="toolbar h-12 flex items-center gap-3 px-4 border-b flex-shrink-0">
       {/* Logo / Brand */}
       <div className="flex items-center gap-2.5 mr-2">
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ background: "hsl(var(--primary))" }}
-        >
-          <div className="w-3 h-3 rounded-sm" style={{ background: "hsl(var(--primary-foreground))" }} />
+        <div className="toolbar-brand-icon w-7 h-7 rounded-lg flex items-center justify-center">
+          <div className="toolbar-brand-icon-inner w-3 h-3 rounded-sm" />
         </div>
         <div>
           <span className="text-[13px] font-bold text-foreground tracking-tight">WorkflowStudio</span>
@@ -98,16 +90,13 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
         </div>
       </div>
 
-      <div className="h-5 w-px" style={{ background: "hsl(var(--border))" }} />
+      <div className="toolbar-separator h-5 w-px" />
 
       {/* Case name */}
       {caseIr && (
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-foreground">{caseIr.name}</span>
-          <span
-            className="font-mono text-[10px] px-1.5 py-0.5 rounded"
-            style={{ background: "hsl(var(--surface-overlay))", color: "hsl(var(--foreground-muted))" }}
-          >
+          <span className="toolbar-badge font-mono text-[10px] px-1.5 py-0.5 rounded">
             {caseIr.stages.length} stages
           </span>
         </div>
@@ -117,21 +106,11 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
 
       {/* Notification */}
       {notification && (
-        <div
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium animate-fade-in"
-          style={{
-            background: notification.type === "error"
-              ? "hsl(var(--destructive) / 0.15)"
-              : notification.type === "warn"
-              ? "hsl(var(--warning) / 0.15)"
-              : "hsl(var(--success) / 0.15)",
-            color: notification.type === "error"
-              ? "hsl(var(--destructive))"
-              : notification.type === "warn"
-              ? "hsl(var(--warning))"
-              : "hsl(var(--success))",
-          }}
-        >
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium animate-fade-in ${
+          notification.type === "error" ? "toolbar-notification--error" :
+          notification.type === "warn" ? "toolbar-notification--warn" :
+          "toolbar-notification--success"
+        }`}>
           {notification.type === "error" ? <AlertTriangle size={12} /> :
            notification.type === "warn" ? <AlertTriangle size={12} /> :
            <CheckCircle size={12} />}
@@ -152,10 +131,7 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
       />
 
       <button
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
-        style={{ background: "hsl(var(--surface-raised))", color: "hsl(var(--foreground-muted))" }}
-        onMouseEnter={e => { e.currentTarget.style.color = "hsl(var(--primary))"; e.currentTarget.style.borderColor = "hsl(var(--primary))"; }}
-        onMouseLeave={e => { e.currentTarget.style.color = "hsl(var(--foreground-muted))"; }}
+        className="toolbar-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
         onClick={() => fileRef.current?.click()}
         disabled={importing}
       >
@@ -166,10 +142,7 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
       {caseIr && (
         <>
           <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
-            style={{ background: "hsl(var(--surface-raised))", color: "hsl(var(--foreground-muted))" }}
-            onMouseEnter={e => { e.currentTarget.style.color = "hsl(var(--foreground))"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "hsl(var(--foreground-muted))"; }}
+            className="toolbar-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
             onClick={handleExportJson}
           >
             <FileJson size={13} />
@@ -177,13 +150,7 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
           </button>
 
           <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
-            style={{
-              background: "hsl(var(--primary))",
-              color: "hsl(var(--primary-foreground))",
-            }}
-            onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; }}
-            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+            className="toolbar-btn--primary flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
             onClick={handleExportBpmn}
           >
             <Code size={13} />

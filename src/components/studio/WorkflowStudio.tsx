@@ -11,6 +11,7 @@ import LifecycleDiagram from "./LifecycleDiagram";
 import PropertiesPanel from "./PropertiesPanel";
 import AiChatPanel from "./AiChatPanel";
 import { Upload, FileText } from "lucide-react";
+import "./studio.css";
 
 function uid() { return `el_${Math.random().toString(36).slice(2, 8)}`; }
 
@@ -32,21 +33,19 @@ function EmptyState({ onImport }: { onImport: (ir: CaseIR, w: string[]) => void 
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-8" style={{ background: "hsl(var(--canvas-bg))" }}>
+    <div className="flex-1 flex items-center justify-center p-8 bg-canvas">
       <div className="w-full max-w-md text-center space-y-6">
-        <div className="w-20 h-20 rounded-2xl mx-auto flex items-center justify-center"
-          style={{ background: "hsl(var(--primary-dim))", border: "2px solid hsl(var(--primary) / 0.2)" }}>
-          <FileText size={36} style={{ color: "hsl(var(--primary))" }} />
+        <div className="empty-state-icon w-20 h-20 rounded-2xl mx-auto flex items-center justify-center">
+          <FileText size={36} className="text-primary" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: "hsl(var(--foreground))" }}>Upload a BPMN File</h2>
-          <p className="text-sm" style={{ color: "hsl(var(--foreground-muted))" }}>
+          <h2 className="text-2xl font-bold mb-2 text-foreground">Upload a BPMN File</h2>
+          <p className="text-sm text-foreground-muted">
             Import a Camunda 7 / BPMN 2.0 file to visualise and edit your workflow with AI
           </p>
         </div>
         <div
-          className="rounded-2xl border-2 border-dashed p-10 transition-all cursor-pointer"
-          style={{ borderColor: dragging ? "hsl(var(--primary))" : "hsl(var(--border))", background: dragging ? "hsl(var(--primary-dim))" : "hsl(var(--surface))" }}
+          className={`rounded-2xl border-2 border-dashed p-10 transition-all cursor-pointer ${dragging ? "empty-dropzone--dragging" : "empty-dropzone"}`}
           onClick={() => fileRef.current?.click()}
           onDragOver={e => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
@@ -54,29 +53,28 @@ function EmptyState({ onImport }: { onImport: (ir: CaseIR, w: string[]) => void 
         >
           {loading ? (
             <div className="flex flex-col items-center gap-3">
-              <div className="w-10 h-10 border-2 rounded-full animate-spin" style={{ borderColor: "hsl(var(--border))", borderTopColor: "hsl(var(--primary))" }} />
-              <p className="text-sm" style={{ color: "hsl(var(--foreground-muted))" }}>Parsing BPMN…</p>
+              <div className="empty-spinner w-10 h-10 border-2 rounded-full animate-spin" />
+              <p className="text-sm text-foreground-muted">Parsing BPMN…</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "hsl(var(--primary-dim))" }}>
-                <Upload size={22} style={{ color: "hsl(var(--primary))" }} />
+              <div className="empty-upload-icon w-12 h-12 rounded-xl flex items-center justify-center">
+                <Upload size={22} className="text-primary" />
               </div>
               <div>
-                <p className="text-sm font-medium" style={{ color: "hsl(var(--foreground))" }}>Drop your .bpmn file here</p>
-                <p className="text-xs mt-1" style={{ color: "hsl(var(--foreground-muted))" }}>or click to browse</p>
+                <p className="text-sm font-medium text-foreground">Drop your .bpmn file here</p>
+                <p className="text-xs mt-1 text-foreground-muted">or click to browse</p>
               </div>
             </div>
           )}
         </div>
         <input ref={fileRef} type="file" accept=".bpmn,.xml" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f); e.target.value = ""; }} />
         {error && (
-          <div className="rounded-lg px-4 py-3 text-sm text-left"
-            style={{ background: "hsl(var(--destructive) / 0.1)", color: "hsl(var(--destructive))", border: "1px solid hsl(var(--destructive) / 0.2)" }}>
+          <div className="empty-error rounded-lg px-4 py-3 text-sm text-left">
             {error}
           </div>
         )}
-        <p className="text-xs" style={{ color: "hsl(var(--foreground-subtle))" }}>Supports BPMN 2.0 · Camunda 7 · subProcess-based stage layout</p>
+        <p className="text-xs text-foreground-subtle">Supports BPMN 2.0 · Camunda 7 · subProcess-based stage layout</p>
       </div>
     </div>
   );
@@ -89,7 +87,6 @@ export default function WorkflowStudio() {
   const [propsCollapsed, setPropsCollapsed] = useState(true);
   
   const handleImportBpmn = (ir: CaseIR, w: string[]) => {
-    // Ensure alternativePaths exists
     if (!ir.alternativePaths) ir.alternativePaths = [];
     setCaseIr(ir); setWarnings(w); setSelection(null);
   };
@@ -98,7 +95,6 @@ export default function WorkflowStudio() {
     if (!caseIr) return;
     try {
       const updated = applyCaseIRPatch(caseIr, patch);
-      // Ensure alternativePaths persists
       if (!updated.alternativePaths) updated.alternativePaths = [];
       updated.metadata = {
         ...updated.metadata,
@@ -226,7 +222,7 @@ export default function WorkflowStudio() {
     handlePatch([{ op: "move", path: `/stages/${si}/groups/${ti}`, from: `/stages/${si}/groups/${gi}` }]);
   }, [caseIr, handlePatch]);
 
-  // ── Alt Path handlers (mirror main flow but target /alternativePaths) ───────
+  // ── Alt Path handlers ───────────────────────────────────────────────────────
   const handleAddAltStage = useCallback(() => {
     if (!caseIr) return;
     if (!caseIr.alternativePaths) {
@@ -336,7 +332,6 @@ export default function WorkflowStudio() {
 
   const handleAddBoundaryEvent = useCallback((stageId: string, groupId: string, stepId: string, eventType: BoundaryEventType) => {
     if (!caseIr) return;
-    // Search in both main stages and alternativePaths
     let basePath = "";
     let si = caseIr.stages.findIndex(s => s.id === stageId);
     if (si >= 0) {
@@ -368,12 +363,11 @@ export default function WorkflowStudio() {
   }, [caseIr, handlePatch]);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden" style={{ background: "hsl(var(--background))" }}>
+    <div className="flex flex-col h-screen overflow-hidden bg-background">
       <Toolbar caseIr={caseIr} onImportBpmn={handleImportBpmn} onLoadSample={() => {}} />
 
       {warnings.length > 0 && (
-        <div className="flex items-center gap-2 px-4 py-1.5 text-[12px] flex-shrink-0"
-          style={{ background: "hsl(var(--warning) / 0.08)", color: "hsl(var(--warning))", borderBottom: "1px solid hsl(var(--warning) / 0.2)" }}>
+        <div className="warning-banner flex items-center gap-2 px-4 py-1.5 text-[12px] flex-shrink-0">
           ⚠ {warnings[0]}
           {warnings.length > 1 && <span className="opacity-60">(+{warnings.length - 1} more)</span>}
           <button className="ml-auto opacity-60 hover:opacity-100" onClick={() => setWarnings([])}>✕</button>
