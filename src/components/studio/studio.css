@@ -941,13 +941,14 @@
 
 .app-layout {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: 100vh;
   overflow: hidden;
 }
 
-.app-layout-body {
+.app-layout-right {
   display: flex;
+  flex-direction: column;
   flex: 1;
   overflow: hidden;
 }

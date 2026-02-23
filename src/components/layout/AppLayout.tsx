@@ -7,14 +7,14 @@ import "../studio/studio.css";
 export default function AppLayout() {
   return (
     <div className="app-layout">
-      <AppHeader />
-      <div className="app-layout-body">
-        <AppSidebar />
+      <AppSidebar />
+      <div className="app-layout-right">
+        <AppHeader />
         <main className="app-layout-main">
           <Outlet />
         </main>
+        <AppFooter />
       </div>
-      <AppFooter />
     </div>
   );
 }
