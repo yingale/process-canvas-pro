@@ -1433,3 +1433,119 @@
   background: hsl(var(--foreground-subtle) / 0.15);
   color: hsl(var(--foreground-subtle));
 }
+
+/* ─── Sortable Table Headers ──────────────────────────────────────────────── */
+
+.landing-th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.landing-th-sortable:hover {
+  color: hsl(var(--primary));
+}
+
+.landing-sort-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+/* ─── Table States ────────────────────────────────────────────────────────── */
+
+.landing-table-loading,
+.landing-table-empty {
+  text-align: center;
+  padding: 24px 16px;
+  color: hsl(var(--foreground-muted));
+}
+
+/* ─── Total Badge ─────────────────────────────────────────────────────────── */
+
+.landing-total-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: hsl(var(--surface-overlay));
+  color: hsl(var(--foreground-muted));
+}
+
+/* ─── Search Go Button ────────────────────────────────────────────────────── */
+
+.landing-search-go {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border: none;
+  border-radius: 4px;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.landing-search-go:hover {
+  opacity: 0.85;
+}
+
+/* ─── Pagination ──────────────────────────────────────────────────────────── */
+
+.landing-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.landing-page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--surface));
+  color: hsl(var(--foreground-muted));
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.landing-page-btn:hover:not(:disabled) {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.landing-page-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.landing-page-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--surface));
+  color: hsl(var(--foreground-muted));
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.landing-page-num:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.landing-page-num--active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
