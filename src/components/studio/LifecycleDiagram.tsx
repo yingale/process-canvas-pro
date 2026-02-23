@@ -103,17 +103,12 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
 
   return (
     <div
-      className="group relative rounded-md cursor-pointer transition-all step-row"
-      style={{
-        background: selected ? `color-mix(in srgb, ${color} 8%, hsl(var(--surface)))` : hover ? undefined : undefined,
-        borderColor: selected ? color + "60" : undefined,
-      }}
+      className={`group relative rounded-md cursor-pointer transition-all step-row ${selected ? "step-row--selected" : ""}`}
+      style={{ "--dynamic-color": color } as React.CSSProperties}
       onClick={onSelect} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
     >
       <div className="flex items-start gap-2.5 px-2.5 py-2">
-        <div className="flex-shrink-0 rounded-sm mt-0.5"
-          style={{ width: 18, height: 18, background: meta.color, marginTop: 3 }}>
-        </div>
+        <div className="step-type-indicator" style={{ "--dynamic-color": meta.color } as React.CSSProperties} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-semibold truncate text-foreground">{step.name}</span>
@@ -170,8 +165,8 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
   return (
     <div className="mb-2">
       <div
-        className="flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer transition-all select-none"
-        style={{ background: isGroupSel || hover ? `color-mix(in srgb, ${color} 6%, hsl(var(--surface-raised)))` : "transparent" }}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer transition-all select-none group-header ${isGroupSel || hover ? "group-header--active" : ""}`}
+        style={{ "--dynamic-color": color } as React.CSSProperties}
         onClick={() => onSelectGroup(stageId, group.id)}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
@@ -179,9 +174,9 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
         <button className="flex-shrink-0 opacity-50 hover:opacity-100 text-foreground-muted" onClick={e => { e.stopPropagation(); setCollapsed(c => !c); }}>
           {collapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
         </button>
-        <Layers size={10} style={{ color, flexShrink: 0 }} />
+        <Layers size={10} className="group-icon" style={{ "--dynamic-color": color } as React.CSSProperties} />
         <span className="flex-1 text-[11px] font-semibold truncate text-foreground">{group.name}</span>
-        <span className="text-[9px] font-mono px-1 rounded" style={{ background: `${color}18`, color }}>{group.steps.length}</span>
+        <span className="text-[9px] font-mono px-1 rounded group-step-count" style={{ "--dynamic-color": color } as React.CSSProperties}>{group.steps.length}</span>
         {hover && (
           <button className="hover-btn w-4 h-4 rounded flex items-center justify-center opacity-60 hover:opacity-100"
             onClick={e => { e.stopPropagation(); onGroupCtx(e, group.id); }}>
@@ -209,7 +204,6 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
           ))}
           <button
             className="add-btn-dashed w-full flex items-center justify-center gap-1 py-1.5 rounded border-dashed border text-[10px] font-medium transition-all hover:border-current"
-            style={{ "--hover-color": color } as React.CSSProperties}
             onClick={() => onAddStep(stageId, group.id)}
           >
             <Plus size={10} /> Add Step
@@ -238,18 +232,17 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
   const isStageSelected = selection?.kind === "stage" && selection.stageId === stage.id;
 
   return (
-    <div className="section-card flex-shrink-0 flex flex-col rounded-xl border transition-all overflow-hidden"
-      style={{
-        borderColor: isStageSelected ? color : undefined,
-        boxShadow: isStageSelected ? `0 0 0 2px ${color}30, 0 4px 16px hsl(0 0% 0% / 0.06)` : undefined,
-      }}>
-
+    <div
+      className={`section-card flex-shrink-0 flex flex-col rounded-xl border transition-all overflow-hidden ${isStageSelected ? "section-card--selected" : ""}`}
+      style={{ "--dynamic-color": color } as React.CSSProperties}
+    >
       {/* Gradient header bar */}
-      <div style={{ height: 4, background: `linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 50%, white))` }} />
+      <div className="section-gradient-bar" style={{ "--dynamic-color": color } as React.CSSProperties} />
 
       {/* Stage header */}
-      <div className="flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none"
-        style={{ background: `linear-gradient(90deg, color-mix(in srgb, ${color} 12%, hsl(var(--surface))) 0%, hsl(var(--surface)) 100%)` }}
+      <div
+        className="section-header-bg flex items-center gap-2 px-3 py-2.5 cursor-pointer select-none"
+        style={{ "--dynamic-color": color } as React.CSSProperties}
         onClick={() => onSelectStage(stage.id)}
         onMouseEnter={() => setHeaderHover(true)}
         onMouseLeave={() => setHeaderHover(false)}
@@ -315,14 +308,7 @@ function TriggerCard({ trigger, selected, onClick }: { trigger: Trigger; selecte
 
   return (
     <div
-      className={`event-card flex-shrink-0 rounded-xl border cursor-pointer transition-all ${selected ? "" : ""}`}
-      style={{
-        width: 160,
-        background: selected ? "color-mix(in srgb, hsl(var(--primary)) 6%, hsl(var(--surface)))" : hover ? undefined : undefined,
-        borderColor: selected ? "hsl(var(--primary))" : undefined,
-        boxShadow: selected ? "0 0 0 2px hsl(var(--primary) / 0.3), 0 4px 16px hsl(0 0% 0% / 0.06)" : undefined,
-        borderTop: "3px solid hsl(var(--primary))",
-      }}
+      className={`event-card trigger-card flex-shrink-0 rounded-xl border cursor-pointer transition-all ${selected ? "trigger-card--selected" : ""}`}
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -356,21 +342,15 @@ function EndEventCard({ endEvent, selected, onClick }: { endEvent: EndEvent; sel
 
   return (
     <div
-      className="event-card flex-shrink-0 rounded-xl border cursor-pointer transition-all"
-      style={{
-        width: 130,
-        background: selected ? `color-mix(in srgb, ${accentColor} 6%, hsl(var(--surface)))` : undefined,
-        borderColor: selected ? accentColor : undefined,
-        boxShadow: selected ? `0 0 0 2px hsl(0 68% 50% / 0.3), 0 4px 16px hsl(0 0% 0% / 0.06)` : undefined,
-        borderTop: `3px solid ${accentColor}`,
-      }}
+      className={`event-card end-card flex-shrink-0 rounded-xl border cursor-pointer transition-all ${selected ? "end-card--selected" : ""}`}
+      style={{ "--dynamic-color": accentColor } as React.CSSProperties}
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
       <div className="px-3 py-3 flex flex-col items-center gap-2 text-center">
         <div className="event-icon-circle--end w-9 h-9 rounded-full flex items-center justify-center">
-          <Icon size={18} style={{ color: accentColor }} />
+          <Icon size={18} className="end-icon" style={{ "--dynamic-color": accentColor } as React.CSSProperties} />
         </div>
         <div className="text-[11px] font-bold text-foreground">{label}</div>
         {endEvent.name && <div className="text-[10px] mt-0.5 truncate max-w-[110px] text-foreground-muted">{endEvent.name}</div>}
@@ -685,7 +665,7 @@ export default function LifecycleDiagram({
 
   // Shared diagram content renderer
   const renderDiagramContent = (scale: number) => (
-    <div className="p-4 min-w-max" style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}>
+    <div className="p-4 min-w-max diagram-scale-wrapper" style={{ "--diagram-zoom": scale } as React.CSSProperties}>
       {/* Header */}
       <div className={`flex items-center gap-3 mb-3 cursor-pointer rounded-lg px-2 py-1 transition-colors ${selection?.kind === "process" ? "diagram-header--selected" : ""}`}
         onClick={onSelectProcess}>
