@@ -19,8 +19,8 @@ const App = () => (
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Landing />} />
+            <Route path="/studio" element={<StudioPage />} />
           </Route>
-          <Route path="/studio" element={<StudioPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -368,7 +368,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
   }, [caseIr, handlePatch]);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex flex-col h-full overflow-hidden bg-background">
       <Toolbar caseIr={caseIr} onImportBpmn={handleImportBpmn} onLoadSample={() => {}} />
 
       {warnings.length > 0 && (
