@@ -128,9 +128,11 @@ export default function Landing() {
 
   const handleTemplateClick = (template: Template) => {
     if (template.isDefault) {
-      navigate("/studio");
+      navigate("/create");
     } else {
-      navigate(`/studio?template=${template.bpmnFile}`);
+      navigate("/create", {
+        state: { templateId: template.bpmnFile, templateName: template.name },
+      });
     }
   };
 
