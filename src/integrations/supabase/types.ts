@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      workflows: {
+        Row: {
+          bpmn_template: string | null
+          created_at: string
+          id: string
+          name: string
+          owner: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          bpmn_template?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          owner?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          bpmn_template?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          owner?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
