@@ -57,6 +57,20 @@
   background: hsl(var(--surface-raised));
 }
 
+.step-row--selected {
+  background: color-mix(in srgb, var(--dynamic-color) 8%, hsl(var(--surface)));
+  border-color: color-mix(in srgb, var(--dynamic-color) 38%, transparent);
+}
+
+.step-type-indicator {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: var(--dynamic-color);
+}
+
 .step-io-badge--input {
   background: hsl(213 80% 50% / 0.12);
   color: hsl(213 80% 50%);
@@ -81,6 +95,26 @@
   border: 1px solid hsl(32 86% 48% / 0.3);
 }
 
+/* ─── Group Section ───────────────────────────────────────────────────────── */
+
+.group-header {
+  background: transparent;
+}
+
+.group-header--active {
+  background: color-mix(in srgb, var(--dynamic-color) 6%, hsl(var(--surface-raised)));
+}
+
+.group-icon {
+  flex-shrink: 0;
+  color: var(--dynamic-color);
+}
+
+.group-step-count {
+  background: color-mix(in srgb, var(--dynamic-color) 9%, transparent);
+  color: var(--dynamic-color);
+}
+
 /* ─── Section Card (Stage) ────────────────────────────────────────────────── */
 
 .section-card {
@@ -88,6 +122,20 @@
   background: hsl(var(--surface));
   border-color: hsl(var(--border));
   box-shadow: var(--shadow-card);
+}
+
+.section-card--selected {
+  border-color: var(--dynamic-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dynamic-color) 19%, transparent), 0 4px 16px hsl(0 0% 0% / 0.06);
+}
+
+.section-gradient-bar {
+  height: 4px;
+  background: linear-gradient(90deg, var(--dynamic-color), color-mix(in srgb, var(--dynamic-color) 50%, white));
+}
+
+.section-header-bg {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--dynamic-color) 12%, hsl(var(--surface))) 0%, hsl(var(--surface)) 100%);
 }
 
 .section-divider {
@@ -107,12 +155,38 @@
   background: hsl(var(--surface-raised));
 }
 
+.trigger-card {
+  width: 160px;
+  border-top: 3px solid hsl(var(--primary));
+}
+
+.trigger-card--selected {
+  background: color-mix(in srgb, hsl(var(--primary)) 6%, hsl(var(--surface)));
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.3), 0 4px 16px hsl(0 0% 0% / 0.06);
+}
+
+.end-card {
+  width: 130px;
+  border-top: 3px solid var(--dynamic-color);
+}
+
+.end-card--selected {
+  background: color-mix(in srgb, var(--dynamic-color) 6%, hsl(var(--surface)));
+  border-color: var(--dynamic-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dynamic-color) 30%, transparent), 0 4px 16px hsl(0 0% 0% / 0.06);
+}
+
 .event-icon-circle--primary {
   background: hsl(var(--primary) / 0.12);
 }
 
 .event-icon-circle--end {
   background: hsl(0 68% 50% / 0.12);
+}
+
+.end-icon {
+  color: var(--dynamic-color);
 }
 
 /* ─── Add Buttons (dashed) ────────────────────────────────────────────────── */
@@ -176,6 +250,13 @@
 
 .diagram-header--selected {
   background: hsl(var(--primary) / 0.06);
+}
+
+/* ─── Diagram Scale Wrapper ──────────────────────────────────────────────── */
+
+.diagram-scale-wrapper {
+  transform: scale(var(--diagram-zoom, 1));
+  transform-origin: top left;
 }
 
 /* ─── Lane Headers ────────────────────────────────────────────────────────── */
@@ -274,6 +355,14 @@
   box-shadow: 0 0 0 1px hsl(var(--primary) / 0.25);
 }
 
+.studio-input--mono {
+  font-family: monospace;
+}
+
+.studio-input--multiline {
+  min-height: 80px;
+}
+
 .studio-select {
   background: hsl(var(--surface-overlay));
   border-color: hsl(var(--border));
@@ -303,6 +392,14 @@
 
 .toggle-thumb {
   background: white;
+}
+
+.toggle-thumb--checked {
+  transform: translateX(17px);
+}
+
+.toggle-thumb--unchecked {
+  transform: translateX(2px);
 }
 
 /* ─── Save Button ─────────────────────────────────────────────────────────── */
@@ -336,6 +433,13 @@
   color: hsl(32 86% 48%);
 }
 
+/* ─── Step Type Badge (dynamic color) ─────────────────────────────────────── */
+
+.step-type-badge {
+  background: color-mix(in srgb, var(--dynamic-color) 15%, transparent);
+  color: var(--dynamic-color);
+}
+
 /* ─── Stat Card ───────────────────────────────────────────────────────────── */
 
 .stat-card {
@@ -359,6 +463,15 @@
 .io-empty {
   color: hsl(var(--foreground-subtle));
   border-color: hsl(var(--border));
+}
+
+.io-label {
+  color: var(--dynamic-color);
+}
+
+.io-add-btn {
+  background: color-mix(in srgb, var(--dynamic-color) 12%, transparent);
+  color: var(--dynamic-color);
 }
 
 /* ─── Hover Button (generic) ──────────────────────────────────────────────── */
@@ -425,6 +538,18 @@
   border-bottom-left-radius: 4px;
 }
 
+.chat-bubble-wrap {
+  max-width: 85%;
+}
+
+.chat-bullet--user {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.chat-bullet--assistant {
+  background: hsl(var(--primary));
+}
+
 .chat-system-badge {
   background: hsl(var(--primary-dim));
   color: hsl(var(--primary));
@@ -466,6 +591,10 @@
 
 .chat-undo-btn:hover {
   color: hsl(var(--primary));
+}
+
+.chat-scroll-area {
+  min-height: 0;
 }
 
 /* ─── Toolbar ─────────────────────────────────────────────────────────────── */
@@ -590,13 +719,66 @@
   box-shadow: var(--shadow-card);
 }
 
+.flow-step-card--selected {
+  border-color: var(--dynamic-color);
+  border-left-color: var(--dynamic-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dynamic-color) 25%, transparent);
+}
+
+.flow-step-card--default {
+  border-left-color: var(--dynamic-color);
+}
+
+.flow-node-step {
+  width: 188px;
+}
+
+.flow-node-add-step {
+  width: 188px;
+}
+
 .flow-trigger-pill {
   background: hsl(var(--primary));
+  width: 72px;
+  height: 36px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flow-trigger-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.flow-trigger-node {
+  width: 72px;
 }
 
 .flow-end-pill {
   border: 2px solid hsl(var(--foreground-subtle));
   background: hsl(var(--surface));
+  width: 60px;
+  height: 36px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flow-end-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.flow-end-node {
+  width: 60px;
 }
 
 .flow-add-step-btn {
@@ -604,6 +786,12 @@
   color: hsl(var(--foreground-muted));
   background: transparent;
   font-size: 11px;
+}
+
+.flow-add-step-btn:hover {
+  border-color: var(--dynamic-color);
+  color: var(--dynamic-color);
+  background: color-mix(in srgb, var(--dynamic-color) 5%, transparent);
 }
 
 .flow-add-stage-btn {
@@ -616,6 +804,65 @@
   border-color: hsl(var(--primary));
   color: hsl(var(--primary));
   background: hsl(var(--primary-dim));
+}
+
+.flow-add-stage-node {
+  width: 52px;
+  height: 52px;
+}
+
+/* ─── Stage Header Node ───────────────────────────────────────────────────── */
+
+.stage-header-node {
+  width: 200px;
+  height: 52px;
+}
+
+.stage-header-chevron {
+  width: 200px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  transition: filter 0.15s;
+  background: var(--dynamic-color);
+  clip-path: var(--clip-path);
+}
+
+.stage-header-chevron--selected {
+  background: color-mix(in srgb, var(--dynamic-color) 90%, white);
+  filter: brightness(1.1);
+}
+
+.stage-header-chevron--first {
+  padding-left: 16px;
+}
+
+.stage-header-chevron--notfirst {
+  padding-left: 28px;
+}
+
+.stage-header-chevron-pr {
+  padding-right: 26px; /* point(18) + 8 */
+}
+
+.stage-header-label-sup {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.stage-header-label-main {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.25;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ─── Warning Banner ──────────────────────────────────────────────────────── */
@@ -679,4 +926,11 @@
 .alt-path-count {
   background: hsl(var(--warning) / 0.12);
   color: hsl(var(--warning));
+}
+
+/* ─── AI Chat Panel Sidebar ───────────────────────────────────────────────── */
+
+.chat-sidebar {
+  width: 280px;
+  min-width: 280px;
 }

@@ -377,7 +377,7 @@ export default function WorkflowStudio() {
       <div className="flex flex-1 overflow-hidden">
         {caseIr ? (
           <>
-            <div className="flex flex-col overflow-hidden flex-shrink-0" style={{ width: 280, minWidth: 280 }}>
+            <div className="chat-sidebar flex flex-col overflow-hidden flex-shrink-0">
               <AiChatPanel caseIr={caseIr} onApplyPatch={handlePatch} onUndoTo={handleUndoTo} />
             </div>
             <div className="flex-1 overflow-hidden">

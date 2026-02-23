@@ -74,7 +74,7 @@ function MessageBubble({ msg, onUndo }: { msg: ChatMessage; onUndo?: () => void 
         </div>
       )}
 
-      <div style={{ maxWidth: "85%" }}>
+      <div className="chat-bubble-wrap">
         <div className={`rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed ${isUser ? "chat-bubble--user" : "chat-bubble--assistant"}`}>
           <div className="whitespace-pre-wrap">
             {msg.content.split("\n").map((line, i) => {
@@ -85,10 +85,7 @@ function MessageBubble({ msg, onUndo }: { msg: ChatMessage; onUndo?: () => void 
               return (
                 <div key={i} className={isBullet ? "flex items-start gap-1.5 mt-0.5" : ""}>
                   {isBullet && (
-                    <span
-                      className="mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      style={{ background: isUser ? "rgba(255,255,255,0.7)" : "hsl(var(--primary))" }}
-                    />
+                    <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${isUser ? "chat-bullet--user" : "chat-bullet--assistant"}`} />
                   )}
                   <span>{rendered}</span>
                 </div>
@@ -200,8 +197,7 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-3 py-3"
-        style={{ minHeight: 0 }}
+        className="flex-1 overflow-y-auto px-3 py-3 chat-scroll-area"
       >
         {messages.map(msg => (
           <MessageBubble

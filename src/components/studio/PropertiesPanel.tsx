@@ -74,8 +74,7 @@ interface InputProps { value: string; onChange: (v: string) => void; placeholder
 function TextInput({ value, onChange, placeholder, mono }: InputProps) {
   return (
     <input
-      className="studio-input w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none"
-      style={{ fontFamily: mono ? "monospace" : undefined }}
+      className={`studio-input w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none ${mono ? "studio-input--mono" : ""}`}
       value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
     />
   );
@@ -85,8 +84,7 @@ function MultilineInput({ value, onChange, placeholder, mono }: InputProps) {
   return (
     <textarea
       rows={5}
-      className="studio-input w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none resize-y"
-      style={{ fontFamily: mono ? "monospace" : undefined, minHeight: 80 }}
+      className={`studio-input studio-input--multiline w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none resize-y ${mono ? "studio-input--mono" : ""}`}
       value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
     />
   );
@@ -97,7 +95,7 @@ function ExpressionInput({ value, onChange, placeholder }: InputProps) {
     <div className="relative">
       <span className="expression-prefix absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono select-none">fx</span>
       <input
-        className="studio-input w-full pl-7 pr-2.5 py-1.5 rounded-md border text-[12px] font-mono transition-colors focus:outline-none"
+        className="studio-input studio-input--mono w-full pl-7 pr-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none"
         value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
       />
     </div>
@@ -109,7 +107,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
     <label className="flex items-center justify-between gap-2 cursor-pointer py-0.5">
       <span className="text-[12px] text-foreground">{label}</span>
       <div className={`relative flex-shrink-0 w-8 h-4 rounded-full transition-colors ${checked ? "toggle-track--on" : "toggle-track--off"}`} onClick={() => onChange(!checked)}>
-        <div className="toggle-thumb absolute top-0.5 w-3 h-3 rounded-full transition-transform" style={{ transform: checked ? "translateX(17px)" : "translateX(2px)" }} />
+        <div className={`toggle-thumb absolute top-0.5 w-3 h-3 rounded-full transition-transform ${checked ? "toggle-thumb--checked" : "toggle-thumb--unchecked"}`} />
       </div>
     </label>
   );
@@ -141,12 +139,11 @@ function IoParamTable({ params, label, accent, onChange }: {
   const remove = (i: number) => onChange(params.filter((_, idx) => idx !== i));
 
   return (
-    <div>
+    <div style={{ "--dynamic-color": accent } as React.CSSProperties}>
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: accent }}>{label}</span>
+        <span className="io-label text-[10px] font-bold uppercase tracking-widest">{label}</span>
         <button
-          className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-medium transition-colors"
-          style={{ background: `color-mix(in srgb, ${accent} 12%, transparent)`, color: accent }}
+          className="io-add-btn flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-medium transition-colors"
           onClick={add}
         >
           <Plus size={9} /> Add
@@ -284,8 +281,8 @@ function StepPropertiesPanel({
     <div className="flex flex-col h-full">
       {/* Type badge + BPMN id */}
       <div className="flex items-center gap-2 flex-wrap px-4 py-3 border-b border-border">
-        <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
-          style={{ background: `color-mix(in srgb, ${cfg.colorVar} 15%, transparent)`, color: cfg.colorVar }}>
+        <div className="step-type-badge px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
+          style={{ "--dynamic-color": cfg.colorVar } as React.CSSProperties}>
           {cfg.label}
         </div>
         {bpmnType && (
