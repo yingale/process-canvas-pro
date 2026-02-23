@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.list-workflows]
 verify_jwt = false
+
+[functions.generate-bpmn]
+verify_jwt = false
