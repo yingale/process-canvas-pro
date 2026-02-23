@@ -1,63 +1,80 @@
 
 
-# Make Start Event (Trigger) a First-Class Editable Element
+# AI-Powered BPMN Generation from Text Descriptions
 
-## Problem
-Currently, the BPMN start event (e.g., Timer triggering every 5 minutes) is displayed as a **static, non-editable pill** in the diagram header area. It shows "Timer: R/PT5M" but you cannot click it, select it, or edit its Camunda 7 properties.
+## Overview
 
-## Solution
-Promote the trigger/start event into a **clickable, selectable card** in the lifecycle diagram that opens the Properties Panel with full Camunda 7 property editing support (trigger type, timer expression, message name, async settings, etc.).
+Create a new feature that lets users describe a workflow in plain English and have AI generate valid BPMN 2.0 XML, which then gets fed through the existing deterministic parser to produce a Case IR. This keeps the reliable round-trip pipeline intact while adding a creative "generate from scratch" capability.
 
-## Changes Required
+## How It Works
 
-### 1. Extend the Selection Model (`src/types/caseIr.ts`)
-- Add a new `trigger` kind to the `SelectionTarget` union type:
-  ```
-  | { kind: "trigger" }
-  ```
-- This allows the trigger to participate in the existing selection/properties flow.
+1. User types a workflow description (e.g., "An invoice approval process where invoices are received, reviewed by a manager, and either approved or rejected")
+2. A new edge function sends this to the AI model with a system prompt containing BPMN 2.0 XML generation instructions
+3. AI returns valid Camunda-compatible BPMN XML
+4. The existing `importBpmn()` parser converts it to Case IR -- no changes needed to the parser
+5. The workflow appears in the studio ready for editing
 
-### 2. Extend the Trigger Type (`src/types/caseIr.ts`)
-- Add optional `tech` (Camunda7Tech) and `source` (SourceMeta) fields to the `Trigger` interface so it can store Camunda 7 properties like asyncBefore, job priority, etc.
-- Capture the original start event's BPMN element ID and type in `source`.
+## Changes
 
-### 3. Update BPMN Importer (`src/lib/bpmnImporter.ts`)
-- When parsing the start event, also capture Camunda extensions (async, job priority) and the element's source metadata into the `Trigger` object.
+### 1. New Edge Function: `supabase/functions/generate-bpmn/index.ts`
 
-### 4. Add Trigger Card to Lifecycle Diagram (`src/components/studio/LifecycleDiagram.tsx`)
-- Replace the static pill in the header with a **clickable TriggerCard** component placed before the stage cards in the "Main Flow" row.
-- The card will show an icon (Timer/Message/Signal/Play), the trigger type, and the expression.
-- Clicking it sets selection to `{ kind: "trigger" }`, highlighting it with a selected border.
-- It will have similar visual treatment to stage cards (border, shadow, colored accent).
+- Accepts a `{ description: string }` body
+- System prompt instructs the AI to output raw, valid BPMN 2.0 XML (Camunda namespace) with proper structure: definitions, process, start/end events, tasks, gateways, sequence flows
+- Uses `google/gemini-3-flash-preview` model
+- Returns `{ bpmnXml: string }` on success
+- Handles 429/402 rate limit and credit errors
 
-### 5. Add Trigger Properties Panel (`src/components/studio/PropertiesPanel.tsx`)
-- Add a new `TriggerPropertiesPanel` sub-component that renders when `selection.kind === "trigger"`.
-- Editable fields:
-  - **Trigger Type** (select: none/timer/message/signal/manual)
-  - **Name** (text)
-  - **Timer Expression** (expression field, shown when type=timer, with placeholder like "R/PT5M")
-  - **Message Name** (text, shown when type=message)
-  - **Async Before/After** (boolean toggles)
-  - **Job Priority** (expression)
-- Save button emits a JSON Patch targeting `/trigger` path.
+### 2. New UI: "Create from Description" option on Landing Page
 
-### 6. Add Trigger Property Schema (`src/components/studio/camundaSchema.ts`)
-- Add a new `PropGroup` entry for the start event trigger with applicable fields for timer cycle/date/duration, message ref, signal ref.
+- Add a button/card on the landing page (alongside the existing templates) labeled something like "Describe a workflow"
+- Clicking it opens a dialog/modal with a text area for the description
+- On submit, calls the edge function, parses the returned BPMN, and navigates to `/studio` with the generated IR
 
-### 7. Wire Up Selection in WorkflowStudio (`src/components/studio/WorkflowStudio.tsx`)
-- Add an `onSelectTrigger` callback that sets selection to `{ kind: "trigger" }`.
-- Pass it down to `LifecycleDiagram`.
-- Handle `kind: "trigger"` in the PropertiesPanel routing.
+### 3. Update `supabase/config.toml`
 
-### 8. Update BPMN Exporter (`src/lib/bpmnExporter.ts`)
-- When exporting, apply any tech properties from `trigger.tech` back onto the start event element (asyncBefore, jobPriority, etc.).
+- Register the new `generate-bpmn` function with `verify_jwt = false`
 
-## Visual Layout
+### 4. Studio Page Update
+
+- Accept generated IR via React Router state (no URL params needed) so the studio can load AI-generated workflows the same way it loads templates
+
+## Technical Details
+
+### System Prompt Strategy
+
+The AI prompt will include:
+- A minimal but complete BPMN 2.0 XML template showing the expected structure
+- Rules: always include `bpmn:definitions`, `bpmn:process`, `bpmn:startEvent`, `bpmn:endEvent`, and `bpmn:sequenceFlow` elements
+- Camunda namespace for service tasks (`camunda:type="external"`, `camunda:topic`)
+- Instructions to use subProcess with multiInstance for loops
+- Instructions to use exclusiveGateway for decisions with conditionExpressions
+- Output must be raw XML only, no markdown fences
+
+### Flow
 
 ```text
-[Timer Start]  -->  [Stage 1]  [Stage 2]  [+ Add Section]
- (clickable)         (card)     (card)
+Landing Page
+  [Describe a workflow] button
+       |
+       v
+  Modal with textarea
+  "Describe your process..."
+       |  (submit)
+       v
+  POST /functions/v1/generate-bpmn
+  { description: "..." }
+       |
+       v
+  AI returns BPMN XML string
+       |
+       v
+  Client: importBpmn(xml) -> CaseIR
+       |
+       v
+  Navigate to /studio with CaseIR in router state
 ```
 
-The trigger card will sit at the left of the stage cards row, connected by an arrow indicator, replacing the current static pill in the header.
+### No Parser Changes
+
+The existing `bpmnImporter.ts` remains untouched. All the round-trip metadata preservation (original XML, element IDs, layout, sequence flows) works automatically since the AI-generated XML goes through the same import path.
 
