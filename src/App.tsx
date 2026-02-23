@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Landing from "./pages/Landing";
+import CreateWorkflowWizard from "./pages/CreateWorkflowWizard";
 import StudioPage from "./pages/StudioPage";
 import NotFound from "./pages/NotFound";
 
@@ -19,6 +20,7 @@ const App = () => (
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="/" element={<Landing />} />
+            <Route path="/create" element={<CreateWorkflowWizard />} />
             <Route path="/studio" element={<StudioPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
