@@ -80,10 +80,15 @@ function EmptyState({ onImport }: { onImport: (ir: CaseIR, w: string[]) => void 
   );
 }
 
-export default function WorkflowStudio() {
-  const [caseIr, setCaseIr] = useState<CaseIR | null>(null);
+interface WorkflowStudioProps {
+  initialCaseIr?: CaseIR | null;
+  initialWarnings?: string[];
+}
+
+export default function WorkflowStudio({ initialCaseIr, initialWarnings }: WorkflowStudioProps = {}) {
+  const [caseIr, setCaseIr] = useState<CaseIR | null>(initialCaseIr ?? null);
   const [selection, setSelection] = useState<SelectionTarget>(null);
-  const [warnings, setWarnings] = useState<string[]>([]);
+  const [warnings, setWarnings] = useState<string[]>(initialWarnings ?? []);
   const [propsCollapsed, setPropsCollapsed] = useState(true);
   
   const handleImportBpmn = (ir: CaseIR, w: string[]) => {
