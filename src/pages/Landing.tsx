@@ -4,6 +4,7 @@ import {
   Star, Search, Download, Settings as SettingsIcon, Plus,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
 } from "lucide-react";
+import GenerateFromDescriptionCard from "@/components/landing/GenerateFromDescriptionCard";
 
 import "../components/studio/studio.css";
 
@@ -169,6 +170,7 @@ export default function Landing() {
         </div>
 
         <div className="landing-templates-grid">
+          <GenerateFromDescriptionCard />
           {templates.map((t) => (
             <div key={t.id} className="landing-template-card">
               <div className="landing-template-preview">

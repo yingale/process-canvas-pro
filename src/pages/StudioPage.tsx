@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
 import WorkflowStudio from "@/components/studio/WorkflowStudio";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { EMAIL_FETCHER_BPMN } from "@/lib/sampleBpmn";
@@ -74,12 +74,21 @@ const TEMPLATE_MAP: Record<string, string> = {
 
 export default function StudioPage() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const templateId = searchParams.get("template");
-  const [initialIr, setInitialIr] = useState<{ ir: CaseIR; warnings: string[] } | null>(null);
-  const [loading, setLoading] = useState(!!templateId);
+
+  // Check for AI-generated IR passed via router state
+  const routerState = location.state as { generatedIr?: CaseIR; generatedWarnings?: string[] } | null;
+
+  const [initialIr, setInitialIr] = useState<{ ir: CaseIR; warnings: string[] } | null>(
+    routerState?.generatedIr
+      ? { ir: routerState.generatedIr, warnings: routerState.generatedWarnings ?? [] }
+      : null
+  );
+  const [loading, setLoading] = useState(!!templateId && !routerState?.generatedIr);
 
   useEffect(() => {
-    if (!templateId) return;
+    if (routerState?.generatedIr || !templateId) return;
     const xml = TEMPLATE_MAP[templateId];
     if (!xml) {
       setLoading(false);
@@ -89,7 +98,7 @@ export default function StudioPage() {
       setInitialIr({ ir: result.caseIr, warnings: result.warnings });
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [templateId]);
+  }, [templateId, routerState]);
 
   if (loading) {
     return (
