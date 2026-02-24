@@ -7,8 +7,8 @@ import AppLayout from "./components/layout/AppLayout";
 import Landing from "./pages/Landing";
 import CreateWorkflowWizard from "./pages/CreateWorkflowWizard";
 import StudioPage from "./pages/StudioPage";
-import TemplateDetail from "./pages/TemplateDetail";
-import WorkflowDetail from "./pages/WorkflowDetail";
+import AllTemplates from "./pages/AllTemplates";
+import AllWorkflows from "./pages/AllWorkflows";
 import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
@@ -25,8 +25,8 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/create" element={<CreateWorkflowWizard />} />
             <Route path="/studio" element={<StudioPage />} />
-            <Route path="/template" element={<TemplateDetail />} />
-            <Route path="/workflow" element={<WorkflowDetail />} />
+            <Route path="/templates" element={<AllTemplates />} />
+            <Route path="/workflows" element={<AllWorkflows />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

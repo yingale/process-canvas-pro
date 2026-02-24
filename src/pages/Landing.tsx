@@ -168,7 +168,7 @@ export default function Landing() {
       <section className="landing-section">
         <div className="landing-section-header">
           <h2 className="landing-section-title">My Favorite Templates</h2>
-          <button className="landing-view-all-btn">View All &gt;</button>
+          <button className="landing-view-all-btn" onClick={() => navigate("/templates")}>View All &gt;</button>
         </div>
 
         <div className="landing-templates-grid">
@@ -203,20 +203,12 @@ export default function Landing() {
                   </div>
                 </div>
                 <p className="landing-template-desc">{t.description}</p>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <button
-                    className="landing-create-btn"
-                    onClick={() => handleTemplateClick(t)}
-                  >
-                    Create
-                  </button>
-                  <button
-                    className="landing-view-btn"
-                    onClick={() => window.open(`/template?id=${t.bpmnFile || t.id}`, "_blank")}
-                  >
-                    View
-                  </button>
-                </div>
+                <button
+                  className="landing-create-btn"
+                  onClick={() => handleTemplateClick(t)}
+                >
+                  Create
+                </button>
               </div>
             </div>
           ))}
@@ -228,6 +220,7 @@ export default function Landing() {
         <div className="landing-section-header">
           <h2 className="landing-section-title">Your Workflows</h2>
           <span className="landing-total-badge">{total} total</span>
+          <button className="landing-view-all-btn" onClick={() => navigate("/workflows")}>View All &gt;</button>
           <div className="landing-workflows-actions">
             <button className="landing-export-btn">
               <Download size={14} />
@@ -269,17 +262,16 @@ export default function Landing() {
                 <th className="landing-th-sortable" onClick={() => handleSort("status")}>
                   Status <SortIcon column="status" />
                 </th>
-                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="landing-table-loading">Loading…</td>
+                   <td colSpan={5} className="landing-table-loading">Loading…</td>
                 </tr>
               ) : workflows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="landing-table-empty">No workflows found</td>
+                   <td colSpan={5} className="landing-table-empty">No workflows found</td>
                 </tr>
               ) : (
                 workflows.map((w) => (
@@ -301,14 +293,6 @@ export default function Landing() {
                       >
                         {w.status}
                       </span>
-                    </td>
-                    <td>
-                      <button
-                        className="landing-view-btn-sm"
-                        onClick={() => window.open(`/workflow?id=${w.id}`, "_blank")}
-                      >
-                        View
-                      </button>
                     </td>
                   </tr>
                 ))
