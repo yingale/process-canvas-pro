@@ -5,6 +5,7 @@ import {
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import GenerateFromDescriptionCard from "@/components/landing/GenerateFromDescriptionCard";
+import PageLoader from "@/components/layout/PageLoader";
 
 import "../components/studio/studio.css";
 
@@ -267,7 +268,9 @@ export default function Landing() {
             <tbody>
               {loading ? (
                 <tr>
-                   <td colSpan={5} className="landing-table-loading">Loading…</td>
+                   <td colSpan={5} style={{ padding: 0 }}>
+                     <PageLoader message="Loading workflows…" />
+                   </td>
                 </tr>
               ) : workflows.length === 0 ? (
                 <tr>
