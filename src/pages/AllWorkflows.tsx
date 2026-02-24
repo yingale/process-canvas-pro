@@ -3,6 +3,7 @@ import {
   Search, Download, Settings as SettingsIcon,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
 } from "lucide-react";
+import PageLoader from "@/components/layout/PageLoader";
 import "../components/studio/studio.css";
 
 interface Workflow {
@@ -90,6 +91,14 @@ export default function AllWorkflows() {
     if (sortBy !== column) return null;
     return sortDir === "asc" ? <ChevronUp size={12} className="landing-sort-icon" /> : <ChevronDown size={12} className="landing-sort-icon" />;
   };
+
+  if (loading && workflows.length === 0) {
+    return (
+      <div className="landing-page">
+        <PageLoader message="Loading workflows…" />
+      </div>
+    );
+  }
 
   return (
     <div className="landing-page">

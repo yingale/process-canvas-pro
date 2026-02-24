@@ -1,7 +1,25 @@
+import { useState, useEffect } from "react";
 import { User, Mail, Shield, Clock } from "lucide-react";
+import PageLoader from "@/components/layout/PageLoader";
 import "../components/studio/studio.css";
 
 export default function ProfilePage() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate API call — replace with real fetch later
+    const timer = setTimeout(() => setLoading(false), 400);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="landing-page" style={{ maxWidth: 700 }}>
+        <PageLoader message="Loading profile…" />
+      </div>
+    );
+  }
+
   return (
     <div className="landing-page" style={{ maxWidth: 700 }}>
       <h1 className="landing-hero-title" style={{ fontSize: 22 }}>My Profile</h1>

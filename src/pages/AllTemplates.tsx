@@ -1,6 +1,8 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Star, Plus, Settings as SettingsIcon } from "lucide-react";
 import GenerateFromDescriptionCard from "@/components/landing/GenerateFromDescriptionCard";
+import PageLoader from "@/components/layout/PageLoader";
 import "../components/studio/studio.css";
 
 interface Template {
@@ -38,6 +40,17 @@ const templates: Template[] = [
 
 export default function AllTemplates() {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<Template[]>([]);
+
+  useEffect(() => {
+    // Simulate API call — replace with real fetch later
+    const timer = setTimeout(() => {
+      setData(templates);
+      setLoading(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleTemplateClick = (template: Template) => {
     if (template.isDefault) {
@@ -49,6 +62,14 @@ export default function AllTemplates() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="landing-page">
+        <PageLoader message="Loading templates…" />
+      </div>
+    );
+  }
+
   return (
     <div className="landing-page">
       <h1 className="landing-hero-title" style={{ fontSize: 22 }}>All Templates</h1>
@@ -58,7 +79,7 @@ export default function AllTemplates() {
 
       <div className="landing-templates-grid">
         <GenerateFromDescriptionCard />
-        {templates.map((t) => (
+        {data.map((t) => (
           <div key={t.id} className="landing-template-card">
             <div className="landing-template-preview">
               <div className="landing-template-preview-lines">
