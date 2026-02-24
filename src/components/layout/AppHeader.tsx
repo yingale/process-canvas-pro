@@ -1,7 +1,38 @@
 import { useState, useRef, useEffect } from "react";
-import { Settings, User, LogOut, ChevronDown } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Settings, User, LogOut, ChevronDown, ChevronRight, Home } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import "../studio/studio.css";
+
+const ROUTE_LABELS: Record<string, string> = {
+  "/": "Dashboard",
+  "/create": "Create Workflow",
+  "/studio": "Studio",
+  "/templates": "All Templates",
+  "/workflows": "All Workflows",
+  "/profile": "Profile",
+  "/settings": "Settings",
+  "/teams": "Teams",
+  "/favorites": "Favorites",
+};
+
+function Breadcrumbs() {
+  const { pathname } = useLocation();
+
+  if (pathname === "/") return null;
+
+  const label = ROUTE_LABELS[pathname] ?? pathname.replace("/", "");
+
+  return (
+    <nav className="app-breadcrumb">
+      <Link to="/" className="app-breadcrumb-link">
+        <Home size={12} />
+        <span>Dashboard</span>
+      </Link>
+      <ChevronRight size={12} className="app-breadcrumb-sep" />
+      <span className="app-breadcrumb-current">{label}</span>
+    </nav>
+  );
+}
 
 export default function AppHeader() {
   const [open, setOpen] = useState(false);
@@ -18,11 +49,14 @@ export default function AppHeader() {
 
   return (
     <header className="app-header">
-      <div className="app-header-brand">
-        <div className="app-header-logo">
-          <div className="app-header-logo-inner" />
+      <div className="app-header-left">
+        <div className="app-header-brand">
+          <div className="app-header-logo">
+            <div className="app-header-logo-inner" />
+          </div>
+          <span className="app-header-title">AI Automated Workflow</span>
         </div>
-        <span className="app-header-title">AI Automated Workflow</span>
+        <Breadcrumbs />
       </div>
       <div className="app-header-actions">
         <Link to="/" className="app-header-nav-link">
