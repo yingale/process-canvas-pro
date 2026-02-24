@@ -203,12 +203,20 @@ export default function Landing() {
                   </div>
                 </div>
                 <p className="landing-template-desc">{t.description}</p>
-                <button
-                  className="landing-create-btn"
-                  onClick={() => handleTemplateClick(t)}
-                >
-                  Create
-                </button>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    className="landing-create-btn"
+                    onClick={() => handleTemplateClick(t)}
+                  >
+                    Create
+                  </button>
+                  <button
+                    className="landing-view-btn"
+                    onClick={() => window.open(`/template?id=${t.bpmnFile || t.id}`, "_blank")}
+                  >
+                    View
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -261,6 +269,7 @@ export default function Landing() {
                 <th className="landing-th-sortable" onClick={() => handleSort("status")}>
                   Status <SortIcon column="status" />
                 </th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -292,6 +301,14 @@ export default function Landing() {
                       >
                         {w.status}
                       </span>
+                    </td>
+                    <td>
+                      <button
+                        className="landing-view-btn-sm"
+                        onClick={() => window.open(`/workflow?id=${w.id}`, "_blank")}
+                      >
+                        View
+                      </button>
                     </td>
                   </tr>
                 ))
