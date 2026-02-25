@@ -237,6 +237,65 @@ export interface Trigger {
   source?: SourceMeta;
 }
 
+// ─── Lifecycle Entities ────────────────────────────────────────────────────────
+
+export interface Persona {
+  id: string;
+  name: string;
+  role: string;
+  description?: string;
+  permissions: string[];
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email?: string;
+  personaId?: string;
+  department?: string;
+}
+
+export type BusinessRuleType = "validation" | "routing" | "sla" | "condition";
+
+export interface BusinessRule {
+  id: string;
+  name: string;
+  ruleType: BusinessRuleType;
+  expression: string;
+  description?: string;
+  appliesTo?: string;
+}
+
+export type DataFieldType = "string" | "number" | "boolean" | "date" | "object" | "array";
+
+export interface DataField {
+  id: string;
+  name: string;
+  dataType: DataFieldType;
+  required: boolean;
+  defaultValue?: string;
+  description?: string;
+}
+
+export type DeploymentStatus = "draft" | "staging" | "production";
+
+export interface DeploymentConfig {
+  targetEnvironment: string;
+  version: string;
+  status: DeploymentStatus;
+  deployedAt?: string;
+  deployedBy?: string;
+  notes?: string;
+}
+
+export interface ReusableModule {
+  id: string;
+  name: string;
+  description?: string;
+  category: string;
+  steps: Step[];
+}
+
 // ─── Case IR Root ─────────────────────────────────────────────────────────────
 
 export interface CaseIR {
@@ -248,6 +307,12 @@ export interface CaseIR {
   processProperties?: ProcessProperties;
   stages: Stage[];
   alternativePaths?: Stage[];   // independent alt-path stages (same structure as main flow)
+  personas?: Persona[];
+  teamMembers?: TeamMember[];
+  businessRules?: BusinessRule[];
+  dataModel?: DataField[];
+  deployment?: DeploymentConfig;
+  reusableModules?: ReusableModule[];
   metadata: {
     createdAt: string;
     updatedAt: string;

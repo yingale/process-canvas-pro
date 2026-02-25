@@ -25,6 +25,11 @@ A JSON object with:
   "version": string,
   "trigger": { "type": "none"|"timer"|"message"|"signal"|"manual", "expression"?: string, "name"?: string },
   "stages": [{ "id": string, "name": string, "steps": Step[] }],
+  "personas": [{ "id": string, "name": string, "role": string, "description"?: string, "permissions": string[] }],
+  "teamMembers": [{ "id": string, "name": string, "email"?: string, "personaId"?: string, "department"?: string }],
+  "businessRules": [{ "id": string, "name": string, "ruleType": "validation"|"routing"|"sla"|"condition", "expression": string, "description"?: string, "appliesTo"?: string }],
+  "dataModel": [{ "id": string, "name": string, "dataType": "string"|"number"|"boolean"|"date"|"object"|"array", "required": boolean, "defaultValue"?: string, "description"?: string }],
+  "deployment": { "targetEnvironment": string, "version": string, "status": "draft"|"staging"|"production", "deployedAt"?: string, "deployedBy"?: string, "notes"?: string },
   "metadata": { "createdAt": string, "updatedAt": string }
 }
 
@@ -37,12 +42,18 @@ Step types:
 
 ## Patch Rules
 1. Use 0-based JSON Pointer paths: /stages/0/name, /stages/1/steps/2
-2. To append to an array use "-": /stages/-, /stages/0/steps/-
+2. To append to an array use "-": /stages/-, /stages/0/steps/-, /personas/-, /teamMembers/-, /businessRules/-, /dataModel/-
 3. When adding a step, always include: id (short unique like "step_abc123"), type, name + type-required fields
 4. When adding a stage: id, name, steps:[]
-5. Never reuse existing IDs
-6. If ambiguous, make a sensible choice and mention it naturally in the summary
-7. If impossible, return empty patch and explain gently
+5. When adding a persona: id, name, role, permissions:[]
+6. When adding a team member: id, name, email (optional), department (optional), personaId (optional — link to existing persona)
+7. When adding a business rule: id, name, ruleType, expression
+8. When adding a data field: id, name, dataType, required (boolean)
+9. When updating deployment: patch /deployment/status, /deployment/targetEnvironment, /deployment/version etc.
+10. If the array doesn't exist yet (e.g. no personas), first add it: { "op": "add", "path": "/personas", "value": [newItem] }
+11. Never reuse existing IDs
+12. If ambiguous, make a sensible choice and mention it naturally in the summary
+13. If impossible, return empty patch and explain gently
 
 ## User-friendly vocabulary mapping
 - "stage" or "section" = a Stage
@@ -53,6 +64,11 @@ Step types:
 - "loop" / "for each" / "repeat for all" = foreach type
 - "subprocess" / "sub-process" / "call another process" = callActivity type
 - trigger: "scheduled" / "every X" = timer; "when message arrives" = message; "manually" = manual
+- "persona" / "role" / "actor" = a Persona
+- "team member" / "assign" / "add person" = a TeamMember
+- "rule" / "condition" / "validation" / "SLA" = a BusinessRule
+- "field" / "data" / "variable" / "input" / "attribute" = a DataField
+- "deploy" / "publish" / "release" / "go live" = Deployment config
 
 ## Output Format (STRICT — no markdown, no code blocks)
 {"patch":[...],"summary":"Plain English explanation"}`;

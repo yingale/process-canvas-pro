@@ -172,9 +172,11 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
 
   const SUGGESTIONS = [
     "Add a new stage",
-    "Add a loop for each item",
     "Add an approval step",
-    "Add a decision branch",
+    "Add a Manager persona",
+    "Create a business rule for routing",
+    "Define data model fields",
+    "Assign team members",
   ];
 
   return (
