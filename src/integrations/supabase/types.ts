@@ -14,6 +14,260 @@ export type Database = {
   }
   public: {
     Tables: {
+      reusable_modules: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          steps: Json
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          steps?: Json
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          steps?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      workflow_business_rules: {
+        Row: {
+          applies_to: string | null
+          created_at: string
+          description: string | null
+          expression: string | null
+          id: string
+          name: string
+          rule_type: string
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          applies_to?: string | null
+          created_at?: string
+          description?: string | null
+          expression?: string | null
+          id?: string
+          name: string
+          rule_type?: string
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          applies_to?: string | null
+          created_at?: string
+          description?: string | null
+          expression?: string | null
+          id?: string
+          name?: string
+          rule_type?: string
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_business_rules_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_data_model: {
+        Row: {
+          created_at: string
+          data_type: string
+          default_value: string | null
+          description: string | null
+          id: string
+          name: string
+          required: boolean
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_type?: string
+          default_value?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          required?: boolean
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          data_type?: string
+          default_value?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          required?: boolean
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_data_model_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_deployments: {
+        Row: {
+          created_at: string
+          deployed_at: string | null
+          deployed_by: string | null
+          id: string
+          notes: string | null
+          status: string
+          target_environment: string
+          updated_at: string
+          version: string | null
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          deployed_at?: string | null
+          deployed_by?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          target_environment?: string
+          updated_at?: string
+          version?: string | null
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          deployed_at?: string | null
+          deployed_by?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          target_environment?: string
+          updated_at?: string
+          version?: string | null
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_deployments_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_personas: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          permissions: string[] | null
+          role: string
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          permissions?: string[] | null
+          role?: string
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          permissions?: string[] | null
+          role?: string
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_personas_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_team_members: {
+        Row: {
+          created_at: string
+          department: string | null
+          email: string | null
+          id: string
+          name: string
+          persona_id: string | null
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          persona_id?: string | null
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          persona_id?: string | null
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_team_members_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_team_members_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflows: {
         Row: {
           bpmn_template: string | null

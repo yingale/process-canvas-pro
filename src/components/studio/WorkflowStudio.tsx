@@ -6,11 +6,17 @@ import { useState, useCallback, useRef } from "react";
 import type { CaseIR, SelectionTarget, JsonPatch, StepType, BoundaryEventType } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Toolbar from "./Toolbar";
 import LifecycleDiagram from "./LifecycleDiagram";
 import PropertiesPanel from "./PropertiesPanel";
 import AiChatPanel from "./AiChatPanel";
-import { Upload, FileText } from "lucide-react";
+import PersonasPanel from "./PersonasPanel";
+import TeamPanel from "./TeamPanel";
+import BusinessRulesPanel from "./BusinessRulesPanel";
+import DataModelPanel from "./DataModelPanel";
+import DeploymentPanel from "./DeploymentPanel";
+import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket } from "lucide-react";
 import "./studio.css";
 
 function uid() { return `el_${Math.random().toString(36).slice(2, 8)}`; }
@@ -90,6 +96,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [warnings, setWarnings] = useState<string[]>(initialWarnings ?? []);
   const [propsCollapsed, setPropsCollapsed] = useState(true);
+  const [activeTab, setActiveTab] = useState("flow");
   
   const handleImportBpmn = (ir: CaseIR, w: string[]) => {
     if (!ir.alternativePaths) ir.alternativePaths = [];
@@ -385,41 +392,70 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
             <div className="chat-sidebar flex flex-col overflow-hidden flex-shrink-0">
               <AiChatPanel caseIr={caseIr} onApplyPatch={handlePatch} onUndoTo={handleUndoTo} />
             </div>
-            <div className="flex-1 overflow-hidden">
-              <LifecycleDiagram
-                caseIr={caseIr}
-                selection={selection}
-                onSelectTrigger={handleSelectTrigger}
-                onSelectEndEvent={handleSelectEndEvent}
-                onSelectProcess={handleSelectProcess}
-                onSelectBoundaryEvent={handleSelectBoundaryEvent}
-                onSelectStage={handleSelectStage}
-                onSelectGroup={handleSelectGroup}
-                onSelectStep={handleSelectStep}
-                onAddStep={handleAddStep}
-                onAddGroup={handleAddGroup}
-                onAddStage={handleAddStage}
-                onDeleteStage={handleDeleteStage}
-                onDeleteGroup={handleDeleteGroup}
-                onDeleteStep={handleDeleteStep}
-                onDuplicateStep={handleDuplicateStep}
-                onDuplicateStage={handleDuplicateStage}
-                onMoveStage={handleMoveStage}
-                onMoveGroup={handleMoveGroup}
-                onMoveStep={handleMoveStep}
-                onAddBoundaryEvent={handleAddBoundaryEvent}
-                onAddAltStage={handleAddAltStage}
-                onAddAltGroup={handleAddAltGroup}
-                onAddAltStep={handleAddAltStep}
-                onDeleteAltStage={handleDeleteAltStage}
-                onDeleteAltGroup={handleDeleteAltGroup}
-                onDeleteAltStep={handleDeleteAltStep}
-                onDuplicateAltStep={handleDuplicateAltStep}
-                onDuplicateAltStage={handleDuplicateAltStage}
-                onMoveAltStage={handleMoveAltStage}
-                onMoveAltGroup={handleMoveAltGroup}
-                onMoveAltStep={handleMoveAltStep}
-              />
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden">
+                <div className="border-b px-4 flex-shrink-0">
+                  <TabsList className="bg-transparent h-9 gap-1">
+                    <TabsTrigger value="flow" className="text-xs gap-1 data-[state=active]:bg-muted"><Workflow size={12} /> Flow</TabsTrigger>
+                    <TabsTrigger value="personas" className="text-xs gap-1 data-[state=active]:bg-muted"><Shield size={12} /> Personas</TabsTrigger>
+                    <TabsTrigger value="team" className="text-xs gap-1 data-[state=active]:bg-muted"><Users size={12} /> Team</TabsTrigger>
+                    <TabsTrigger value="rules" className="text-xs gap-1 data-[state=active]:bg-muted"><Scale size={12} /> Rules</TabsTrigger>
+                    <TabsTrigger value="data" className="text-xs gap-1 data-[state=active]:bg-muted"><Database size={12} /> Data</TabsTrigger>
+                    <TabsTrigger value="deploy" className="text-xs gap-1 data-[state=active]:bg-muted"><Rocket size={12} /> Deploy</TabsTrigger>
+                  </TabsList>
+                </div>
+                <TabsContent value="flow" className="flex-1 overflow-hidden mt-0">
+                  <LifecycleDiagram
+                    caseIr={caseIr}
+                    selection={selection}
+                    onSelectTrigger={handleSelectTrigger}
+                    onSelectEndEvent={handleSelectEndEvent}
+                    onSelectProcess={handleSelectProcess}
+                    onSelectBoundaryEvent={handleSelectBoundaryEvent}
+                    onSelectStage={handleSelectStage}
+                    onSelectGroup={handleSelectGroup}
+                    onSelectStep={handleSelectStep}
+                    onAddStep={handleAddStep}
+                    onAddGroup={handleAddGroup}
+                    onAddStage={handleAddStage}
+                    onDeleteStage={handleDeleteStage}
+                    onDeleteGroup={handleDeleteGroup}
+                    onDeleteStep={handleDeleteStep}
+                    onDuplicateStep={handleDuplicateStep}
+                    onDuplicateStage={handleDuplicateStage}
+                    onMoveStage={handleMoveStage}
+                    onMoveGroup={handleMoveGroup}
+                    onMoveStep={handleMoveStep}
+                    onAddBoundaryEvent={handleAddBoundaryEvent}
+                    onAddAltStage={handleAddAltStage}
+                    onAddAltGroup={handleAddAltGroup}
+                    onAddAltStep={handleAddAltStep}
+                    onDeleteAltStage={handleDeleteAltStage}
+                    onDeleteAltGroup={handleDeleteAltGroup}
+                    onDeleteAltStep={handleDeleteAltStep}
+                    onDuplicateAltStep={handleDuplicateAltStep}
+                    onDuplicateAltStage={handleDuplicateAltStage}
+                    onMoveAltStage={handleMoveAltStage}
+                    onMoveAltGroup={handleMoveAltGroup}
+                    onMoveAltStep={handleMoveAltStep}
+                  />
+                </TabsContent>
+                <TabsContent value="personas" className="flex-1 overflow-auto mt-0">
+                  <PersonasPanel caseIr={caseIr} onPatch={handlePatch} />
+                </TabsContent>
+                <TabsContent value="team" className="flex-1 overflow-auto mt-0">
+                  <TeamPanel caseIr={caseIr} onPatch={handlePatch} />
+                </TabsContent>
+                <TabsContent value="rules" className="flex-1 overflow-auto mt-0">
+                  <BusinessRulesPanel caseIr={caseIr} onPatch={handlePatch} />
+                </TabsContent>
+                <TabsContent value="data" className="flex-1 overflow-auto mt-0">
+                  <DataModelPanel caseIr={caseIr} onPatch={handlePatch} />
+                </TabsContent>
+                <TabsContent value="deploy" className="flex-1 overflow-auto mt-0">
+                  <DeploymentPanel caseIr={caseIr} onPatch={handlePatch} />
+                </TabsContent>
+              </Tabs>
             </div>
             <PropertiesPanel
               caseIr={caseIr}
