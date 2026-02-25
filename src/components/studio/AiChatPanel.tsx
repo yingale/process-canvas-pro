@@ -1,11 +1,14 @@
 /**
  * AI Chat Panel – conversational workflow editing assistant
+ * Supports both local AI (ai-plan edge function) and multi-agent orchestration (Mastra).
  */
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, Send, RotateCcw, Loader2 } from "lucide-react";
+import { Sparkles, Send, RotateCcw, Loader2, Bot, Zap } from "lucide-react";
 import type { CaseIR, JsonPatch } from "@/types/caseIr";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import "./studio.css";
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 interface ChatMessage {
   id: string;
@@ -13,6 +16,7 @@ interface ChatMessage {
   content: string;
   patch?: JsonPatch;
   undoSnapshot?: CaseIR;
+  agentsUsed?: string[];
 }
 
 interface AiChatPanelProps {
@@ -21,7 +25,12 @@ interface AiChatPanelProps {
   onUndoTo?: (snapshot: CaseIR) => void;
 }
 
+type AgentMode = "simple" | "multi-agent";
+
+// ── API calls ────────────────────────────────────────────────────────────────
+
 const AI_PLAN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-plan`;
+const MASTRA_PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mastra-proxy`;
 
 async function callAiPlan(prompt: string, caseIr: CaseIR) {
   const res = await fetch(AI_PLAN_URL, {
@@ -33,23 +42,57 @@ async function callAiPlan(prompt: string, caseIr: CaseIR) {
     body: JSON.stringify({ prompt, caseIr }),
   });
   const data = await res.json();
-  if (!res.ok) {
-    if (res.status === 429) throw new Error(data.error ?? "I'm getting too many requests right now. Give me a moment and try again!");
-    if (res.status === 402) throw new Error(data.error ?? "AI credits are exhausted. Please add credits in Settings → Workspace → Usage.");
-    throw new Error(data.error ?? `Something went wrong (${res.status}). Please try again.`);
-  }
+  if (!res.ok) throw new Error(data.error ?? `Something went wrong (${res.status})`);
   if (data.error) throw new Error(data.error);
   return { patch: data.patch ?? [], summary: data.summary ?? "" };
 }
 
+async function callMastraProxy(prompt: string, caseIr: CaseIR, mode?: string) {
+  const res = await fetch(MASTRA_PROXY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify({ prompt, caseIr, mode }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? `Agent error (${res.status})`);
+  if (data.error) throw new Error(data.error);
+  return {
+    patch: data.patch ?? [],
+    summary: data.summary ?? "",
+    agentsUsed: data.agentsUsed ?? [],
+    analysis: data.analysis,
+    review: data.review,
+  };
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 const WELCOME_MESSAGE: ChatMessage = {
   id: "welcome",
   role: "assistant",
-  content: "Hi! I'm your workflow assistant 👋\n\nJust tell me what you want to do in plain English — like:\n• *\"Add a spam check step after fetching emails\"*\n• *\"Create a new Approval stage\"*\n• *\"Add a loop that processes each email one by one\"*\n• *\"Rename the first stage to Data Collection\"*\n\nI'll update your workflow automatically!",
+  content: "Hi! I'm your workflow assistant 👋\n\nJust tell me what you want to do in plain English — like:\n• *\"Add a spam check step after fetching emails\"*\n• *\"Create a new Approval stage\"*\n• *\"Analyze my workflow for bottlenecks\"*\n• *\"Redesign the error handling flow\"*\n\nI'll update your workflow automatically!",
 };
 
 function uid() {
   return `msg_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+// ── Components ───────────────────────────────────────────────────────────────
+
+function AgentBadges({ agents }: { agents: string[] }) {
+  if (!agents.length) return null;
+  return (
+    <div className="flex flex-wrap gap-1 mt-1.5">
+      {agents.map(a => (
+        <span key={a} className="chat-agent-badge text-[10px] px-1.5 py-0.5 rounded-md">
+          {a}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function MessageBubble({ msg, onUndo }: { msg: ChatMessage; onUndo?: () => void }) {
@@ -94,6 +137,10 @@ function MessageBubble({ msg, onUndo }: { msg: ChatMessage; onUndo?: () => void 
           </div>
         </div>
 
+        {!isUser && msg.agentsUsed && msg.agentsUsed.length > 0 && (
+          <AgentBadges agents={msg.agentsUsed} />
+        )}
+
         {!isUser && msg.patch && msg.patch.length > 0 && onUndo && (
           <button
             className="chat-undo-btn flex items-center gap-1 mt-1.5 ml-1 text-[11px] transition-colors"
@@ -108,10 +155,13 @@ function MessageBubble({ msg, onUndo }: { msg: ChatMessage; onUndo?: () => void 
   );
 }
 
+// ── Main Panel ───────────────────────────────────────────────────────────────
+
 export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [agentMode, setAgentMode] = useState<AgentMode>("simple");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -133,7 +183,20 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
     const snapshot = JSON.parse(JSON.stringify(caseIr)) as CaseIR;
 
     try {
-      const { patch, summary } = await callAiPlan(text, caseIr);
+      let patch: JsonPatch = [];
+      let summary = "";
+      let agentsUsed: string[] = [];
+
+      if (agentMode === "multi-agent") {
+        const result = await callMastraProxy(text, caseIr);
+        patch = result.patch;
+        summary = result.summary;
+        agentsUsed = result.agentsUsed;
+      } else {
+        const result = await callAiPlan(text, caseIr);
+        patch = result.patch;
+        summary = result.summary;
+      }
 
       if (patch.length > 0) {
         onApplyPatch(patch);
@@ -145,6 +208,7 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
         content: summary || (patch.length === 0 ? "Hmm, I couldn't figure out what to change. Could you describe it differently?" : "Done! Your workflow has been updated."),
         patch,
         undoSnapshot: snapshot,
+        agentsUsed,
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (e) {
@@ -170,30 +234,51 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
     }
   };
 
-  const SUGGESTIONS = [
-    "Add a new stage",
-    "Add an approval step",
-    "Add a Manager persona",
-    "Create a business rule for routing",
-    "Define data model fields",
-    "Assign team members",
-  ];
+  const SUGGESTIONS = agentMode === "multi-agent"
+    ? [
+        "Analyze my workflow for issues",
+        "Optimize the entire process",
+        "Add error handling to all stages",
+        "Suggest missing steps",
+      ]
+    : [
+        "Add a new stage",
+        "Add an approval step",
+        "Add a Manager persona",
+        "Create a business rule",
+      ];
 
   return (
     <div className="chat-panel flex flex-col h-full border-r">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border flex items-center gap-2.5 flex-shrink-0">
-        <div className="chat-avatar w-7 h-7 rounded-full flex items-center justify-center">
-          <Sparkles size={14} color="white" />
-        </div>
-        <div>
-          <div className="text-[13px] font-semibold text-foreground">
-            Workflow Assistant
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="chat-avatar w-7 h-7 rounded-full flex items-center justify-center">
+            <Sparkles size={14} color="white" />
           </div>
-          <div className="text-[10px] text-foreground-muted">
-            Powered by AI · ask anything
+          <div>
+            <div className="text-[13px] font-semibold text-foreground">
+              Workflow Assistant
+            </div>
+            <div className="text-[10px] text-foreground-muted">
+              {agentMode === "multi-agent" ? "Multi-agent · 4 specialists" : "Powered by AI"}
+            </div>
           </div>
         </div>
+
+        {/* Mode toggle */}
+        <button
+          className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border transition-all ${
+            agentMode === "multi-agent"
+              ? "chat-mode-toggle--active"
+              : "chat-mode-toggle--inactive"
+          }`}
+          onClick={() => setAgentMode(prev => prev === "simple" ? "multi-agent" : "simple")}
+          title={agentMode === "multi-agent" ? "Switch to simple AI" : "Switch to multi-agent orchestration"}
+        >
+          {agentMode === "multi-agent" ? <Bot size={12} /> : <Zap size={12} />}
+          {agentMode === "multi-agent" ? "Agents" : "Simple"}
+        </button>
       </div>
 
       {/* Messages */}
@@ -216,7 +301,9 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
             </div>
             <div className="chat-loading-bubble rounded-2xl px-4 py-3 flex items-center gap-2">
               <Loader2 size={13} className="animate-spin text-primary" />
-              <span className="text-[12px] text-foreground-muted">Thinking…</span>
+              <span className="text-[12px] text-foreground-muted">
+                {agentMode === "multi-agent" ? "Agents collaborating…" : "Thinking…"}
+              </span>
             </div>
           </div>
         )}
@@ -243,7 +330,7 @@ export default function AiChatPanel({ caseIr, onApplyPatch, onUndoTo }: AiChatPa
           <input
             ref={inputRef}
             className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-foreground-muted text-foreground"
-            placeholder="Describe a change…"
+            placeholder={agentMode === "multi-agent" ? "Ask the agent team…" : "Describe a change…"}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => {

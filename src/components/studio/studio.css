@@ -1977,3 +1977,30 @@
   font-family: monospace;
   margin-top: 2px;
 }
+
+/* ─── Agent Badges & Mode Toggle ─────────────────────────────────────────── */
+
+.chat-agent-badge {
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.chat-mode-toggle--active {
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary) / 0.3);
+  font-weight: 600;
+}
+
+.chat-mode-toggle--inactive {
+  background: transparent;
+  color: hsl(var(--foreground-muted));
+  border-color: hsl(var(--border));
+}
+
+.chat-mode-toggle--inactive:hover {
+  background: hsl(var(--surface-raised));
+  color: hsl(var(--foreground));
+}
