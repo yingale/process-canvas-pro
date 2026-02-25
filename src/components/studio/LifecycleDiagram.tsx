@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent } from "@/types/caseIr";
+import ModulePicker from "./ModulePicker";
 import "./studio.css";
 
 // ─── Step type config ──────────────────────────────────────────────────────────
@@ -150,11 +151,12 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
 
 // ─── Group sub-section ─────────────────────────────────────────────────────────
 
-function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onGroupCtx, onStepCtx }: {
+function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx }: {
   group: Group; stageId: string; color: string; selection: SelectionTarget;
   onSelectGroup: (stageId: string, groupId: string) => void;
   onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
   onAddStep: (stageId: string, groupId: string) => void;
+  onInsertModule: (stageId: string, groupId: string, steps: Step[]) => void;
   onGroupCtx: (e: React.MouseEvent, groupId: string) => void;
   onStepCtx: (e: React.MouseEvent, groupId: string, stepId: string) => void;
 }) {
@@ -208,6 +210,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
           >
             <Plus size={10} /> Add Step
           </button>
+          <ModulePicker onInsert={(steps) => onInsertModule(stageId, group.id, steps)} />
         </div>
       )}
     </div>
@@ -216,12 +219,13 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
 
 // ─── Section card (Stage) ──────────────────────────────────────────────────────
 
-function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onAddGroup, onStageCtx, onGroupCtx, onStepCtx }: {
+function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx }: {
   stage: Stage; stageIdx: number; color: string; selection: SelectionTarget;
   onSelectStage: (id: string) => void;
   onSelectGroup: (stageId: string, groupId: string) => void;
   onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
   onAddStep: (stageId: string, groupId: string) => void;
+  onInsertModule: (stageId: string, groupId: string, steps: Step[]) => void;
   onAddGroup: (stageId: string) => void;
   onStageCtx: (e: React.MouseEvent, stageId: string) => void;
   onGroupCtx: (e: React.MouseEvent, stageId: string, groupId: string) => void;
@@ -275,6 +279,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
               onSelectGroup={onSelectGroup}
               onSelectStep={onSelectStep}
               onAddStep={onAddStep}
+              onInsertModule={onInsertModule}
               onGroupCtx={(e, gid) => onGroupCtx(e, stage.id, gid)}
               onStepCtx={(e, gid, sid) => onStepCtx(e, stage.id, gid, sid)}
             />
@@ -437,6 +442,7 @@ interface LifecycleDiagramProps {
   onSelectGroup: (stageId: string, groupId: string) => void;
   onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
   onAddStep: (stageId: string, groupId: string) => void;
+  onInsertModule: (stageId: string, groupId: string, steps: Step[]) => void;
   onAddGroup: (stageId: string) => void;
   onAddStage: () => void;
   onDeleteStage: (stageId: string) => void;
@@ -465,7 +471,7 @@ export default function LifecycleDiagram({
   caseIr, selection,
   onSelectTrigger, onSelectEndEvent, onSelectProcess, onSelectBoundaryEvent,
   onSelectStage, onSelectGroup, onSelectStep,
-  onAddStep, onAddGroup, onAddStage,
+  onAddStep, onInsertModule, onAddGroup, onAddStage,
   onDeleteStage, onDeleteGroup, onDeleteStep,
   onDuplicateStep, onDuplicateStage,
   onMoveStage, onMoveGroup, onMoveStep,
@@ -695,7 +701,7 @@ export default function LifecycleDiagram({
             <SectionCard key={stage.id} stage={stage} stageIdx={i}
               color={stage.color || SECTION_COLORS[i % SECTION_COLORS.length]} selection={selection}
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
-              onAddStep={onAddStep} onAddGroup={onAddGroup}
+              onAddStep={onAddStep} onInsertModule={onInsertModule} onAddGroup={onAddGroup}
               onStageCtx={openStageCtx} onGroupCtx={openGroupCtx} onStepCtx={openStepCtx} />
           ))}
           <button className="add-section-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
@@ -722,7 +728,7 @@ export default function LifecycleDiagram({
             <SectionCard key={stage.id} stage={stage} stageIdx={i}
               color={stage.color || SECTION_COLORS[(i + 3) % SECTION_COLORS.length]} selection={selection}
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
-              onAddStep={onAddAltStep} onAddGroup={onAddAltGroup}
+              onAddStep={onAddAltStep} onInsertModule={onInsertModule} onAddGroup={onAddAltGroup}
               onStageCtx={openAltStageCtx} onGroupCtx={openAltGroupCtx} onStepCtx={openAltStepCtx} />
           ))}
           <button className="add-section-btn add-alt-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
