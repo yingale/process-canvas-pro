@@ -3,7 +3,7 @@
  * Hierarchy: Stage (Section) → Group → Step
  */
 import { useState, useCallback, useRef } from "react";
-import type { CaseIR, SelectionTarget, JsonPatch, StepType, BoundaryEventType } from "@/types/caseIr";
+import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -142,6 +142,26 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
     if (gi < 0) return;
     const newStep = { id: uid(), name: "New Task", type: "automation" as StepType };
     handlePatch([{ op: "add", path: `/stages/${si}/groups/${gi}/steps/-`, value: newStep }]);
+  }, [caseIr, handlePatch]);
+
+  const handleInsertModule = useCallback((stageId: string, groupId: string, steps: Step[]) => {
+    if (!caseIr) return;
+    const si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si >= 0) {
+      const gi = caseIr.stages[si].groups.findIndex(g => g.id === groupId);
+      if (gi < 0) return;
+      const ops = steps.map(step => ({ op: "add" as const, path: `/stages/${si}/groups/${gi}/steps/-`, value: step }));
+      handlePatch(ops);
+      return;
+    }
+    if (caseIr.alternativePaths) {
+      const ai = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+      if (ai < 0) return;
+      const gi = caseIr.alternativePaths[ai].groups.findIndex(g => g.id === groupId);
+      if (gi < 0) return;
+      const ops = steps.map(step => ({ op: "add" as const, path: `/alternativePaths/${ai}/groups/${gi}/steps/-`, value: step }));
+      handlePatch(ops);
+    }
   }, [caseIr, handlePatch]);
 
   const handleAddGroup = useCallback((stageId: string) => {
@@ -416,6 +436,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
                     onSelectGroup={handleSelectGroup}
                     onSelectStep={handleSelectStep}
                     onAddStep={handleAddStep}
+                    onInsertModule={handleInsertModule}
                     onAddGroup={handleAddGroup}
                     onAddStage={handleAddStage}
                     onDeleteStage={handleDeleteStage}
