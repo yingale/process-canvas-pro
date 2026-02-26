@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import OpenAI from "https://deno.land/x/openai@v4.69.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,13 +93,14 @@ serve(async (req) => {
       );
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const openai = new OpenAI({
+      apiKey: LOVABLE_API_KEY,
+      baseURL: "https://ai.gateway.lovable.dev/v1",
+    });
+
+    let completion;
+    try {
+      completion = await openai.chat.completions.create({
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
@@ -106,29 +108,28 @@ serve(async (req) => {
         ],
         temperature: 0.2,
         max_tokens: 4096,
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      });
+    } catch (err: unknown) {
+      if (err instanceof OpenAI.APIError) {
+        if (err.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (err.status === 402) {
+          return new Response(
+            JSON.stringify({ error: "AI usage credits exhausted. Please add credits in Settings → Workspace → Usage." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        console.error("AI gateway error:", err.status, err.message);
+        throw new Error(`AI gateway error [${err.status}]: ${err.message.slice(0, 200)}`);
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI usage credits exhausted. Please add credits in Settings → Workspace → Usage." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error [${response.status}]`);
+      throw err;
     }
 
-    const aiResponse = await response.json();
-    let bpmnXml = aiResponse.choices?.[0]?.message?.content ?? "";
+    let bpmnXml = completion.choices?.[0]?.message?.content ?? "";
 
     // Strip markdown fences if present
     bpmnXml = bpmnXml
