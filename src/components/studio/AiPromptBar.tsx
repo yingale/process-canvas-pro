@@ -3,13 +3,9 @@
  */
 import { useState } from "react";
 import { Sparkles, Send, Eye, Check, X, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import axios from "axios";
 import type { CaseIR, JsonPatch } from "@/types/caseIr";
 import "./studio.css";
-
-interface AiPromptBarProps {
-  caseIr: CaseIR;
-  onApplyPatch: (patch: JsonPatch) => void;
-}
 
 const AI_PLAN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-plan`;
 
@@ -17,26 +13,31 @@ async function callAiPlan(
   prompt: string,
   caseIr: CaseIR
 ): Promise<{ patch: JsonPatch; summary: string }> {
-  const res = await fetch(AI_PLAN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    },
-    body: JSON.stringify({ prompt, caseIr }),
-  });
+  try {
+    const { data } = await axios.post(AI_PLAN_URL, { prompt, caseIr }, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+    });
 
-  const data = await res.json();
+    if (data.error) throw new Error(data.error);
 
-  if (!res.ok) {
-    if (res.status === 429) throw new Error(data.error ?? "Rate limit exceeded – try again shortly.");
-    if (res.status === 402) throw new Error(data.error ?? "AI credits exhausted – add credits in workspace settings.");
-    throw new Error(data.error ?? `AI service error (${res.status})`);
+    return { patch: data.patch ?? [], summary: data.summary ?? "" };
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      const { status, data } = err.response;
+      if (status === 429) throw new Error(data?.error ?? "Rate limit exceeded – try again shortly.");
+      if (status === 402) throw new Error(data?.error ?? "AI credits exhausted – add credits in workspace settings.");
+      throw new Error(data?.error ?? `AI service error (${status})`);
+    }
+    throw err;
   }
+}
 
-  if (data.error) throw new Error(data.error);
-
-  return { patch: data.patch ?? [], summary: data.summary ?? "" };
+interface AiPromptBarProps {
+  caseIr: CaseIR;
+  onApplyPatch: (patch: JsonPatch) => void;
 }
 
 export default function AiPromptBar({ caseIr, onApplyPatch }: AiPromptBarProps) {
