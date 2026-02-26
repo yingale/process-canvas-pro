@@ -4,6 +4,7 @@
  */
 import { useState, useRef, useEffect } from "react";
 import { Sparkles, Send, RotateCcw, Loader2, Bot, Zap } from "lucide-react";
+import axios from "axios";
 import type { CaseIR, JsonPatch } from "@/types/caseIr";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import "./studio.css";
@@ -32,40 +33,41 @@ type AgentMode = "simple" | "multi-agent";
 const AI_PLAN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-plan`;
 const MASTRA_PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mastra-proxy`;
 
+const apiHeaders = {
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+};
+
 async function callAiPlan(prompt: string, caseIr: CaseIR) {
-  const res = await fetch(AI_PLAN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    },
-    body: JSON.stringify({ prompt, caseIr }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? `Something went wrong (${res.status})`);
-  if (data.error) throw new Error(data.error);
-  return { patch: data.patch ?? [], summary: data.summary ?? "" };
+  try {
+    const { data } = await axios.post(AI_PLAN_URL, { prompt, caseIr }, { headers: apiHeaders });
+    if (data.error) throw new Error(data.error);
+    return { patch: data.patch ?? [], summary: data.summary ?? "" };
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      throw new Error(err.response.data?.error ?? `Something went wrong (${err.response.status})`);
+    }
+    throw err;
+  }
 }
 
 async function callMastraProxy(prompt: string, caseIr: CaseIR, mode?: string) {
-  const res = await fetch(MASTRA_PROXY_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    },
-    body: JSON.stringify({ prompt, caseIr, mode }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? `Agent error (${res.status})`);
-  if (data.error) throw new Error(data.error);
-  return {
-    patch: data.patch ?? [],
-    summary: data.summary ?? "",
-    agentsUsed: data.agentsUsed ?? [],
-    analysis: data.analysis,
-    review: data.review,
-  };
+  try {
+    const { data } = await axios.post(MASTRA_PROXY_URL, { prompt, caseIr, mode }, { headers: apiHeaders });
+    if (data.error) throw new Error(data.error);
+    return {
+      patch: data.patch ?? [],
+      summary: data.summary ?? "",
+      agentsUsed: data.agentsUsed ?? [],
+      analysis: data.analysis,
+      review: data.review,
+    };
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      throw new Error(err.response.data?.error ?? `Agent error (${err.response.status})`);
+    }
+    throw err;
+  }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
