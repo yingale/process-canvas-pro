@@ -98,6 +98,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
   const [warnings, setWarnings] = useState<string[]>(initialWarnings ?? []);
   const [propsCollapsed, setPropsCollapsed] = useState(true);
   const [activeTab, setActiveTab] = useState("flow");
+  const [formFields, setFormFields] = useState<ModuleConfigField[]>([]);
   
   const handleImportBpmn = (ir: CaseIR, w: string[]) => {
     if (!ir.alternativePaths) ir.alternativePaths = [];
