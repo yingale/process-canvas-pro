@@ -280,7 +280,10 @@ export interface ReusableModule {
   name: string;
   description?: string;
   category: string;
+  icon?: string;
   steps: Step[];
+  configSchema: ModuleConfigField[];
+  allowedPersonas?: string[];
 }
 
 // ─── Case IR Root ─────────────────────────────────────────────────────────────
