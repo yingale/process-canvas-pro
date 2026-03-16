@@ -189,8 +189,23 @@ export default function StepPropertiesPanel({
         </div>
       )}
 
-      <div>
-        <SectionHeader title="Input / Output Parameters" open={openGroups.has("io")} onToggle={() => toggleGroup("io")} />
+      {/* Module Configuration */}
+      {step.moduleRef && (
+        <div>
+          <SectionHeader
+            title="Module Configuration"
+            open={openGroups.has("module-config")}
+            onToggle={() => toggleGroup("module-config")}
+          />
+          {openGroups.has("module-config") && (
+            <ModuleConfigPanel
+              moduleRef={step.moduleRef}
+              basePath={basePath}
+              onPatch={onPatch}
+            />
+          )}
+        </div>
+      )}
         {openGroups.has("io") && (
           <div className="px-4 py-3 space-y-4">
             <IoParamTable params={inputParams} label="Input Parameters" accent="hsl(213 80% 50%)" onChange={p => { setInputParams(p); setDirty(true); }} />
