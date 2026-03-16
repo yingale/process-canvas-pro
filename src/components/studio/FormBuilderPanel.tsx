@@ -428,9 +428,7 @@ export default function FormBuilderPanel({ fields, onFieldsChange }: FormBuilder
 
       {showPreview ? (
         <FormPreview fields={fields} />
-      ) : (
-
-      {mode === "api" ? (
+      ) : mode === "api" ? (
         <div className="fb-api-section">
           <p className="text-[11px] text-foreground-muted mb-3">
             Provide an API endpoint that returns a <code className="fb-code">ModuleConfigField[]</code> JSON array.
@@ -476,10 +474,7 @@ export default function FormBuilderPanel({ fields, onFieldsChange }: FormBuilder
       ) : (
         <div className="fb-custom-section">
           <div className="fb-layout">
-            {/* Left: palette */}
             <TypePalette onAdd={handleAddField} />
-
-            {/* Right: field list */}
             <div className="fb-fields-area">
               {fields.length === 0 ? (
                 <div className="fb-empty-state">
@@ -507,8 +502,6 @@ export default function FormBuilderPanel({ fields, onFieldsChange }: FormBuilder
             </div>
           </div>
         </div>
-      )}
-
       )}
 
       {/* Footer summary */}
