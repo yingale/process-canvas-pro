@@ -126,15 +126,25 @@ export interface ProcessProperties {
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
+export type FormFieldType =
+  | "string" | "number" | "boolean" | "select" | "multiline"
+  | "file" | "date" | "radio" | "checkbox-group" | "email" | "url" | "password"
+  | "richtext" | "color" | "slider" | "rating" | "repeatable";
+
 export interface ModuleConfigField {
   key: string;
   label: string;
-  type: "string" | "number" | "boolean" | "select" | "multiline";
+  type: FormFieldType;
   required: boolean;
   defaultValue?: string;
   options?: string[];
   hint?: string;
   group?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  accept?: string; // file accept types
+  repeatableFields?: ModuleConfigField[]; // for repeatable groups
 }
 
 export interface ModuleRef {
