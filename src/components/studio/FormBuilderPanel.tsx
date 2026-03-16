@@ -6,12 +6,13 @@
  */
 import { useState, useCallback, useRef } from "react";
 import {
-  Plus, Trash2, GripVertical, Upload, Link2, Pencil,
+  Plus, Trash2, GripVertical, Upload, Link2, Pencil, Eye, EyeOff,
   Type, Hash, ToggleLeft, List, AlignLeft, FileUp, Calendar,
   CircleDot, CheckSquare, Mail, Globe, Lock,
   Palette, SlidersHorizontal, Star, Repeat, ChevronDown, ChevronRight, X,
 } from "lucide-react";
 import type { ModuleConfigField, FormFieldType } from "@/types/caseIr";
+import FormPreview from "./FormPreview";
 import "./studio.css";
 
 // ─── Field type registry ──────────────────────────────────────────────────────
