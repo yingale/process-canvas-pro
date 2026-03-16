@@ -16,7 +16,8 @@ import TeamPanel from "./TeamPanel";
 import BusinessRulesPanel from "./BusinessRulesPanel";
 import DataModelPanel from "./DataModelPanel";
 import DeploymentPanel from "./DeploymentPanel";
-import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket } from "lucide-react";
+import FormBuilderPanel from "./FormBuilderPanel";
+import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket, FormInput } from "lucide-react";
 import "./studio.css";
 
 function uid() { return `el_${Math.random().toString(36).slice(2, 8)}`; }
