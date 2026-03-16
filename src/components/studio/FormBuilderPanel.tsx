@@ -509,10 +509,13 @@ export default function FormBuilderPanel({ fields, onFieldsChange }: FormBuilder
         </div>
       )}
 
+      )}
+
       {/* Footer summary */}
       <div className="fb-footer">
         <span className="text-[10px] text-foreground-muted">
           {fields.length} field{fields.length !== 1 ? "s" : ""} configured
+          {showPreview && " • Preview mode"}
         </span>
       </div>
     </div>
