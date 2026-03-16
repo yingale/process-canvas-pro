@@ -19,7 +19,8 @@ interface ReusableModule {
   allowed_personas: string[] | null;
 }
 
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ICON_MAP: Record<string, any> = {
   mail: Mail,
   zap: Zap,
   shield: Shield,
