@@ -479,6 +479,9 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
                 <TabsContent value="deploy" className="flex-1 overflow-auto mt-0">
                   <DeploymentPanel caseIr={caseIr} onPatch={handlePatch} />
                 </TabsContent>
+                <TabsContent value="forms" className="flex-1 overflow-hidden mt-0">
+                  <FormBuilderPanel fields={formFields} onFieldsChange={setFormFields} />
+                </TabsContent>
               </Tabs>
             </div>
             <PropertiesPanel
