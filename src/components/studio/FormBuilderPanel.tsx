@@ -401,19 +401,34 @@ export default function FormBuilderPanel({ fields, onFieldsChange }: FormBuilder
     <div className="fb-panel">
       {/* Mode toggle */}
       <div className="fb-mode-bar">
+        <div className="flex gap-1">
+          <button
+            className={`fb-mode-btn ${mode === "custom" && !showPreview ? "fb-mode-btn--active" : ""}`}
+            onClick={() => { setMode("custom"); setShowPreview(false); }}
+          >
+            <Pencil size={12} /> Builder
+          </button>
+          <button
+            className={`fb-mode-btn ${mode === "api" && !showPreview ? "fb-mode-btn--active" : ""}`}
+            onClick={() => { setMode("api"); setShowPreview(false); }}
+          >
+            <Link2 size={12} /> API
+          </button>
+        </div>
         <button
-          className={`fb-mode-btn ${mode === "custom" ? "fb-mode-btn--active" : ""}`}
-          onClick={() => setMode("custom")}
+          className={`fb-mode-btn ${showPreview ? "fb-mode-btn--active" : ""}`}
+          onClick={() => setShowPreview(!showPreview)}
+          disabled={fields.length === 0}
+          title={fields.length === 0 ? "Add fields first" : "Toggle preview"}
         >
-          <Pencil size={12} /> Custom Builder
-        </button>
-        <button
-          className={`fb-mode-btn ${mode === "api" ? "fb-mode-btn--active" : ""}`}
-          onClick={() => setMode("api")}
-        >
-          <Link2 size={12} /> From API
+          {showPreview ? <EyeOff size={12} /> : <Eye size={12} />}
+          Preview
         </button>
       </div>
+
+      {showPreview ? (
+        <FormPreview fields={fields} />
+      ) : (
 
       {mode === "api" ? (
         <div className="fb-api-section">
