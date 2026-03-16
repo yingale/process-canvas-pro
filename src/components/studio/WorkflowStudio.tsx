@@ -3,7 +3,7 @@
  * Hierarchy: Stage (Section) → Group → Step
  */
 import { useState, useCallback, useRef } from "react";
-import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType } from "@/types/caseIr";
+import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType, ModuleConfigField } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -16,7 +16,8 @@ import TeamPanel from "./TeamPanel";
 import BusinessRulesPanel from "./BusinessRulesPanel";
 import DataModelPanel from "./DataModelPanel";
 import DeploymentPanel from "./DeploymentPanel";
-import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket } from "lucide-react";
+import FormBuilderPanel from "./FormBuilderPanel";
+import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket, FormInput } from "lucide-react";
 import "./studio.css";
 
 function uid() { return `el_${Math.random().toString(36).slice(2, 8)}`; }
@@ -97,6 +98,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
   const [warnings, setWarnings] = useState<string[]>(initialWarnings ?? []);
   const [propsCollapsed, setPropsCollapsed] = useState(true);
   const [activeTab, setActiveTab] = useState("flow");
+  const [formFields, setFormFields] = useState<ModuleConfigField[]>([]);
   
   const handleImportBpmn = (ir: CaseIR, w: string[]) => {
     if (!ir.alternativePaths) ir.alternativePaths = [];
@@ -422,6 +424,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
                     <TabsTrigger value="rules" className="text-xs gap-1 data-[state=active]:bg-muted"><Scale size={12} /> Rules</TabsTrigger>
                     <TabsTrigger value="data" className="text-xs gap-1 data-[state=active]:bg-muted"><Database size={12} /> Data</TabsTrigger>
                     <TabsTrigger value="deploy" className="text-xs gap-1 data-[state=active]:bg-muted"><Rocket size={12} /> Deploy</TabsTrigger>
+                    <TabsTrigger value="forms" className="text-xs gap-1 data-[state=active]:bg-muted"><FormInput size={12} /> Forms</TabsTrigger>
                   </TabsList>
                 </div>
                 <TabsContent value="flow" className="flex-1 overflow-hidden mt-0">
@@ -475,6 +478,9 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
                 </TabsContent>
                 <TabsContent value="deploy" className="flex-1 overflow-auto mt-0">
                   <DeploymentPanel caseIr={caseIr} onPatch={handlePatch} />
+                </TabsContent>
+                <TabsContent value="forms" className="flex-1 overflow-hidden mt-0">
+                  <FormBuilderPanel fields={formFields} onFieldsChange={setFormFields} />
                 </TabsContent>
               </Tabs>
             </div>
