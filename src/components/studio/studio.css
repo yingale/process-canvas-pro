@@ -2004,3 +2004,67 @@
   background: hsl(var(--surface-raised));
   color: hsl(var(--foreground));
 }
+
+/* ─── Module Config Panel ─────────────────────────────────────────────────── */
+
+.module-config-panel {
+  border-top: 1px solid hsl(var(--border));
+}
+
+.module-config-header {
+  background: hsl(var(--surface-overlay));
+}
+
+.module-config-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--primary));
+  flex-shrink: 0;
+}
+
+/* ─── Module Picker Enhancements ──────────────────────────────────────────── */
+
+.module-picker-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+}
+
+.module-picker-item-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--primary) / 0.10);
+  color: hsl(var(--primary));
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.module-picker-item-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.module-picker-item-meta {
+  display: flex;
+  gap: 6px;
+  font-size: 9px;
+  color: hsl(var(--foreground-subtle));
+  margin-top: 2px;
+}
+
+.module-picker-config-badge {
+  background: hsl(var(--primary) / 0.10);
+  color: hsl(var(--primary));
+  padding: 0 4px;
+  border-radius: 3px;
+}
