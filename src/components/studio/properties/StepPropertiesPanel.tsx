@@ -2,8 +2,9 @@
  * Step properties editor sub-panel.
  */
 import { useState, useEffect, useCallback } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Package } from "lucide-react";
 import type { Step, IoParam, JsonPatch } from "@/types/caseIr";
+import ModuleConfigPanel from "./ModuleConfigPanel";
 import { STEP_TYPE_CONFIG } from "../FlowNodes";
 import { CAMUNDA_PROP_GROUPS } from "../camundaSchema";
 import {
@@ -188,6 +189,23 @@ export default function StepPropertiesPanel({
         </div>
       )}
 
+      {/* Module Configuration */}
+      {step.moduleRef && (
+        <div>
+          <SectionHeader
+            title="Module Configuration"
+            open={openGroups.has("module-config")}
+            onToggle={() => toggleGroup("module-config")}
+          />
+          {openGroups.has("module-config") && (
+            <ModuleConfigPanel
+              moduleRef={step.moduleRef}
+              basePath={basePath}
+              onPatch={onPatch}
+            />
+          )}
+        </div>
+      )}
       <div>
         <SectionHeader title="Input / Output Parameters" open={openGroups.has("io")} onToggle={() => toggleGroup("io")} />
         {openGroups.has("io") && (

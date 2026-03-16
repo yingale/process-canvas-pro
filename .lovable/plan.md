@@ -1,150 +1,206 @@
 
 
-# Configurable Reusable Modules System
+# Agentic AI for Workflow Lifecycle Management
 
-## The Idea
+## Overview
 
-Transform the current "insert steps" module system into a **configurable module framework** — modules are templates with a **configuration schema**. When inserted into a workflow, each instance gets its own user-specific configuration (e.g., which email server, which folder, which filters). Access can be restricted by persona/role.
+This plan extends the existing AI chat assistant and workflow creation wizard to cover the **full lifecycle** of a workflow application -- not just the flow diagram, but also **personas, metadata, team members, business rules, data model, and deployment**. Additionally, it introduces a **dropdown in Group sections** to insert pre-built reusable modules.
 
-## Current State vs. Target
+The approach expands the current Case IR model with new top-level sections, adds new AI edge function capabilities, and builds new UI tabs/panels in the Studio to manage each concern.
 
-```text
-CURRENT:  Module = bag of steps → clone into group → done
-TARGET:   Module = template + config schema → insert → user configures per-instance → role-gated
-```
+---
 
 ## What Changes
 
-### 1. New `moduleRef` Concept on Steps
+### 1. Expand the Case IR Data Model
 
-When a module is inserted, the step gets a `moduleRef` linking back to the source module and holding **instance-specific configuration**:
-
-```typescript
-// Added to BaseStep
-moduleRef?: {
-  moduleId: string;        // Which module template
-  instanceConfig: Record<string, unknown>;  // User's values (server, folder, filters)
-}
-```
-
-### 2. Configuration Schema on Modules
-
-Each reusable module defines a **config schema** — the fields a user must fill when using it:
-
-```typescript
-interface ModuleConfigField {
-  key: string;           // e.g., "emailServer", "folder"
-  label: string;         // "Email Server URL"
-  type: "string" | "number" | "boolean" | "select" | "multiline";
-  required: boolean;
-  defaultValue?: string;
-  options?: string[];    // For "select" type
-  hint?: string;         // Help text
-  group?: string;        // Group fields visually (e.g., "Connection", "Filters")
-}
-
-interface ReusableModule {
-  id: string;
-  name: string;
-  category: string;
-  description?: string;
-  icon?: string;                    // Visual identifier
-  steps: Step[];                    // Template steps
-  configSchema: ModuleConfigField[]; // What the user configures
-  allowedPersonas?: string[];       // Role-gating (empty = everyone)
-}
-```
-
-### 3. Database Changes
-
-**Alter `reusable_modules` table:**
-- Add `config_schema` (JSONB) — array of config field definitions
-- Add `allowed_personas` (TEXT[]) — persona/role restrictions
-- Add `icon` (TEXT) — icon identifier
-
-### 4. Module Configuration Panel
-
-When a user clicks a step that has a `moduleRef`, the Properties Panel shows a **Module Configuration** section with:
-- The module name and description at the top
-- A form generated from `configSchema` (text inputs, selects, toggles)
-- Grouped fields (e.g., "Connection Settings", "Filters")
-- Save button that patches `moduleRef.instanceConfig`
-
-### 5. Updated Insert Flow
+Add new top-level properties to `CaseIR` in `src/types/caseIr.ts`:
 
 ```text
-User clicks "Add Module" in a group
-  → Dropdown shows modules (filtered by user's persona if allowedPersonas set)
-  → User selects "Email Fetcher"
-  → Steps are cloned with new IDs + moduleRef attached
-  → Properties panel auto-opens showing the config form
-  → User fills in: server URL, folder "INBOX", subject filter "Invoice*"
-  → Config saved to step's moduleRef.instanceConfig
+CaseIR (existing)
+  +-- personas: Persona[]          (roles like "Manager", "Analyst")
+  +-- teamMembers: TeamMember[]    (assigned people)
+  +-- businessRules: BusinessRule[] (conditions, validations, SLAs)
+  +-- dataModel: DataField[]       (fields, types, required flags)
+  +-- deployment: DeploymentConfig  (target env, version, status)
+  +-- reusableModules: Module[]    (library of insertable step groups)
 ```
 
-### 6. Email Fetcher Example (Seed Data)
+**New types:**
 
-```json
-{
-  "name": "Email Fetcher",
-  "category": "Integration",
-  "description": "Fetch emails from Microsoft Graph with filters and download attachments",
-  "icon": "mail",
-  "configSchema": [
-    { "key": "graphEndpoint", "label": "Graph API Endpoint", "type": "string", "required": true, "defaultValue": "https://graph.microsoft.com/v1.0", "group": "Connection" },
-    { "key": "authMethod", "label": "Authentication", "type": "select", "required": true, "options": ["OAuth2", "App Registration", "Delegated"], "group": "Connection" },
-    { "key": "mailFolder", "label": "Mail Folder", "type": "string", "required": false, "defaultValue": "Inbox", "group": "Filters" },
-    { "key": "subjectFilter", "label": "Subject Contains", "type": "string", "required": false, "group": "Filters" },
-    { "key": "senderFilter", "label": "From Email", "type": "string", "required": false, "group": "Filters" },
-    { "key": "bodyContains", "label": "Body Contains", "type": "string", "required": false, "group": "Filters" },
-    { "key": "downloadAttachments", "label": "Download Attachments", "type": "boolean", "required": false, "defaultValue": "true", "group": "Attachments" },
-    { "key": "attachmentFilter", "label": "Attachment File Types", "type": "string", "required": false, "hint": "e.g., .pdf,.xlsx", "group": "Attachments" }
-  ],
-  "allowedPersonas": [],
-  "steps": [
-    { "type": "automation", "name": "Authenticate with Graph API", "description": "Obtain access token" },
-    { "type": "automation", "name": "Fetch Emails", "description": "Query mailbox with filters" },
-    { "type": "decision", "name": "Has Attachments?", "branches": [
-      { "label": "Yes", "condition": "${hasAttachments}" },
-      { "label": "No", "condition": "${!hasAttachments}" }
-    ]},
-    { "type": "automation", "name": "Download Attachments", "description": "Save filtered attachments" }
-  ]
-}
+- **Persona**: `{ id, name, role, description, permissions[] }`
+- **TeamMember**: `{ id, name, email, personaId, department }`
+- **BusinessRule**: `{ id, name, type (validation|routing|sla|condition), expression, description, appliesTo }`
+- **DataField**: `{ id, name, dataType (string|number|boolean|date|object|array), required, defaultValue, description }`
+- **DeploymentConfig**: `{ targetEnvironment, version, status (draft|staging|production), deployedAt, deployedBy, notes }`
+- **Module**: `{ id, name, description, category, steps: Step[] }` -- reusable step templates
+
+### 2. New Database Tables
+
+Create tables to persist these new entities per workflow:
+
+- `workflow_personas` -- personas linked to a workflow
+- `workflow_team_members` -- team members assigned
+- `workflow_business_rules` -- rules and conditions
+- `workflow_data_model` -- data field definitions
+- `workflow_deployments` -- deployment history/config
+- `reusable_modules` -- library of reusable step groups (shared across workflows)
+
+All tables include RLS policies for public read/write (matching the existing `workflows` table pattern).
+
+### 3. Upgrade the AI Edge Function (`ai-plan`)
+
+Expand the system prompt to understand and generate patches for the new sections:
+
+- "Add a persona called Reviewer who can approve or reject"
+- "Add a business rule: if amount > 10000, require VP approval"
+- "Add a data field: invoiceAmount (number, required)"
+- "Set deployment target to staging"
+- "Add John (john@company.com) as a team member with Reviewer role"
+
+The AI already operates on JSON Patch -- extending the schema means the AI simply patches new paths like `/personas/-`, `/businessRules/-`, `/dataModel/-`, etc.
+
+### 4. New Studio UI Tabs
+
+Add a tab bar or sidebar sections in the WorkflowStudio for:
+
+| Tab | What it shows | AI can manage |
+|---|---|---|
+| **Flow** (existing) | Stages, Groups, Steps diagram | Yes (current) |
+| **Personas** | List of personas with role/permissions | Yes |
+| **Team** | Team member assignments linked to personas | Yes |
+| **Business Rules** | Conditions, SLAs, routing rules | Yes |
+| **Data Model** | Field definitions with types | Yes |
+| **Deployment** | Environment config, deploy button | Yes |
+
+Each tab renders a dedicated panel component (e.g., `PersonasPanel.tsx`, `TeamPanel.tsx`, etc.) with:
+- A list/table view of current items
+- Add/Edit/Delete buttons for manual editing
+- The AI chat panel remains visible and can modify any tab's data
+
+### 5. Reusable Modules Dropdown in Groups
+
+In the `GroupSection` component within `LifecycleDiagram.tsx`:
+
+- Add a dropdown button next to "Add Step" labeled **"Add Module"**
+- Clicking it shows a popover/dropdown listing available reusable modules (fetched from `reusable_modules` table)
+- Selecting a module inserts all its steps into the current group
+- Modules can be pre-seeded (e.g., "Email Notification", "Approval Chain", "Data Validation") and also created by users from existing groups ("Save as Module")
+
+### 6. AI Chat Enhancements
+
+Update the `AiChatPanel` suggestions to include the new capabilities:
+
+```
+"Add a Manager persona"
+"Create a business rule for approval routing"
+"Define the data model fields"
+"Assign team members"
+"Prepare for staging deployment"
+"Insert the Approval Chain module"
 ```
 
-## File Changes
+### 7. Create Workflow Wizard Updates
+
+Add optional steps in the wizard checklist for:
+- **Step 3**: Define Personas (AI can auto-suggest from the workflow description)
+- **Step 4**: Configure Business Rules
+- **Step 5**: Set up Data Model
+- **Step 6**: Deployment settings
+
+The AI generation can pre-populate these based on the user's natural language description.
+
+---
+
+## File Changes Summary
 
 | File | Action |
-|------|--------|
-| `src/types/caseIr.ts` | Add `ModuleConfigField`, `moduleRef` to `BaseStep`, update `ReusableModule` |
-| `supabase/migrations/` (new) | Add `config_schema`, `allowed_personas`, `icon` columns to `reusable_modules` |
-| `supabase/migrations/` (new) | Seed "Email Fetcher" module |
-| `src/components/studio/ModulePicker.tsx` | Filter by persona, show config field count, show icon |
-| `src/components/studio/properties/ModuleConfigPanel.tsx` | New — renders config form from schema |
-| `src/components/studio/properties/StepPropertiesPanel.tsx` | Add Module Configuration section when `moduleRef` exists |
-| `src/components/studio/WorkflowStudio.tsx` | Pass persona context to ModulePicker, auto-open config on insert |
-| `src/components/studio/studio.css` | Styles for module config form |
+|---|---|
+| `src/types/caseIr.ts` | Add Persona, TeamMember, BusinessRule, DataField, DeploymentConfig, Module types; extend CaseIR |
+| `supabase/migrations/` (new) | Create 6 new tables with RLS |
+| `supabase/functions/ai-plan/index.ts` | Expand system prompt to handle new entity types |
+| `src/components/studio/PersonasPanel.tsx` | New -- manage personas |
+| `src/components/studio/TeamPanel.tsx` | New -- manage team members |
+| `src/components/studio/BusinessRulesPanel.tsx` | New -- manage business rules |
+| `src/components/studio/DataModelPanel.tsx` | New -- manage data fields |
+| `src/components/studio/DeploymentPanel.tsx` | New -- deployment config and actions |
+| `src/components/studio/ModulePickerDropdown.tsx` | New -- reusable module selector for groups |
+| `src/components/studio/WorkflowStudio.tsx` | Add tab navigation between Flow/Personas/Team/Rules/Data/Deploy |
+| `src/components/studio/LifecycleDiagram.tsx` | Add "Add Module" dropdown in GroupSection |
+| `src/components/studio/AiChatPanel.tsx` | Update suggestions for new capabilities |
+| `src/pages/CreateWorkflowWizard.tsx` | Add optional wizard steps for personas, rules, data model |
+| `src/components/studio/studio.css` | Styles for new panels and tabs |
 
-## Architecture
+---
+
+## Technical Details
+
+### AI Patch Flow (unchanged pattern, expanded scope)
 
 ```text
-reusable_modules (DB)
-  ├── steps[]          → Template steps to clone
-  ├── configSchema[]   → What fields the user must configure
-  └── allowedPersonas  → Who can use this module
-
-When inserted into workflow:
-  Step.moduleRef = {
-    moduleId: "uuid-of-email-fetcher",
-    instanceConfig: {            ← User's specific values
-      graphEndpoint: "https://...",
-      mailFolder: "Inbox",
-      subjectFilter: "Invoice*",
-      downloadAttachments: true
-    }
-  }
+User says: "Add a persona called Approver with approve/reject permissions"
+     |
+     v
+AI receives current CaseIR (now includes personas[], businessRules[], etc.)
+     |
+     v
+AI returns JSON Patch:
+  [{ "op": "add", "path": "/personas/-", "value": { "id": "persona_abc", "name": "Approver", "role": "approver", "permissions": ["approve", "reject"] } }]
+     |
+     v
+applyCaseIRPatch() applies it (no changes needed -- it's generic JSON Patch)
+     |
+     v
+UI re-renders the Personas tab with the new entry
 ```
 
-The config is **per-step-instance** — two different steps using the same Email Fetcher module can have completely different configurations (different servers, different filters).
+### Module Insertion Flow
+
+```text
+User clicks "Add Module" in a Group
+     |
+     v
+Dropdown shows available modules (from DB + built-in)
+     |
+     v
+User selects "Approval Chain"
+     |
+     v
+Module's steps are deep-cloned with new IDs
+     |
+     v
+JSON Patch: [{ "op": "add", "path": "/stages/X/groups/Y/steps/-", "value": step1 }, ...]
+     |
+     v
+Steps appear in the group
+```
+
+### Database Schema
+
+```sql
+-- Reusable modules (shared library)
+CREATE TABLE reusable_modules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT DEFAULT 'General',
+  steps JSONB NOT NULL DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Workflow-specific tables follow same pattern
+-- (workflow_personas, workflow_team_members, etc.)
+-- Each has workflow_id FK to workflows table
+```
+
+### Tab Navigation in Studio
+
+The WorkflowStudio component will add a horizontal tab bar below the toolbar:
+
+```text
+[ Flow | Personas | Team | Business Rules | Data Model | Deployment ]
+```
+
+Only the active tab's panel renders. The AI chat panel stays pinned on the left regardless of active tab.
 

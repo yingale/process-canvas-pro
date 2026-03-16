@@ -126,6 +126,22 @@ export interface ProcessProperties {
 
 // ─── Steps ────────────────────────────────────────────────────────────────────
 
+export interface ModuleConfigField {
+  key: string;
+  label: string;
+  type: "string" | "number" | "boolean" | "select" | "multiline";
+  required: boolean;
+  defaultValue?: string;
+  options?: string[];
+  hint?: string;
+  group?: string;
+}
+
+export interface ModuleRef {
+  moduleId: string;
+  instanceConfig: Record<string, unknown>;
+}
+
 export interface BaseStep {
   id: string;
   name: string;
@@ -133,6 +149,7 @@ export interface BaseStep {
   tech?: Camunda7Tech;
   source?: SourceMeta;
   boundaryEvents?: BoundaryEvent[];
+  moduleRef?: ModuleRef;
 }
 
 export interface AutomationStep extends BaseStep { type: "automation"; }
@@ -263,7 +280,10 @@ export interface ReusableModule {
   name: string;
   description?: string;
   category: string;
+  icon?: string;
   steps: Step[];
+  configSchema: ModuleConfigField[];
+  allowedPersonas?: string[];
 }
 
 // ─── Case IR Root ─────────────────────────────────────────────────────────────

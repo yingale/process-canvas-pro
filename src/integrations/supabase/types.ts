@@ -16,27 +16,36 @@ export type Database = {
     Tables: {
       reusable_modules: {
         Row: {
+          allowed_personas: string[] | null
           category: string
+          config_schema: Json
           created_at: string
           description: string | null
+          icon: string | null
           id: string
           name: string
           steps: Json
           updated_at: string
         }
         Insert: {
+          allowed_personas?: string[] | null
           category?: string
+          config_schema?: Json
           created_at?: string
           description?: string | null
+          icon?: string | null
           id?: string
           name: string
           steps?: Json
           updated_at?: string
         }
         Update: {
+          allowed_personas?: string[] | null
           category?: string
+          config_schema?: Json
           created_at?: string
           description?: string | null
+          icon?: string | null
           id?: string
           name?: string
           steps?: Json
