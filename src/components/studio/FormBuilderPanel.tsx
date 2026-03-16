@@ -6,12 +6,13 @@
  */
 import { useState, useCallback, useRef } from "react";
 import {
-  Plus, Trash2, GripVertical, Upload, Link2, Pencil,
+  Plus, Trash2, GripVertical, Upload, Link2, Pencil, Eye, EyeOff,
   Type, Hash, ToggleLeft, List, AlignLeft, FileUp, Calendar,
   CircleDot, CheckSquare, Mail, Globe, Lock,
   Palette, SlidersHorizontal, Star, Repeat, ChevronDown, ChevronRight, X,
 } from "lucide-react";
 import type { ModuleConfigField, FormFieldType } from "@/types/caseIr";
+import FormPreview from "./FormPreview";
 import "./studio.css";
 
 // ─── Field type registry ──────────────────────────────────────────────────────
@@ -331,6 +332,7 @@ interface FormBuilderPanelProps {
 
 export default function FormBuilderPanel({ fields, onFieldsChange }: FormBuilderPanelProps) {
   const [mode, setMode] = useState<"custom" | "api">("custom");
+  const [showPreview, setShowPreview] = useState(false);
   const [apiUrl, setApiUrl] = useState("");
   const [apiFetching, setApiFetching] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -399,21 +401,34 @@ export default function FormBuilderPanel({ fields, onFieldsChange }: FormBuilder
     <div className="fb-panel">
       {/* Mode toggle */}
       <div className="fb-mode-bar">
+        <div className="flex gap-1">
+          <button
+            className={`fb-mode-btn ${mode === "custom" && !showPreview ? "fb-mode-btn--active" : ""}`}
+            onClick={() => { setMode("custom"); setShowPreview(false); }}
+          >
+            <Pencil size={12} /> Builder
+          </button>
+          <button
+            className={`fb-mode-btn ${mode === "api" && !showPreview ? "fb-mode-btn--active" : ""}`}
+            onClick={() => { setMode("api"); setShowPreview(false); }}
+          >
+            <Link2 size={12} /> API
+          </button>
+        </div>
         <button
-          className={`fb-mode-btn ${mode === "custom" ? "fb-mode-btn--active" : ""}`}
-          onClick={() => setMode("custom")}
+          className={`fb-mode-btn ${showPreview ? "fb-mode-btn--active" : ""}`}
+          onClick={() => setShowPreview(!showPreview)}
+          disabled={fields.length === 0}
+          title={fields.length === 0 ? "Add fields first" : "Toggle preview"}
         >
-          <Pencil size={12} /> Custom Builder
-        </button>
-        <button
-          className={`fb-mode-btn ${mode === "api" ? "fb-mode-btn--active" : ""}`}
-          onClick={() => setMode("api")}
-        >
-          <Link2 size={12} /> From API
+          {showPreview ? <EyeOff size={12} /> : <Eye size={12} />}
+          Preview
         </button>
       </div>
 
-      {mode === "api" ? (
+      {showPreview ? (
+        <FormPreview fields={fields} />
+      ) : mode === "api" ? (
         <div className="fb-api-section">
           <p className="text-[11px] text-foreground-muted mb-3">
             Provide an API endpoint that returns a <code className="fb-code">ModuleConfigField[]</code> JSON array.
@@ -459,10 +474,7 @@ export default function FormBuilderPanel({ fields, onFieldsChange }: FormBuilder
       ) : (
         <div className="fb-custom-section">
           <div className="fb-layout">
-            {/* Left: palette */}
             <TypePalette onAdd={handleAddField} />
-
-            {/* Right: field list */}
             <div className="fb-fields-area">
               {fields.length === 0 ? (
                 <div className="fb-empty-state">
@@ -496,6 +508,7 @@ export default function FormBuilderPanel({ fields, onFieldsChange }: FormBuilder
       <div className="fb-footer">
         <span className="text-[10px] text-foreground-muted">
           {fields.length} field{fields.length !== 1 ? "s" : ""} configured
+          {showPreview && " • Preview mode"}
         </span>
       </div>
     </div>
