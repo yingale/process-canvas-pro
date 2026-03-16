@@ -423,6 +423,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
                     <TabsTrigger value="rules" className="text-xs gap-1 data-[state=active]:bg-muted"><Scale size={12} /> Rules</TabsTrigger>
                     <TabsTrigger value="data" className="text-xs gap-1 data-[state=active]:bg-muted"><Database size={12} /> Data</TabsTrigger>
                     <TabsTrigger value="deploy" className="text-xs gap-1 data-[state=active]:bg-muted"><Rocket size={12} /> Deploy</TabsTrigger>
+                    <TabsTrigger value="forms" className="text-xs gap-1 data-[state=active]:bg-muted"><FormInput size={12} /> Forms</TabsTrigger>
                   </TabsList>
                 </div>
                 <TabsContent value="flow" className="flex-1 overflow-hidden mt-0">
