@@ -82,6 +82,7 @@ export default function StudioPage() {
     generatedIr?: CaseIR;
     generatedWarnings?: string[];
     savedFormTemplate?: FormTemplate;
+    savedModuleConfig?: Record<string, unknown>;
     stepBasePath?: string;
     restoreStudio?: boolean;
   } | null;
