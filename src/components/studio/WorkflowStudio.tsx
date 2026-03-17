@@ -90,15 +90,52 @@ function EmptyState({ onImport }: { onImport: (ir: CaseIR, w: string[]) => void 
 interface WorkflowStudioProps {
   initialCaseIr?: CaseIR | null;
   initialWarnings?: string[];
+  pendingFormTemplate?: { template: FormTemplate; stepBasePath: string };
+  onFormTemplateConsumed?: () => void;
 }
 
-export default function WorkflowStudio({ initialCaseIr, initialWarnings }: WorkflowStudioProps = {}) {
+export default function WorkflowStudio({ initialCaseIr, initialWarnings, pendingFormTemplate, onFormTemplateConsumed }: WorkflowStudioProps = {}) {
   const [caseIr, setCaseIr] = useState<CaseIR | null>(initialCaseIr ?? null);
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [warnings, setWarnings] = useState<string[]>(initialWarnings ?? []);
   const [propsCollapsed, setPropsCollapsed] = useState(true);
   const [activeTab, setActiveTab] = useState("flow");
   const [formFields, setFormFields] = useState<ModuleConfigField[]>([]);
+
+  // Handle pending form template from form builder page
+  useEffect(() => {
+    if (!pendingFormTemplate || !caseIr) return;
+    const { template, stepBasePath } = pendingFormTemplate;
+    const existing = caseIr.formTemplates ?? [];
+    const idx = existing.findIndex(t => t.id === template.id);
+    
+    // Add/update the template
+    let patch: JsonPatch;
+    if (idx >= 0) {
+      patch = [{ op: "replace" as const, path: `/formTemplates/${idx}`, value: template }];
+    } else if (existing.length === 0) {
+      patch = [{ op: "add" as const, path: "/formTemplates", value: [template] }];
+    } else {
+      patch = [{ op: "add" as const, path: "/formTemplates/-", value: template }];
+    }
+    
+    // Attach to step
+    patch.push({
+      op: "add" as const,
+      path: `${stepBasePath}/formRef`,
+      value: { formId: template.id, fieldOverrides: {} } satisfies FormRef,
+    });
+    
+    try {
+      const updated = applyCaseIRPatch(caseIr, patch);
+      if (!updated.alternativePaths) updated.alternativePaths = [];
+      setCaseIr(updated);
+    } catch (e) {
+      console.error("Failed to apply form template:", e);
+    }
+    
+    onFormTemplateConsumed?.();
+  }, [pendingFormTemplate]);
   
   const handleImportBpmn = (ir: CaseIR, w: string[]) => {
     if (!ir.alternativePaths) ir.alternativePaths = [];
