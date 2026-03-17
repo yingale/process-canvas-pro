@@ -152,6 +152,7 @@ interface StepPropertiesPanelProps {
 export default function StepPropertiesPanel({
   step, basePath, onPatch, formTemplates = [], caseIr,
 }: StepPropertiesPanelProps) {
+  const navigate = useNavigate();
   const [draft, setDraft] = useState<Record<string, unknown>>(
     step as unknown as Record<string, unknown>
   );
