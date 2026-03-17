@@ -152,6 +152,21 @@ export interface ModuleRef {
   instanceConfig: Record<string, unknown>;
 }
 
+// ─── Form Template & Step Binding ─────────────────────────────────────────────
+
+export interface FormTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  fields: ModuleConfigField[];
+}
+
+export interface FormRef {
+  formId: string;
+  /** Per-step overrides: hide fields, change defaults, make required, etc. */
+  fieldOverrides?: Record<string, Partial<ModuleConfigField>>;
+}
+
 export interface BaseStep {
   id: string;
   name: string;
@@ -160,6 +175,7 @@ export interface BaseStep {
   source?: SourceMeta;
   boundaryEvents?: BoundaryEvent[];
   moduleRef?: ModuleRef;
+  formRef?: FormRef;
 }
 
 export interface AutomationStep extends BaseStep { type: "automation"; }
@@ -313,6 +329,7 @@ export interface CaseIR {
   dataModel?: DataField[];
   deployment?: DeploymentConfig;
   reusableModules?: ReusableModule[];
+  formTemplates?: FormTemplate[];
   metadata: {
     createdAt: string;
     updatedAt: string;

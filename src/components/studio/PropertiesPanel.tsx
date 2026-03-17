@@ -191,7 +191,7 @@ export default function PropertiesPanel({
       if (!step) return null;
       title = "Step";
       subtitle = step.name;
-      content = <StepPropertiesPanel step={step} basePath={`${stagePath}/groups/${gi}/steps/${sti}`} onPatch={onPatch} />;
+      content = <StepPropertiesPanel step={step} basePath={`${stagePath}/groups/${gi}/steps/${sti}`} onPatch={onPatch} formTemplates={caseIr.formTemplates ?? []} />;
     }
   }
 

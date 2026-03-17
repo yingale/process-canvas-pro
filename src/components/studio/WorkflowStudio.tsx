@@ -3,7 +3,7 @@
  * Hierarchy: Stage (Section) → Group → Step
  */
 import { useState, useCallback, useRef } from "react";
-import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType, ModuleConfigField } from "@/types/caseIr";
+import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType, ModuleConfigField, FormTemplate } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -480,7 +480,28 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings }: Workf
                   <DeploymentPanel caseIr={caseIr} onPatch={handlePatch} />
                 </TabsContent>
                 <TabsContent value="forms" className="flex-1 overflow-hidden mt-0">
-                  <FormBuilderPanel fields={formFields} onFieldsChange={setFormFields} />
+                  <FormBuilderPanel
+                    fields={formFields}
+                    onFieldsChange={setFormFields}
+                    formTemplates={caseIr.formTemplates ?? []}
+                    onSaveTemplate={(template: FormTemplate) => {
+                      const existing = caseIr.formTemplates ?? [];
+                      const idx = existing.findIndex(t => t.id === template.id);
+                      if (idx >= 0) {
+                        handlePatch([{ op: "replace", path: `/formTemplates/${idx}`, value: template }]);
+                      } else {
+                        if (existing.length === 0) {
+                          handlePatch([{ op: "add", path: "/formTemplates", value: [template] }]);
+                        } else {
+                          handlePatch([{ op: "add", path: "/formTemplates/-", value: template }]);
+                        }
+                      }
+                    }}
+                    onDeleteTemplate={(templateId: string) => {
+                      const idx = (caseIr.formTemplates ?? []).findIndex(t => t.id === templateId);
+                      if (idx >= 0) handlePatch([{ op: "remove", path: `/formTemplates/${idx}` }]);
+                    }}
+                  />
                 </TabsContent>
               </Tabs>
             </div>
