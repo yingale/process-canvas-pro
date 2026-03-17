@@ -407,27 +407,57 @@ export default function FormBuilderPanel({
     }
   };
 
+  const handleSaveAsTemplate = () => {
+    if (!templateName.trim() || fields.length === 0 || !onSaveTemplate) return;
+    const template: FormTemplate = {
+      id: editingTemplateId || `form_${Math.random().toString(36).slice(2, 8)}`,
+      name: templateName.trim(),
+      description: templateDesc.trim() || undefined,
+      fields: [...fields],
+    };
+    onSaveTemplate(template);
+    setTemplateName("");
+    setTemplateDesc("");
+    setEditingTemplateId(null);
+  };
+
+  const handleLoadTemplate = (t: FormTemplate) => {
+    onFieldsChange([...t.fields]);
+    setTemplateName(t.name);
+    setTemplateDesc(t.description ?? "");
+    setEditingTemplateId(t.id);
+    setShowLibrary(false);
+    setShowPreview(false);
+    setMode("custom");
+  };
+
   return (
     <div className="fb-panel">
       {/* Mode toggle */}
       <div className="fb-mode-bar">
         <div className="flex gap-1">
           <button
-            className={`fb-mode-btn ${mode === "custom" && !showPreview ? "fb-mode-btn--active" : ""}`}
-            onClick={() => { setMode("custom"); setShowPreview(false); }}
+            className={`fb-mode-btn ${mode === "custom" && !showPreview && !showLibrary ? "fb-mode-btn--active" : ""}`}
+            onClick={() => { setMode("custom"); setShowPreview(false); setShowLibrary(false); }}
           >
             <Pencil size={12} /> Builder
           </button>
           <button
-            className={`fb-mode-btn ${mode === "api" && !showPreview ? "fb-mode-btn--active" : ""}`}
-            onClick={() => { setMode("api"); setShowPreview(false); }}
+            className={`fb-mode-btn ${mode === "api" && !showPreview && !showLibrary ? "fb-mode-btn--active" : ""}`}
+            onClick={() => { setMode("api"); setShowPreview(false); setShowLibrary(false); }}
           >
             <Link2 size={12} /> API
+          </button>
+          <button
+            className={`fb-mode-btn ${showLibrary ? "fb-mode-btn--active" : ""}`}
+            onClick={() => { setShowLibrary(!showLibrary); setShowPreview(false); }}
+          >
+            <FormInput size={12} /> Library ({formTemplates.length})
           </button>
         </div>
         <button
           className={`fb-mode-btn ${showPreview ? "fb-mode-btn--active" : ""}`}
-          onClick={() => setShowPreview(!showPreview)}
+          onClick={() => { setShowPreview(!showPreview); setShowLibrary(false); }}
           disabled={fields.length === 0}
           title={fields.length === 0 ? "Add fields first" : "Toggle preview"}
         >
@@ -436,7 +466,49 @@ export default function FormBuilderPanel({
         </button>
       </div>
 
-      {showPreview ? (
+      {showLibrary ? (
+        /* ─── Form Template Library ─────────────────────────────────────── */
+        <div className="fb-library-section">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-foreground-muted mb-3 px-4 pt-3">
+            Saved Form Templates
+          </div>
+          {formTemplates.length === 0 ? (
+            <div className="fb-empty-state">
+              <FormInput size={24} className="text-foreground-subtle mb-2" />
+              <p className="text-[12px] text-foreground-muted">
+                No saved forms yet. Build fields and save as a template.
+              </p>
+            </div>
+          ) : (
+            <div className="px-4 pb-3 space-y-2">
+              {formTemplates.map((t) => (
+                <div key={t.id} className="fb-template-card">
+                  <div className="flex items-start justify-between gap-2">
+                    <button className="flex-1 text-left" onClick={() => handleLoadTemplate(t)}>
+                      <div className="text-[12px] font-semibold text-foreground">{t.name}</div>
+                      {t.description && (
+                        <div className="text-[10px] text-foreground-muted mt-0.5">{t.description}</div>
+                      )}
+                      <div className="text-[10px] text-foreground-subtle mt-1">
+                        {t.fields.length} field{t.fields.length !== 1 ? "s" : ""}
+                      </div>
+                    </button>
+                    {onDeleteTemplate && (
+                      <button
+                        className="step-form-icon-btn"
+                        onClick={() => onDeleteTemplate(t.id)}
+                        title="Delete template"
+                      >
+                        <X size={11} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : showPreview ? (
         <FormPreview fields={fields} />
       ) : mode === "api" ? (
         <div className="fb-api-section">
@@ -514,12 +586,31 @@ export default function FormBuilderPanel({
         </div>
       )}
 
-      {/* Footer summary */}
+      {/* Footer: save as template + summary */}
       <div className="fb-footer">
-        <span className="text-[10px] text-foreground-muted">
-          {fields.length} field{fields.length !== 1 ? "s" : ""} configured
-          {showPreview && " • Preview mode"}
-        </span>
+        {onSaveTemplate && fields.length > 0 && !showLibrary && !showPreview ? (
+          <div className="fb-save-template-bar">
+            <input
+              className="studio-input fb-input flex-1 text-[11px]"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Form template name…"
+            />
+            <button
+              className={`fb-save-template-btn ${templateName.trim() ? "save-btn--active" : "save-btn--inactive"}`}
+              onClick={handleSaveAsTemplate}
+              disabled={!templateName.trim()}
+            >
+              {editingTemplateId ? "Update" : "Save"}
+            </button>
+          </div>
+        ) : (
+          <span className="text-[10px] text-foreground-muted">
+            {fields.length} field{fields.length !== 1 ? "s" : ""} configured
+            {showPreview && " • Preview mode"}
+            {showLibrary && ` • ${formTemplates.length} template${formTemplates.length !== 1 ? "s" : ""}`}
+          </span>
+        )}
       </div>
     </div>
   );
