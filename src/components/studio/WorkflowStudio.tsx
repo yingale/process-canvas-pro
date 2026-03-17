@@ -139,6 +139,25 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     
     onFormTemplateConsumed?.();
   }, [pendingFormTemplate]);
+
+  // Handle pending module config from module config page
+  useEffect(() => {
+    if (!pendingModuleConfig || !caseIr) return;
+    const { config, stepBasePath } = pendingModuleConfig;
+    const patch: JsonPatch = [{
+      op: "replace" as const,
+      path: `${stepBasePath}/moduleRef/instanceConfig`,
+      value: config,
+    }];
+    try {
+      const updated = applyCaseIRPatch(caseIr, patch);
+      if (!updated.alternativePaths) updated.alternativePaths = [];
+      setCaseIr(updated);
+    } catch (e) {
+      console.error("Failed to apply module config:", e);
+    }
+    onModuleConfigConsumed?.();
+  }, [pendingModuleConfig]);
   
   const handleImportBpmn = (ir: CaseIR, w: string[]) => {
     if (!ir.alternativePaths) ir.alternativePaths = [];
