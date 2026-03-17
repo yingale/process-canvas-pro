@@ -161,6 +161,8 @@ export default function StudioPage() {
       initialWarnings={initialIr?.warnings}
       pendingFormTemplate={pendingFormTemplate ?? undefined}
       onFormTemplateConsumed={() => setPendingFormTemplate(null)}
+      pendingModuleConfig={pendingModuleConfig ?? undefined}
+      onModuleConfigConsumed={() => setPendingModuleConfig(null)}
     />
   );
 }
