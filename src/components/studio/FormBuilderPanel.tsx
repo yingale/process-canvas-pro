@@ -9,7 +9,7 @@ import {
   Plus, Trash2, GripVertical, Upload, Link2, Pencil, Eye, EyeOff,
   Type, Hash, ToggleLeft, List, AlignLeft, FileUp, Calendar,
   CircleDot, CheckSquare, Mail, Globe, Lock,
-  Palette, SlidersHorizontal, Star, Repeat, ChevronDown, ChevronRight, X,
+  Palette, SlidersHorizontal, Star, Repeat, ChevronDown, ChevronRight, X, FormInput,
 } from "lucide-react";
 import type { ModuleConfigField, FormFieldType, FormTemplate } from "@/types/caseIr";
 import FormPreview from "./FormPreview";
