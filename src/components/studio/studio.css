@@ -81,6 +81,11 @@
   color: hsl(134 58% 38%);
 }
 
+.step-form-badge {
+  background: hsl(270 60% 50% / 0.12);
+  color: hsl(270 60% 50%);
+}
+
 /* ─── Boundary Event Badges ───────────────────────────────────────────────── */
 
 .boundary-badge--interrupting {
