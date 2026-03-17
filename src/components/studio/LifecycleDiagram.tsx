@@ -121,6 +121,14 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
               {outputCount > 0 && <span className="step-io-badge--output text-[9px] px-1 py-0.5 rounded font-mono">OUT:{outputCount}</span>}
             </div>
           )}
+          {step.formRef && (
+            <div className="flex items-center gap-1 mt-1">
+              <span className="step-form-badge text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
+                <Radio size={7} />
+                Form
+              </span>
+            </div>
+          )}
           {step.description && <div className="text-[9px] mt-0.5 truncate italic text-foreground-subtle">{step.description}</div>}
           {step.boundaryEvents && step.boundaryEvents.length > 0 && (
             <div className="flex items-center gap-1 mt-1 flex-wrap">
