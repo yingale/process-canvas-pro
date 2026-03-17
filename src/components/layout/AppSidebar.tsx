@@ -7,6 +7,7 @@ const navItems = [
   { to: "/teams", icon: Users, label: "Teams" },
   { to: "/favorites", icon: BookmarkCheck, label: "Favorites" },
   { to: "/settings", icon: Settings, label: "Settings" },
+  { to: "/docs", icon: FileText, label: "Tech Docs" },
 ];
 
 export default function AppSidebar() {

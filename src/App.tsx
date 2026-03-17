@@ -31,6 +31,7 @@ const App = () => (
             <Route path="/templates" element={<AllTemplates />} />
             <Route path="/workflows" element={<AllWorkflows />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/docs" element={<TechDocsPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
