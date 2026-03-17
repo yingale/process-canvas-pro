@@ -346,6 +346,7 @@ export default function StepPropertiesPanel({
         formTemplates={formTemplates}
         openGroups={openGroups}
         toggleGroup={toggleGroup}
+        caseIr={caseIr}
       />
 
       <div>
