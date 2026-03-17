@@ -175,6 +175,7 @@ export interface BaseStep {
   source?: SourceMeta;
   boundaryEvents?: BoundaryEvent[];
   moduleRef?: ModuleRef;
+  formRef?: FormRef;
 }
 
 export interface AutomationStep extends BaseStep { type: "automation"; }
