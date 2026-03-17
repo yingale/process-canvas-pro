@@ -227,7 +227,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
 
 // ─── Section card (Stage) ──────────────────────────────────────────────────────
 
-function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx }: {
+function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm }: {
   stage: Stage; stageIdx: number; color: string; selection: SelectionTarget;
   onSelectStage: (id: string) => void;
   onSelectGroup: (stageId: string, groupId: string) => void;
@@ -238,6 +238,9 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
   onStageCtx: (e: React.MouseEvent, stageId: string) => void;
   onGroupCtx: (e: React.MouseEvent, stageId: string, groupId: string) => void;
   onStepCtx: (e: React.MouseEvent, stageId: string, groupId: string, stepId: string) => void;
+  formTemplates?: FormTemplate[];
+  onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
+  onCreateNewForm?: (stageId: string, groupId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [headerHover, setHeaderHover] = useState(false);
