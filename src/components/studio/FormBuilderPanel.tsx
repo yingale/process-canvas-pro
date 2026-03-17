@@ -339,6 +339,10 @@ export default function FormBuilderPanel({
 }: FormBuilderPanelProps) {
   const [mode, setMode] = useState<"custom" | "api">("custom");
   const [showPreview, setShowPreview] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateDesc, setTemplateDesc] = useState("");
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [apiUrl, setApiUrl] = useState("");
   const [apiFetching, setApiFetching] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
