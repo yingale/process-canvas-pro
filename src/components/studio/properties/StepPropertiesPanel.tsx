@@ -191,7 +191,26 @@ export default function StepPropertiesPanel({
         </div>
       )}
 
-      {/* Module Configuration */}
+      {/* Step Form */}
+      {formTemplates.length > 0 && (
+        <div>
+          <SectionHeader
+            title={`Form${step.formRef ? ` — ${formTemplates.find(t => t.id === step.formRef?.formId)?.name ?? ""}` : ""}`}
+            open={openGroups.has("step-form")}
+            onToggle={() => toggleGroup("step-form")}
+          />
+          {openGroups.has("step-form") && (
+            <StepFormPanel
+              formRef={step.formRef}
+              formTemplates={formTemplates}
+              basePath={basePath}
+              onPatch={onPatch}
+            />
+          )}
+        </div>
+      )}
+
+
       {step.moduleRef && (
         <div>
           <SectionHeader
