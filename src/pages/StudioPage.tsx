@@ -86,12 +86,32 @@ export default function StudioPage() {
     restoreStudio?: boolean;
   } | null;
 
+  // Restore CaseIR from sessionStorage when returning from form builder
+  const restoredIr = (() => {
+    if (routerState?.restoreStudio) {
+      try {
+        const saved = sessionStorage.getItem("studio_caseIr");
+        if (saved) {
+          const parsed = JSON.parse(saved) as CaseIR;
+          // Clean up after restore
+          sessionStorage.removeItem("studio_caseIr");
+          return parsed;
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+    return null;
+  })();
+
   const [initialIr, setInitialIr] = useState<{ ir: CaseIR; warnings: string[] } | null>(
     routerState?.generatedIr
       ? { ir: routerState.generatedIr, warnings: routerState.generatedWarnings ?? [] }
-      : null
+      : restoredIr
+        ? { ir: restoredIr, warnings: [] }
+        : null
   );
-  const [loading, setLoading] = useState(!!templateId && !routerState?.generatedIr);
+  const [loading, setLoading] = useState(!!templateId && !routerState?.generatedIr && !restoredIr);
 
   // Pass saved form template from form builder page
   const [pendingFormTemplate, setPendingFormTemplate] = useState<{
@@ -104,7 +124,7 @@ export default function StudioPage() {
   );
 
   useEffect(() => {
-    if (routerState?.generatedIr || !templateId) return;
+    if (routerState?.generatedIr || restoredIr || !templateId) return;
     const xml = TEMPLATE_MAP[templateId];
     if (!xml) {
       setLoading(false);

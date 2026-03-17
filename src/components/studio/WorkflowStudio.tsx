@@ -476,20 +476,30 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     const gi = stageArr[si].groups.findIndex(g => g.id === groupId);
     if (gi < 0) return;
 
-    // Add a placeholder step first, then navigate to form builder
-    const stepId = uid();
-    const newStep: Step = { id: stepId, name: "New Form Step", type: "user" };
+    // Add a placeholder step and compute the updated IR
+    const newStep: Step = { id: uid(), name: "New Form Step", type: "user" };
     const stepPath = `${basePath}/groups/${gi}/steps/${stageArr[si].groups[gi].steps.length}`;
-    handlePatch([{ op: "add", path: `${basePath}/groups/${gi}/steps/-`, value: newStep }]);
-
-    nav("/studio/form-builder", {
-      state: {
-        returnTo: "/studio",
-        stepBasePath: stepPath,
-        existingTemplates: caseIr.formTemplates ?? [],
-      },
-    });
-  }, [caseIr, handlePatch, nav]);
+    const patch: JsonPatch = [{ op: "add", path: `${basePath}/groups/${gi}/steps/-`, value: newStep }];
+    
+    try {
+      const updatedIr = applyCaseIRPatch(caseIr, patch);
+      if (!updatedIr.alternativePaths) updatedIr.alternativePaths = [];
+      setCaseIr(updatedIr);
+      
+      // Persist to sessionStorage so it survives navigation
+      sessionStorage.setItem("studio_caseIr", JSON.stringify(updatedIr));
+      
+      nav("/studio/form-builder", {
+        state: {
+          returnTo: "/studio",
+          stepBasePath: stepPath,
+          existingTemplates: updatedIr.formTemplates ?? [],
+        },
+      });
+    } catch (e) {
+      console.error("Failed to add form step:", e);
+    }
+  }, [caseIr, nav]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
