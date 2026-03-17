@@ -2610,3 +2610,134 @@
 .fp-submit-btn--primary:hover {
   opacity: 0.9;
 }
+
+/* ─── Step Form Panel ────────────────────────────────────────────────────── */
+
+.step-form-panel {
+  border-top: 1px solid hsl(var(--border));
+}
+
+.step-form-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--surface-raised));
+  color: hsl(var(--foreground-muted));
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.step-form-icon-btn:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.step-form-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--surface-raised));
+  color: hsl(var(--foreground-muted));
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.step-form-action-btn:hover {
+  background: hsl(var(--muted));
+}
+.step-form-action-btn--active {
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.step-form-preview-wrap {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.step-form-override-card {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  overflow: hidden;
+}
+.step-form-override-card--modified {
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.step-form-override-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  background: hsl(var(--surface-raised));
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.step-form-override-header:hover {
+  background: hsl(var(--muted));
+}
+
+.step-form-override-body {
+  padding: 8px 10px;
+  space-y: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid hsl(var(--border));
+}
+
+.step-form-override-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: hsl(var(--primary));
+}
+
+/* ─── Form Builder Template Library ──────────────────────────────────────── */
+
+.fb-library-section {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.fb-template-card {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: hsl(var(--surface-raised));
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.fb-template-card:hover {
+  background: hsl(var(--muted));
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.fb-save-template-bar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+}
+
+.fb-save-template-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
