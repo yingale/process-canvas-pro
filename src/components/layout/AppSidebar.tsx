@@ -1,4 +1,4 @@
-import { LayoutGrid, Users, BookmarkCheck, Settings, LogOut } from "lucide-react";
+import { LayoutGrid, Users, BookmarkCheck, Settings, LogOut, FileText } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import "../studio/studio.css";
 
