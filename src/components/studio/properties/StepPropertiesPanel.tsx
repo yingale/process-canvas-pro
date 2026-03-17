@@ -204,6 +204,8 @@ export default function StepPropertiesPanel({
               moduleRef={step.moduleRef}
               basePath={basePath}
               onPatch={onPatch}
+              formTemplates={formTemplates}
+              formRef={step.formRef}
             />
           )}
         </div>
