@@ -14,15 +14,13 @@ interface ModuleConfigPanelProps {
   onPatch: (p: JsonPatch) => void;
 }
 
-export default function ModuleConfigPanel({ moduleRef, basePath, onPatch, formTemplates = [], formRef }: ModuleConfigPanelProps) {
-  const navigate = useNavigate();
+export default function ModuleConfigPanel({ moduleRef, basePath, onPatch }: ModuleConfigPanelProps) {
   const [schema, setSchema] = useState<ModuleConfigField[]>([]);
   const [moduleName, setModuleName] = useState("");
   const [moduleDesc, setModuleDesc] = useState("");
   const [config, setConfig] = useState<Record<string, unknown>>({ ...moduleRef.instanceConfig });
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showFormPreview, setShowFormPreview] = useState(false);
 
   useEffect(() => {
     supabase
@@ -53,7 +51,7 @@ export default function ModuleConfigPanel({ moduleRef, basePath, onPatch, formTe
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    setOpenGroups(new Set([...Object.keys(grouped), "form-attachment"]));
+    setOpenGroups(new Set(Object.keys(grouped)));
   }, [grouped]);
 
   const toggleGroup = (g: string) =>
@@ -71,41 +69,6 @@ export default function ModuleConfigPanel({ moduleRef, basePath, onPatch, formTe
   const handleSave = () => {
     onPatch([{ op: "replace", path: `${basePath}/moduleRef/instanceConfig`, value: config }]);
     setDirty(false);
-  };
-
-  const selectedTemplate = useMemo(
-    () => formTemplates.find(t => t.id === formRef?.formId),
-    [formTemplates, formRef?.formId],
-  );
-
-  const effectiveFields = useMemo(() => {
-    if (!selectedTemplate) return [];
-    return selectedTemplate.fields.map(f => {
-      const override = formRef?.fieldOverrides?.[f.key];
-      return override ? { ...f, ...override } : f;
-    });
-  }, [selectedTemplate, formRef?.fieldOverrides]);
-
-  const handleAttachForm = (formId: string) => {
-    onPatch([{
-      op: formRef ? "replace" : "add",
-      path: `${basePath}/formRef`,
-      value: { formId, fieldOverrides: {} } satisfies FormRef,
-    }]);
-  };
-
-  const handleDetachForm = () => {
-    onPatch([{ op: "remove", path: `${basePath}/formRef` }]);
-  };
-
-  const handleCreateNewForm = () => {
-    navigate("/studio/form-builder", {
-      state: {
-        returnTo: "/studio",
-        stepBasePath: basePath,
-        existingTemplates: formTemplates,
-      },
-    });
   };
 
   if (loading) {
@@ -183,70 +146,6 @@ export default function ModuleConfigPanel({ moduleRef, basePath, onPatch, formTe
           </div>
         ))
       )}
-
-      {/* Form Attachment Section */}
-      <div>
-        <SectionHeader
-          title={`Form${selectedTemplate ? ` — ${selectedTemplate.name}` : ""}`}
-          open={openGroups.has("form-attachment")}
-          onToggle={() => toggleGroup("form-attachment")}
-        />
-        {openGroups.has("form-attachment") && (
-          <div className="px-4 py-3 space-y-2.5">
-            {/* Existing form selector */}
-            <Field label="Attached Form">
-              <div className="flex gap-1.5">
-                <select
-                  className="studio-select flex-1 text-[12px] rounded-md px-2.5 py-1.5"
-                  value={formRef?.formId ?? ""}
-                  onChange={(e) => (e.target.value ? handleAttachForm(e.target.value) : handleDetachForm())}
-                >
-                  <option value="">— None —</option>
-                  {formTemplates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.fields.length} fields)
-                    </option>
-                  ))}
-                </select>
-                {formRef && (
-                  <button className="step-form-icon-btn" onClick={handleDetachForm} title="Detach form">
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-            </Field>
-
-            {/* Create new form button */}
-            <button
-              className="step-form-action-btn w-full justify-center gap-1.5"
-              onClick={handleCreateNewForm}
-            >
-              <Plus size={11} /> Create New Form
-            </button>
-
-            {/* Preview attached form */}
-            {selectedTemplate && (
-              <div className="space-y-2">
-                <button
-                  className={`step-form-action-btn ${showFormPreview ? "step-form-action-btn--active" : ""}`}
-                  onClick={() => setShowFormPreview(!showFormPreview)}
-                >
-                  <Eye size={11} /> {showFormPreview ? "Hide" : "Show"} Preview
-                </button>
-                {showFormPreview && (
-                  <div className="step-form-preview-wrap">
-                    <FormPreview fields={effectiveFields} />
-                  </div>
-                )}
-                <div className="text-[10px] text-foreground-subtle flex items-center gap-1">
-                  <FileText size={10} />
-                  {selectedTemplate.fields.length} fields attached
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
 
       {/* Save config */}
       {schema.length > 0 && (
