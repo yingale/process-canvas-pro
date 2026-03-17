@@ -237,7 +237,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
 
   return (
     <div
-      className={`section-card flex-shrink-0 flex flex-col rounded-xl border transition-all overflow-hidden ${isStageSelected ? "section-card--selected" : ""}`}
+      className={`section-card flex-shrink-0 flex flex-col rounded-xl border transition-all overflow-visible ${isStageSelected ? "section-card--selected" : ""}`}
       style={{ "--dynamic-color": color } as React.CSSProperties}
     >
       {/* Gradient header bar */}
