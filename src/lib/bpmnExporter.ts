@@ -27,6 +27,7 @@ function flattenSteps(stage: Stage): Step[] {
 function camundaAttrs(step: Step): string {
   const tech = step.tech ?? {};
   const parts: string[] = [];
+  if (tech.implementationType === "external") parts.push(`camunda:type="external"`);
   if (tech.topic) parts.push(`camunda:topic="${escapeXml(tech.topic)}"`);
   if (tech.asyncBefore) parts.push(`camunda:asyncBefore="true"`);
   if (tech.asyncAfter) parts.push(`camunda:asyncAfter="true"`);
