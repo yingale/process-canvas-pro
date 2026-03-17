@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import CreateWorkflowWizard from "./pages/CreateWorkflowWizard";
 import StudioPage from "./pages/StudioPage";
 import FormBuilderPage from "./pages/FormBuilderPage";
+import ModuleConfigPage from "./pages/ModuleConfigPage";
 import AllTemplates from "./pages/AllTemplates";
 import AllWorkflows from "./pages/AllWorkflows";
 import ProfilePage from "./pages/ProfilePage";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/create" element={<CreateWorkflowWizard />} />
             <Route path="/studio" element={<StudioPage />} />
             <Route path="/studio/form-builder" element={<FormBuilderPage />} />
+            <Route path="/studio/module-config" element={<ModuleConfigPage />} />
             <Route path="/templates" element={<AllTemplates />} />
             <Route path="/workflows" element={<AllWorkflows />} />
             <Route path="/profile" element={<ProfilePage />} />

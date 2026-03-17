@@ -2,10 +2,9 @@
  * Step properties editor sub-panel.
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { ArrowRight, Package, FileText, X, Pencil, Eye } from "lucide-react";
+import { ArrowRight, Package, FileText, X, Pencil, Eye, Settings2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Step, IoParam, JsonPatch, FormTemplate, FormRef } from "@/types/caseIr";
-import ModuleConfigPanel from "./ModuleConfigPanel";
 import FormPreview from "../FormPreview";
 import { STEP_TYPE_CONFIG } from "../FlowNodes";
 import { CAMUNDA_PROP_GROUPS } from "../camundaSchema";
@@ -153,6 +152,7 @@ interface StepPropertiesPanelProps {
 export default function StepPropertiesPanel({
   step, basePath, onPatch, formTemplates = [], caseIr,
 }: StepPropertiesPanelProps) {
+  const navigate = useNavigate();
   const [draft, setDraft] = useState<Record<string, unknown>>(
     step as unknown as Record<string, unknown>
   );
@@ -322,19 +322,22 @@ export default function StepPropertiesPanel({
       )}
 
       {step.moduleRef && (
-        <div>
-          <SectionHeader
-            title="Module Configuration"
-            open={openGroups.has("module-config")}
-            onToggle={() => toggleGroup("module-config")}
-          />
-          {openGroups.has("module-config") && (
-            <ModuleConfigPanel
-              moduleRef={step.moduleRef}
-              basePath={basePath}
-              onPatch={onPatch}
-            />
-          )}
+        <div className="px-4 py-3">
+          <button
+            className="step-form-action-btn w-full justify-center gap-1.5 py-2"
+            onClick={() => {
+              if (caseIr) sessionStorage.setItem("studio_caseIr", JSON.stringify(caseIr));
+              navigate("/studio/module-config", {
+                state: {
+                  returnTo: "/studio",
+                  stepBasePath: basePath,
+                  moduleRef: step.moduleRef,
+                },
+              });
+            }}
+          >
+            <Settings2 size={12} /> Configure Module
+          </button>
         </div>
       )}
 
