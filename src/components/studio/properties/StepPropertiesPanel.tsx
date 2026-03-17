@@ -51,6 +51,7 @@ function StepFormSection({ step, basePath, onPatch, formTemplates, openGroups, t
 
   const handleEditForm = () => {
     if (!selectedTemplate) return;
+    if (caseIr) sessionStorage.setItem("studio_caseIr", JSON.stringify(caseIr));
     navigate("/studio/form-builder", {
       state: {
         returnTo: "/studio",
@@ -62,6 +63,7 @@ function StepFormSection({ step, basePath, onPatch, formTemplates, openGroups, t
   };
 
   const handleCreateNewForm = () => {
+    if (caseIr) sessionStorage.setItem("studio_caseIr", JSON.stringify(caseIr));
     navigate("/studio/form-builder", {
       state: {
         returnTo: "/studio",
