@@ -11,6 +11,7 @@ import FormBuilderPage from "./pages/FormBuilderPage";
 import AllTemplates from "./pages/AllTemplates";
 import AllWorkflows from "./pages/AllWorkflows";
 import ProfilePage from "./pages/ProfilePage";
+import TechDocsPage from "./pages/TechDocsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/templates" element={<AllTemplates />} />
             <Route path="/workflows" element={<AllWorkflows />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/docs" element={<TechDocsPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

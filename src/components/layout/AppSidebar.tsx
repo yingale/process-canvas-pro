@@ -1,4 +1,4 @@
-import { LayoutGrid, Users, BookmarkCheck, Settings, LogOut } from "lucide-react";
+import { LayoutGrid, Users, BookmarkCheck, Settings, LogOut, FileText } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import "../studio/studio.css";
 
@@ -7,6 +7,7 @@ const navItems = [
   { to: "/teams", icon: Users, label: "Teams" },
   { to: "/favorites", icon: BookmarkCheck, label: "Favorites" },
   { to: "/settings", icon: Settings, label: "Settings" },
+  { to: "/docs", icon: FileText, label: "Tech Docs" },
 ];
 
 export default function AppSidebar() {
