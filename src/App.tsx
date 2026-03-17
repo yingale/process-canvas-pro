@@ -11,6 +11,7 @@ import FormBuilderPage from "./pages/FormBuilderPage";
 import AllTemplates from "./pages/AllTemplates";
 import AllWorkflows from "./pages/AllWorkflows";
 import ProfilePage from "./pages/ProfilePage";
+import TechDocsPage from "./pages/TechDocsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
