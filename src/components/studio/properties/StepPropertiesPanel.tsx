@@ -2,10 +2,9 @@
  * Step properties editor sub-panel.
  */
 import { useState, useEffect, useCallback } from "react";
-import { ArrowRight, Package, FormInput } from "lucide-react";
+import { ArrowRight, Package } from "lucide-react";
 import type { Step, IoParam, JsonPatch, FormTemplate } from "@/types/caseIr";
 import ModuleConfigPanel from "./ModuleConfigPanel";
-import StepFormPanel from "./StepFormPanel";
 import { STEP_TYPE_CONFIG } from "../FlowNodes";
 import { CAMUNDA_PROP_GROUPS } from "../camundaSchema";
 import {
@@ -191,22 +190,6 @@ export default function StepPropertiesPanel({
         </div>
       )}
 
-      {/* Step Form */}
-      <div>
-        <SectionHeader
-          title={`Form${step.formRef ? ` — ${formTemplates.find(t => t.id === step.formRef?.formId)?.name ?? ""}` : ""}`}
-          open={openGroups.has("step-form")}
-          onToggle={() => toggleGroup("step-form")}
-        />
-        {openGroups.has("step-form") && (
-          <StepFormPanel
-            formRef={step.formRef}
-            formTemplates={formTemplates}
-            basePath={basePath}
-            onPatch={onPatch}
-          />
-        )}
-      </div>
 
 
       {step.moduleRef && (
@@ -221,6 +204,8 @@ export default function StepPropertiesPanel({
               moduleRef={step.moduleRef}
               basePath={basePath}
               onPatch={onPatch}
+              formTemplates={formTemplates}
+              formRef={step.formRef}
             />
           )}
         </div>

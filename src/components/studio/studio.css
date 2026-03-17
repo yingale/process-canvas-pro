@@ -312,8 +312,8 @@
 .props-panel {
   background: hsl(var(--surface));
   border-color: hsl(var(--border));
-  width: 310px;
-  min-width: 310px;
+  width: 380px;
+  min-width: 380px;
 }
 
 .props-collapsed {
