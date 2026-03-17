@@ -210,6 +210,14 @@ export default function StepPropertiesPanel({
           )}
         </div>
       )}
+      <StepFormSection
+        step={step}
+        basePath={basePath}
+        onPatch={onPatch}
+        formTemplates={formTemplates}
+        openGroups={openGroups}
+        toggleGroup={toggleGroup}
+      />
       <div>
         <SectionHeader title="Input / Output Parameters" open={openGroups.has("io")} onToggle={() => toggleGroup("io")} />
         {openGroups.has("io") && (
