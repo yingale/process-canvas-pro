@@ -210,7 +210,12 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
           >
             <Plus size={10} /> Add Step
           </button>
-          <ModulePicker onInsert={(steps) => onInsertModule(stageId, group.id, steps)} />
+          <ModulePicker
+            onInsert={(steps) => onInsertModule(stageId, group.id, steps)}
+            formTemplates={formTemplates}
+            onAttachForm={(t) => onAttachForm?.(stageId, group.id, t)}
+            onCreateNewForm={() => onCreateNewForm?.(stageId, group.id)}
+          />
         </div>
       )}
     </div>
