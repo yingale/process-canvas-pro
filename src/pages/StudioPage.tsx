@@ -3,7 +3,7 @@ import { useSearchParams, useLocation } from "react-router-dom";
 import WorkflowStudio from "@/components/studio/WorkflowStudio";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { EMAIL_FETCHER_BPMN } from "@/lib/sampleBpmn";
-import type { CaseIR } from "@/types/caseIr";
+import type { CaseIR, FormTemplate } from "@/types/caseIr";
 
 // Inline the file processing BPMN for template loading
 const FILE_PROCESSING_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
@@ -78,7 +78,13 @@ export default function StudioPage() {
   const templateId = searchParams.get("template");
 
   // Check for AI-generated IR passed via router state
-  const routerState = location.state as { generatedIr?: CaseIR; generatedWarnings?: string[] } | null;
+  const routerState = location.state as {
+    generatedIr?: CaseIR;
+    generatedWarnings?: string[];
+    savedFormTemplate?: FormTemplate;
+    stepBasePath?: string;
+    restoreStudio?: boolean;
+  } | null;
 
   const [initialIr, setInitialIr] = useState<{ ir: CaseIR; warnings: string[] } | null>(
     routerState?.generatedIr
@@ -86,6 +92,16 @@ export default function StudioPage() {
       : null
   );
   const [loading, setLoading] = useState(!!templateId && !routerState?.generatedIr);
+
+  // Pass saved form template from form builder page
+  const [pendingFormTemplate, setPendingFormTemplate] = useState<{
+    template: FormTemplate;
+    stepBasePath: string;
+  } | null>(
+    routerState?.savedFormTemplate && routerState?.stepBasePath
+      ? { template: routerState.savedFormTemplate, stepBasePath: routerState.stepBasePath }
+      : null
+  );
 
   useEffect(() => {
     if (routerState?.generatedIr || !templateId) return;
@@ -108,5 +124,12 @@ export default function StudioPage() {
     );
   }
 
-  return <WorkflowStudio initialCaseIr={initialIr?.ir} initialWarnings={initialIr?.warnings} />;
+  return (
+    <WorkflowStudio
+      initialCaseIr={initialIr?.ir}
+      initialWarnings={initialIr?.warnings}
+      pendingFormTemplate={pendingFormTemplate ?? undefined}
+      onFormTemplateConsumed={() => setPendingFormTemplate(null)}
+    />
+  );
 }
