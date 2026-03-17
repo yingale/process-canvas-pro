@@ -34,8 +34,16 @@ function camundaAttrs(step: Step): string {
   return parts.length ? " " + parts.join(" ") : "";
 }
 
+function moduleConfigToIoParams(step: Step): IoParam[] {
+  if (!step.moduleRef?.instanceConfig) return [];
+  return Object.entries(step.moduleRef.instanceConfig)
+    .filter(([, v]) => v !== undefined && v !== null && v !== "")
+    .map(([name, value]) => ({ name, value: String(value) }));
+}
+
 function camundaIoXml(step: Step, ind: string): string {
-  const params = step.tech?.inputParameters ?? [];
+  const moduleParams = moduleConfigToIoParams(step);
+  const params = [...(step.tech?.inputParameters ?? []), ...moduleParams];
   const outParams = step.tech?.outputParameters ?? [];
   if (!params.length && !outParams.length) return "";
   const ins = params.map(p => `${ind}      <camunda:inputParameter name="${escapeXml(p.name)}">${escapeXml(p.value ?? "")}</camunda:inputParameter>`).join("\n");

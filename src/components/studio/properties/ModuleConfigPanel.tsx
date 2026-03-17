@@ -135,6 +135,22 @@ export default function ModuleConfigPanel({ moduleRef, basePath, onPatch }: Modu
                       </Field>
                     );
                   }
+                  if (field.type === "number") {
+                    return (
+                      <Field key={field.key} label={field.label} hint={field.hint}>
+                        <input
+                          type="number"
+                          className="studio-input w-full px-2.5 py-1.5 rounded-md border text-[12px] transition-colors focus:outline-none"
+                          value={val === "" ? "" : Number(val)}
+                          min={field.min}
+                          max={field.max}
+                          step={field.step}
+                          onChange={(e) => handleChange(field.key, e.target.value === "" ? "" : Number(e.target.value))}
+                          placeholder={field.hint || `Enter ${field.label.toLowerCase()}…`}
+                        />
+                      </Field>
+                    );
+                  }
                   return (
                     <Field key={field.key} label={field.label} hint={field.hint}>
                       <TextInput value={String(val)} onChange={(v) => handleChange(field.key, v)} placeholder={field.hint || `Enter ${field.label.toLowerCase()}…`} />
