@@ -10,15 +10,14 @@ import { SectionHeader, Field, TextInput, Toggle } from "./PropertyFields";
 import "../studio.css";
 
 const FIELD_TYPE_OPTIONS: { value: ModuleConfigField["type"]; label: string }[] = [
-  { value: "text", label: "Text" },
-  { value: "textarea", label: "Textarea" },
+  { value: "string", label: "Text" },
+  { value: "multiline", label: "Textarea" },
   { value: "number", label: "Number" },
-  { value: "checkbox", label: "Checkbox" },
+  { value: "boolean", label: "Checkbox" },
   { value: "select", label: "Dropdown" },
   { value: "radio", label: "Radio" },
   { value: "date", label: "Date" },
   { value: "email", label: "Email" },
-  { value: "phone", label: "Phone" },
   { value: "url", label: "URL" },
   { value: "file", label: "File Upload" },
 ];
