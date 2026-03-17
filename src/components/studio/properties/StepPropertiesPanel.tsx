@@ -2,10 +2,9 @@
  * Step properties editor sub-panel.
  */
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { ArrowRight, Package, FileText, X, Pencil, Eye } from "lucide-react";
+import { ArrowRight, Package, FileText, X, Pencil, Eye, Settings2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Step, IoParam, JsonPatch, FormTemplate, FormRef } from "@/types/caseIr";
-import ModuleConfigPanel from "./ModuleConfigPanel";
 import FormPreview from "../FormPreview";
 import { STEP_TYPE_CONFIG } from "../FlowNodes";
 import { CAMUNDA_PROP_GROUPS } from "../camundaSchema";
