@@ -479,6 +479,9 @@ interface LifecycleDiagramProps {
   onMoveAltStage: (stageId: string, dir: -1 | 1) => void;
   onMoveAltGroup: (stageId: string, groupId: string, dir: -1 | 1) => void;
   onMoveAltStep: (stageId: string, groupId: string, stepId: string, dir: -1 | 1) => void;
+  formTemplates?: FormTemplate[];
+  onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
+  onCreateNewForm?: (stageId: string, groupId: string) => void;
 }
 
 export default function LifecycleDiagram({
@@ -494,6 +497,7 @@ export default function LifecycleDiagram({
   onDeleteAltStage, onDeleteAltGroup, onDeleteAltStep,
   onDuplicateAltStep, onDuplicateAltStage,
   onMoveAltStage, onMoveAltGroup, onMoveAltStep,
+  formTemplates, onAttachForm, onCreateNewForm,
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [altCtxMenu, setAltCtxMenu] = useState<CtxMenu | null>(null);
