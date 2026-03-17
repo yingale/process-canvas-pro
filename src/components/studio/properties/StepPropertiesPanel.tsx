@@ -17,6 +17,7 @@ interface StepPropertiesPanelProps {
   step: Step;
   basePath: string;
   onPatch: (p: JsonPatch) => void;
+  formTemplates?: FormTemplate[];
 }
 
 export default function StepPropertiesPanel({
