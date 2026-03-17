@@ -491,6 +491,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     });
   }, [caseIr, handlePatch, nav]);
 
+  return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
       <Toolbar caseIr={caseIr} onImportBpmn={handleImportBpmn} onLoadSample={() => {}} />
 
