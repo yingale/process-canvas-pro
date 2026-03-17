@@ -13,7 +13,7 @@ import {
   Workflow, GripVertical,
   type LucideIcon,
 } from "lucide-react";
-import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent } from "@/types/caseIr";
+import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent, FormTemplate } from "@/types/caseIr";
 import ModulePicker from "./ModulePicker";
 import "./studio.css";
 
@@ -151,7 +151,7 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
 
 // ─── Group sub-section ─────────────────────────────────────────────────────────
 
-function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx }: {
+function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm }: {
   group: Group; stageId: string; color: string; selection: SelectionTarget;
   onSelectGroup: (stageId: string, groupId: string) => void;
   onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
@@ -159,6 +159,9 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
   onInsertModule: (stageId: string, groupId: string, steps: Step[]) => void;
   onGroupCtx: (e: React.MouseEvent, groupId: string) => void;
   onStepCtx: (e: React.MouseEvent, groupId: string, stepId: string) => void;
+  formTemplates?: FormTemplate[];
+  onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
+  onCreateNewForm?: (stageId: string, groupId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [hover, setHover] = useState(false);
@@ -210,7 +213,12 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
           >
             <Plus size={10} /> Add Step
           </button>
-          <ModulePicker onInsert={(steps) => onInsertModule(stageId, group.id, steps)} />
+          <ModulePicker
+            onInsert={(steps) => onInsertModule(stageId, group.id, steps)}
+            formTemplates={formTemplates}
+            onAttachForm={(t) => onAttachForm?.(stageId, group.id, t)}
+            onCreateNewForm={() => onCreateNewForm?.(stageId, group.id)}
+          />
         </div>
       )}
     </div>
@@ -219,7 +227,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
 
 // ─── Section card (Stage) ──────────────────────────────────────────────────────
 
-function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx }: {
+function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm }: {
   stage: Stage; stageIdx: number; color: string; selection: SelectionTarget;
   onSelectStage: (id: string) => void;
   onSelectGroup: (stageId: string, groupId: string) => void;
@@ -230,6 +238,9 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
   onStageCtx: (e: React.MouseEvent, stageId: string) => void;
   onGroupCtx: (e: React.MouseEvent, stageId: string, groupId: string) => void;
   onStepCtx: (e: React.MouseEvent, stageId: string, groupId: string, stepId: string) => void;
+  formTemplates?: FormTemplate[];
+  onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
+  onCreateNewForm?: (stageId: string, groupId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [headerHover, setHeaderHover] = useState(false);
@@ -270,7 +281,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
       {!collapsed && (
         <div className="flex-1 p-3 flex flex-col">
           {stage.groups.map(group => (
-            <GroupSection
+             <GroupSection
               key={group.id}
               group={group}
               stageId={stage.id}
@@ -282,6 +293,9 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
               onInsertModule={onInsertModule}
               onGroupCtx={(e, gid) => onGroupCtx(e, stage.id, gid)}
               onStepCtx={(e, gid, sid) => onStepCtx(e, stage.id, gid, sid)}
+              formTemplates={formTemplates}
+              onAttachForm={onAttachForm}
+              onCreateNewForm={onCreateNewForm}
             />
           ))}
 
@@ -465,6 +479,9 @@ interface LifecycleDiagramProps {
   onMoveAltStage: (stageId: string, dir: -1 | 1) => void;
   onMoveAltGroup: (stageId: string, groupId: string, dir: -1 | 1) => void;
   onMoveAltStep: (stageId: string, groupId: string, stepId: string, dir: -1 | 1) => void;
+  formTemplates?: FormTemplate[];
+  onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
+  onCreateNewForm?: (stageId: string, groupId: string) => void;
 }
 
 export default function LifecycleDiagram({
@@ -480,6 +497,7 @@ export default function LifecycleDiagram({
   onDeleteAltStage, onDeleteAltGroup, onDeleteAltStep,
   onDuplicateAltStep, onDuplicateAltStage,
   onMoveAltStage, onMoveAltGroup, onMoveAltStep,
+  formTemplates, onAttachForm, onCreateNewForm,
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [altCtxMenu, setAltCtxMenu] = useState<CtxMenu | null>(null);
@@ -702,7 +720,8 @@ export default function LifecycleDiagram({
               color={stage.color || SECTION_COLORS[i % SECTION_COLORS.length]} selection={selection}
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
               onAddStep={onAddStep} onInsertModule={onInsertModule} onAddGroup={onAddGroup}
-              onStageCtx={openStageCtx} onGroupCtx={openGroupCtx} onStepCtx={openStepCtx} />
+              onStageCtx={openStageCtx} onGroupCtx={openGroupCtx} onStepCtx={openStepCtx}
+              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} />
           ))}
           <button className="add-section-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
             onClick={onAddStage}>
@@ -729,7 +748,8 @@ export default function LifecycleDiagram({
               color={stage.color || SECTION_COLORS[(i + 3) % SECTION_COLORS.length]} selection={selection}
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
               onAddStep={onAddAltStep} onInsertModule={onInsertModule} onAddGroup={onAddAltGroup}
-              onStageCtx={openAltStageCtx} onGroupCtx={openAltGroupCtx} onStepCtx={openAltStepCtx} />
+              onStageCtx={openAltStageCtx} onGroupCtx={openAltGroupCtx} onStepCtx={openAltStepCtx}
+              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} />
           ))}
           <button className="add-section-btn add-alt-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
             onClick={onAddAltStage}>

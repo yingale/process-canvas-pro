@@ -1934,6 +1934,18 @@
   padding: 4px;
 }
 
+.module-picker-divider {
+  height: 1px;
+  background: hsl(var(--border));
+  margin: 4px 8px;
+}
+
+.module-picker-create-form {
+  border-top: 1px dashed hsl(var(--border));
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
 .module-picker-category {
   font-size: 9px;
   font-weight: 600;

@@ -1,11 +1,12 @@
 /**
- * ModulePicker – dropdown to insert reusable module templates into a group.
+ * ModulePicker – dropdown to insert reusable module templates and form templates into a group.
  * Fetches modules from the database, filters by persona, and renders a popover list.
+ * Also shows form templates with options to use existing or create new.
  */
 import { useState, useEffect } from "react";
-import { Package, ChevronDown, Loader2, Mail, Zap, Shield, Settings } from "lucide-react";
+import { Package, ChevronDown, Loader2, Mail, Zap, Shield, Settings, FileText, Plus, FormInput } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Step, ModuleConfigField, ModuleRef } from "@/types/caseIr";
+import type { Step, ModuleConfigField, ModuleRef, FormTemplate, FormRef } from "@/types/caseIr";
 import "./studio.css";
 
 interface ReusableModule {
@@ -31,9 +32,12 @@ const ICON_MAP: Record<string, any> = {
 interface ModulePickerProps {
   onInsert: (steps: Step[], moduleId: string) => void;
   currentPersona?: string;
+  formTemplates?: FormTemplate[];
+  onAttachForm?: (formTemplate: FormTemplate) => void;
+  onCreateNewForm?: () => void;
 }
 
-export default function ModulePicker({ onInsert, currentPersona }: ModulePickerProps) {
+export default function ModulePicker({ onInsert, currentPersona, formTemplates = [], onAttachForm, onCreateNewForm }: ModulePickerProps) {
   const [open, setOpen] = useState(false);
   const [modules, setModules] = useState<ReusableModule[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,6 +83,16 @@ export default function ModulePicker({ onInsert, currentPersona }: ModulePickerP
       moduleRef,
     }));
     onInsert(stepsWithNewIds, mod.id);
+    setOpen(false);
+  };
+
+  const handleSelectForm = (template: FormTemplate) => {
+    onAttachForm?.(template);
+    setOpen(false);
+  };
+
+  const handleCreateNew = () => {
+    onCreateNewForm?.();
     setOpen(false);
   };
 
@@ -153,6 +167,51 @@ export default function ModulePicker({ onInsert, currentPersona }: ModulePickerP
               ))}
             </div>
           )}
+
+          {/* Forms Section */}
+          <div className="module-picker-divider" />
+          <div className="module-picker-header">
+            <FormInput size={11} className="inline mr-1" />
+            Forms
+          </div>
+          <div className="module-picker-list">
+            {formTemplates.length > 0 && (
+              <div>
+                <div className="module-picker-category">Existing Forms</div>
+                {formTemplates.map((t) => (
+                  <button
+                    key={t.id}
+                    className="module-picker-item"
+                    onClick={() => handleSelectForm(t)}
+                  >
+                    <div className="module-picker-item-icon">
+                      <FileText size={12} />
+                    </div>
+                    <div className="module-picker-item-content">
+                      <div className="module-picker-item-name">{t.name}</div>
+                      <div className="module-picker-item-meta">
+                        <span>{t.fields.length} field{t.fields.length !== 1 ? "s" : ""}</span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              className="module-picker-item module-picker-create-form"
+              onClick={handleCreateNew}
+            >
+              <div className="module-picker-item-icon">
+                <Plus size={12} />
+              </div>
+              <div className="module-picker-item-content">
+                <div className="module-picker-item-name">Create New Form</div>
+                <div className="module-picker-item-desc">
+                  Design a form in the form builder
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
       )}
     </div>
