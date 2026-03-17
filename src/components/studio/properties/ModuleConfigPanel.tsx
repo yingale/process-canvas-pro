@@ -12,8 +12,6 @@ interface ModuleConfigPanelProps {
   moduleRef: ModuleRef;
   basePath: string;
   onPatch: (p: JsonPatch) => void;
-  formTemplates?: FormTemplate[];
-  formRef?: FormRef;
 }
 
 export default function ModuleConfigPanel({ moduleRef, basePath, onPatch, formTemplates = [], formRef }: ModuleConfigPanelProps) {
