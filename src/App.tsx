@@ -28,6 +28,7 @@ const App = () => (
             <Route path="/create" element={<CreateWorkflowWizard />} />
             <Route path="/studio" element={<StudioPage />} />
             <Route path="/studio/form-builder" element={<FormBuilderPage />} />
+            <Route path="/studio/module-config" element={<ModuleConfigPage />} />
             <Route path="/templates" element={<AllTemplates />} />
             <Route path="/workflows" element={<AllWorkflows />} />
             <Route path="/profile" element={<ProfilePage />} />

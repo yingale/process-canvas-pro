@@ -321,19 +321,22 @@ export default function StepPropertiesPanel({
       )}
 
       {step.moduleRef && (
-        <div>
-          <SectionHeader
-            title="Module Configuration"
-            open={openGroups.has("module-config")}
-            onToggle={() => toggleGroup("module-config")}
-          />
-          {openGroups.has("module-config") && (
-            <ModuleConfigPanel
-              moduleRef={step.moduleRef}
-              basePath={basePath}
-              onPatch={onPatch}
-            />
-          )}
+        <div className="px-4 py-3">
+          <button
+            className="step-form-action-btn w-full justify-center gap-1.5 py-2"
+            onClick={() => {
+              if (caseIr) sessionStorage.setItem("studio_caseIr", JSON.stringify(caseIr));
+              navigate("/studio/module-config", {
+                state: {
+                  returnTo: "/studio",
+                  stepBasePath: basePath,
+                  moduleRef: step.moduleRef,
+                },
+              });
+            }}
+          >
+            <Settings2 size={12} /> Configure Module
+          </button>
         </div>
       )}
 

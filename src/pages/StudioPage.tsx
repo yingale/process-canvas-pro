@@ -124,6 +124,16 @@ export default function StudioPage() {
       : null
   );
 
+  // Pass saved module config from module config page
+  const [pendingModuleConfig, setPendingModuleConfig] = useState<{
+    config: Record<string, unknown>;
+    stepBasePath: string;
+  } | null>(
+    routerState?.savedModuleConfig && routerState?.stepBasePath
+      ? { config: routerState.savedModuleConfig, stepBasePath: routerState.stepBasePath }
+      : null
+  );
+
   useEffect(() => {
     if (routerState?.generatedIr || restoredIr || !templateId) return;
     const xml = TEMPLATE_MAP[templateId];
