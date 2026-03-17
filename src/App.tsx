@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import CreateWorkflowWizard from "./pages/CreateWorkflowWizard";
 import StudioPage from "./pages/StudioPage";
 import FormBuilderPage from "./pages/FormBuilderPage";
+import ModuleConfigPage from "./pages/ModuleConfigPage";
 import AllTemplates from "./pages/AllTemplates";
 import AllWorkflows from "./pages/AllWorkflows";
 import ProfilePage from "./pages/ProfilePage";
