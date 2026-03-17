@@ -90,8 +90,8 @@ export default function StepFormPanel({ formRef, formTemplates, basePath, onPatc
   /* ── Create new form template inline ── */
   const handleAddNewField = () => {
     setNewFormFields(prev => [...prev, {
-      key: uid(), label: "", type: "text", required: false,
-    }]);
+      key: uid(), label: "", type: "string" as ModuleConfigField["type"], required: false,
+    } as ModuleConfigField]);
   };
 
   const handleNewFieldChange = (index: number, updates: Partial<ModuleConfigField>) => {
