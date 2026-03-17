@@ -16,10 +16,11 @@ import {
 
 /* ─── Form management sub-section ──────────────────────────────────────────── */
 
-function StepFormSection({ step, basePath, onPatch, formTemplates, openGroups, toggleGroup }: {
+function StepFormSection({ step, basePath, onPatch, formTemplates, openGroups, toggleGroup, caseIr }: {
   step: Step; basePath: string; onPatch: (p: JsonPatch) => void;
   formTemplates: FormTemplate[];
   openGroups: Set<string>; toggleGroup: (id: string) => void;
+  caseIr?: import("@/types/caseIr").CaseIR;
 }) {
   const navigate = useNavigate();
   const [showPreview, setShowPreview] = useState(false);
