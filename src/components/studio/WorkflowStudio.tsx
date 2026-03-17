@@ -557,6 +557,9 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
                     onMoveAltStage={handleMoveAltStage}
                     onMoveAltGroup={handleMoveAltGroup}
                     onMoveAltStep={handleMoveAltStep}
+                    formTemplates={caseIr.formTemplates ?? []}
+                    onAttachForm={handleAttachForm}
+                    onCreateNewForm={handleCreateNewForm}
                   />
                 </TabsContent>
                 <TabsContent value="personas" className="flex-1 overflow-auto mt-0">
