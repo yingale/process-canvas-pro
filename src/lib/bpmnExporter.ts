@@ -5,7 +5,7 @@
  * 1. If original BPMN XML was captured on import → re-emit verbatim (perfect lossless round-trip).
  * 2. If no original XML (manually-built IR) → generate full XML with auto-layout diagram.
  */
-import type { CaseIR, Stage, Step, DecisionStep, ForeachStep, CallActivityStep } from "@/types/caseIr";
+import type { CaseIR, Stage, Step, DecisionStep, ForeachStep, CallActivityStep, IoParam } from "@/types/caseIr";
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
