@@ -13,7 +13,7 @@ import {
   Workflow, GripVertical,
   type LucideIcon,
 } from "lucide-react";
-import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent } from "@/types/caseIr";
+import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent, FormTemplate } from "@/types/caseIr";
 import ModulePicker from "./ModulePicker";
 import "./studio.css";
 
