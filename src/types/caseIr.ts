@@ -329,6 +329,7 @@ export interface CaseIR {
   dataModel?: DataField[];
   deployment?: DeploymentConfig;
   reusableModules?: ReusableModule[];
+  formTemplates?: FormTemplate[];
   metadata: {
     createdAt: string;
     updatedAt: string;
