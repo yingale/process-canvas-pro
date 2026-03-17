@@ -5,14 +5,139 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { ArrowRight, Package, FileText, X, Pencil, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Step, IoParam, JsonPatch, FormTemplate, FormRef } from "@/types/caseIr";
-import FormPreview from "../FormPreview";
 import ModuleConfigPanel from "./ModuleConfigPanel";
+import FormPreview from "../FormPreview";
 import { STEP_TYPE_CONFIG } from "../FlowNodes";
 import { CAMUNDA_PROP_GROUPS } from "../camundaSchema";
 import {
   deepGet, deepSet, SectionHeader, Field, TextInput,
   MultilineInput, Toggle, IoParamTable, FieldRenderer,
 } from "./PropertyFields";
+
+/* ─── Form management sub-section ──────────────────────────────────────────── */
+
+function StepFormSection({ step, basePath, onPatch, formTemplates, openGroups, toggleGroup }: {
+  step: Step; basePath: string; onPatch: (p: JsonPatch) => void;
+  formTemplates: FormTemplate[];
+  openGroups: Set<string>; toggleGroup: (id: string) => void;
+}) {
+  const navigate = useNavigate();
+  const [showPreview, setShowPreview] = useState(false);
+
+  const selectedTemplate = useMemo(
+    () => formTemplates.find(t => t.id === step.formRef?.formId),
+    [formTemplates, step.formRef?.formId],
+  );
+
+  const effectiveFields = useMemo(() => {
+    if (!selectedTemplate) return [];
+    return selectedTemplate.fields.map(f => {
+      const override = step.formRef?.fieldOverrides?.[f.key];
+      return override ? { ...f, ...override } : f;
+    });
+  }, [selectedTemplate, step.formRef?.fieldOverrides]);
+
+  const handleAttachForm = (formId: string) => {
+    onPatch([{
+      op: step.formRef ? "replace" : "add",
+      path: `${basePath}/formRef`,
+      value: { formId, fieldOverrides: {} } satisfies FormRef,
+    }]);
+  };
+
+  const handleDetachForm = () => {
+    onPatch([{ op: "remove", path: `${basePath}/formRef` }]);
+  };
+
+  const handleEditForm = () => {
+    if (!selectedTemplate) return;
+    navigate("/studio/form-builder", {
+      state: {
+        returnTo: "/studio",
+        stepBasePath: basePath,
+        existingTemplates: formTemplates,
+        editTemplate: selectedTemplate,
+      },
+    });
+  };
+
+  const handleCreateNewForm = () => {
+    navigate("/studio/form-builder", {
+      state: {
+        returnTo: "/studio",
+        stepBasePath: basePath,
+        existingTemplates: formTemplates,
+      },
+    });
+  };
+
+  const sectionTitle = `Form${selectedTemplate ? ` — ${selectedTemplate.name}` : ""}`;
+
+  return (
+    <div>
+      <SectionHeader title={sectionTitle} open={openGroups.has("step-form")} onToggle={() => toggleGroup("step-form")} />
+      {openGroups.has("step-form") && (
+        <div className="px-4 py-3 space-y-2.5">
+          <Field label="Attached Form">
+            <div className="flex gap-1.5">
+              <select
+                className="studio-select flex-1 text-[12px] rounded-md px-2.5 py-1.5"
+                value={step.formRef?.formId ?? ""}
+                onChange={(e) => (e.target.value ? handleAttachForm(e.target.value) : handleDetachForm())}
+              >
+                <option value="">— None —</option>
+                {formTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.fields.length} fields)
+                  </option>
+                ))}
+              </select>
+              {step.formRef && (
+                <button className="step-form-icon-btn" onClick={handleDetachForm} title="Detach form">
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          </Field>
+
+          <div className="flex gap-1.5">
+            {selectedTemplate && (
+              <>
+                <button className="step-form-action-btn flex-1 justify-center gap-1" onClick={handleEditForm}>
+                  <Pencil size={10} /> Edit Form
+                </button>
+                <button
+                  className={`step-form-action-btn ${showPreview ? "step-form-action-btn--active" : ""}`}
+                  onClick={() => setShowPreview(!showPreview)}
+                >
+                  <Eye size={10} />
+                </button>
+              </>
+            )}
+            <button className="step-form-action-btn flex-1 justify-center gap-1" onClick={handleCreateNewForm}>
+              <FileText size={10} /> New Form
+            </button>
+          </div>
+
+          {showPreview && selectedTemplate && (
+            <div className="step-form-preview-wrap">
+              <FormPreview fields={effectiveFields} />
+            </div>
+          )}
+
+          {selectedTemplate && (
+            <div className="text-[10px] text-foreground-subtle flex items-center gap-1">
+              <FileText size={10} />
+              {selectedTemplate.fields.length} field{selectedTemplate.fields.length !== 1 ? "s" : ""} attached
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main panel ───────────────────────────────────────────────────────────── */
 
 interface StepPropertiesPanelProps {
   step: Step;
@@ -28,7 +153,7 @@ export default function StepPropertiesPanel({
     step as unknown as Record<string, unknown>
   );
   const [openGroups, setOpenGroups] = useState<Set<string>>(
-    new Set(["service-task", "user-task", "call-activity", "foreach", "intermediate-event", "async", "gateway"])
+    new Set(["service-task", "user-task", "call-activity", "foreach", "intermediate-event", "async", "gateway", "step-form"])
   );
   const [inputParams, setInputParams] = useState<IoParam[]>(step.tech?.inputParameters ?? []);
   const [outputParams, setOutputParams] = useState<IoParam[]>(step.tech?.outputParameters ?? []);
@@ -192,133 +317,6 @@ export default function StepPropertiesPanel({
         </div>
       )}
 
-function StepFormSection({ step, basePath, onPatch, formTemplates, openGroups, toggleGroup }: {
-  step: Step; basePath: string; onPatch: (p: JsonPatch) => void;
-  formTemplates: FormTemplate[];
-  openGroups: Set<string>; toggleGroup: (id: string) => void;
-}) {
-  const navigate = useNavigate();
-  const [showPreview, setShowPreview] = useState(false);
-
-  const selectedTemplate = useMemo(
-    () => formTemplates.find(t => t.id === step.formRef?.formId),
-    [formTemplates, step.formRef?.formId],
-  );
-
-  const effectiveFields = useMemo(() => {
-    if (!selectedTemplate) return [];
-    return selectedTemplate.fields.map(f => {
-      const override = step.formRef?.fieldOverrides?.[f.key];
-      return override ? { ...f, ...override } : f;
-    });
-  }, [selectedTemplate, step.formRef?.fieldOverrides]);
-
-  const handleAttachForm = (formId: string) => {
-    onPatch([{
-      op: step.formRef ? "replace" : "add",
-      path: `${basePath}/formRef`,
-      value: { formId, fieldOverrides: {} } satisfies FormRef,
-    }]);
-  };
-
-  const handleDetachForm = () => {
-    onPatch([{ op: "remove", path: `${basePath}/formRef` }]);
-  };
-
-  const handleEditForm = () => {
-    if (!selectedTemplate) return;
-    // Save CaseIR to sessionStorage before navigating
-    navigate("/studio/form-builder", {
-      state: {
-        returnTo: "/studio",
-        stepBasePath: basePath,
-        existingTemplates: formTemplates,
-        editTemplate: selectedTemplate,
-      },
-    });
-  };
-
-  const handleCreateNewForm = () => {
-    navigate("/studio/form-builder", {
-      state: {
-        returnTo: "/studio",
-        stepBasePath: basePath,
-        existingTemplates: formTemplates,
-      },
-    });
-  };
-
-  const sectionTitle = `Form${selectedTemplate ? ` — ${selectedTemplate.name}` : ""}`;
-
-  return (
-    <div>
-      <SectionHeader title={sectionTitle} open={openGroups.has("step-form")} onToggle={() => toggleGroup("step-form")} />
-      {openGroups.has("step-form") && (
-        <div className="px-4 py-3 space-y-2.5">
-          {/* Form selector */}
-          <Field label="Attached Form">
-            <div className="flex gap-1.5">
-              <select
-                className="studio-select flex-1 text-[12px] rounded-md px-2.5 py-1.5"
-                value={step.formRef?.formId ?? ""}
-                onChange={(e) => (e.target.value ? handleAttachForm(e.target.value) : handleDetachForm())}
-              >
-                <option value="">— None —</option>
-                {formTemplates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.fields.length} fields)
-                  </option>
-                ))}
-              </select>
-              {step.formRef && (
-                <button className="step-form-icon-btn" onClick={handleDetachForm} title="Detach form">
-                  <X size={12} />
-                </button>
-              )}
-            </div>
-          </Field>
-
-          {/* Action buttons */}
-          <div className="flex gap-1.5">
-            {selectedTemplate && (
-              <>
-                <button className="step-form-action-btn flex-1 justify-center gap-1" onClick={handleEditForm}>
-                  <Pencil size={10} /> Edit Form
-                </button>
-                <button
-                  className={`step-form-action-btn ${showPreview ? "step-form-action-btn--active" : ""}`}
-                  onClick={() => setShowPreview(!showPreview)}
-                >
-                  <Eye size={10} />
-                </button>
-              </>
-            )}
-            <button className="step-form-action-btn flex-1 justify-center gap-1" onClick={handleCreateNewForm}>
-              <FileText size={10} /> New Form
-            </button>
-          </div>
-
-          {/* Preview */}
-          {showPreview && selectedTemplate && (
-            <div className="step-form-preview-wrap">
-              <FormPreview fields={effectiveFields} />
-            </div>
-          )}
-
-          {selectedTemplate && (
-            <div className="text-[10px] text-foreground-subtle flex items-center gap-1">
-              <FileText size={10} />
-              {selectedTemplate.fields.length} field{selectedTemplate.fields.length !== 1 ? "s" : ""} attached
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-
       {step.moduleRef && (
         <div>
           <SectionHeader
@@ -335,6 +333,8 @@ function StepFormSection({ step, basePath, onPatch, formTemplates, openGroups, t
           )}
         </div>
       )}
+
+      {/* Form management section */}
       <StepFormSection
         step={step}
         basePath={basePath}
@@ -343,6 +343,7 @@ function StepFormSection({ step, basePath, onPatch, formTemplates, openGroups, t
         openGroups={openGroups}
         toggleGroup={toggleGroup}
       />
+
       <div>
         <SectionHeader title="Input / Output Parameters" open={openGroups.has("io")} onToggle={() => toggleGroup("io")} />
         {openGroups.has("io") && (
