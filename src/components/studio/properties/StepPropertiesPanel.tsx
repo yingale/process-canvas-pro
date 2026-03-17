@@ -147,10 +147,11 @@ interface StepPropertiesPanelProps {
   basePath: string;
   onPatch: (p: JsonPatch) => void;
   formTemplates?: FormTemplate[];
+  caseIr?: import("@/types/caseIr").CaseIR;
 }
 
 export default function StepPropertiesPanel({
-  step, basePath, onPatch, formTemplates = [],
+  step, basePath, onPatch, formTemplates = [], caseIr,
 }: StepPropertiesPanelProps) {
   const [draft, setDraft] = useState<Record<string, unknown>>(
     step as unknown as Record<string, unknown>
