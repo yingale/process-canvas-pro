@@ -93,9 +93,11 @@ interface WorkflowStudioProps {
   initialWarnings?: string[];
   pendingFormTemplate?: { template: FormTemplate; stepBasePath: string };
   onFormTemplateConsumed?: () => void;
+  pendingModuleConfig?: { config: Record<string, unknown>; stepBasePath: string };
+  onModuleConfigConsumed?: () => void;
 }
 
-export default function WorkflowStudio({ initialCaseIr, initialWarnings, pendingFormTemplate, onFormTemplateConsumed }: WorkflowStudioProps = {}) {
+export default function WorkflowStudio({ initialCaseIr, initialWarnings, pendingFormTemplate, onFormTemplateConsumed, pendingModuleConfig, onModuleConfigConsumed }: WorkflowStudioProps = {}) {
   const [caseIr, setCaseIr] = useState<CaseIR | null>(initialCaseIr ?? null);
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [warnings, setWarnings] = useState<string[]>(initialWarnings ?? []);
