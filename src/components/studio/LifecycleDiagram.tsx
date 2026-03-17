@@ -281,7 +281,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
       {!collapsed && (
         <div className="flex-1 p-3 flex flex-col">
           {stage.groups.map(group => (
-            <GroupSection
+             <GroupSection
               key={group.id}
               group={group}
               stageId={stage.id}
@@ -293,6 +293,9 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
               onInsertModule={onInsertModule}
               onGroupCtx={(e, gid) => onGroupCtx(e, stage.id, gid)}
               onStepCtx={(e, gid, sid) => onStepCtx(e, stage.id, gid, sid)}
+              formTemplates={formTemplates}
+              onAttachForm={onAttachForm}
+              onCreateNewForm={onCreateNewForm}
             />
           ))}
 
