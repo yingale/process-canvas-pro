@@ -83,6 +83,7 @@ export default function CreateWorkflowWizard() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [genStatus, setGenStatus] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ---------- file upload ---------- */
