@@ -147,6 +147,7 @@ export default function CreateWorkflowWizard() {
     }
 
     setGenerating(true);
+    setGenStatus("Preparing your workflow description…");
     try {
       // If a template was selected, fetch the template BPMN first
       let templateBpmn: string | undefined;
@@ -154,6 +155,8 @@ export default function CreateWorkflowWizard() {
         const res = await fetch(`/samples/${routerState.templateId}.bpmn`);
         if (res.ok) templateBpmn = await res.text();
       }
+
+      setGenStatus("AI is generating your workflow diagram…");
 
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-bpmn`,
@@ -172,8 +175,12 @@ export default function CreateWorkflowWizard() {
         throw new Error(err.error || `Error ${res.status}`);
       }
 
+      setGenStatus("Processing the generated workflow…");
+
       const { bpmnXml } = await res.json();
       const result = await importBpmn(bpmnXml, "ai-generated.bpmn");
+
+      setGenStatus("Done! Redirecting to the studio…");
 
       navigate("/studio", {
         state: {
@@ -186,6 +193,7 @@ export default function CreateWorkflowWizard() {
       toast.error(err.message || "Failed to generate workflow.");
     } finally {
       setGenerating(false);
+      setGenStatus("");
     }
   };
 
