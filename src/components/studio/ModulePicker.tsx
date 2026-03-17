@@ -27,6 +27,7 @@ const ICON_MAP: Record<string, any> = {
   shield: Shield,
   settings: Settings,
   package: Package,
+  "form-input": FormInput,
 };
 
 interface ModulePickerProps {

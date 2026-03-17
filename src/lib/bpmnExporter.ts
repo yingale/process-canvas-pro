@@ -5,7 +5,7 @@
  * 1. If original BPMN XML was captured on import → re-emit verbatim (perfect lossless round-trip).
  * 2. If no original XML (manually-built IR) → generate full XML with auto-layout diagram.
  */
-import type { CaseIR, Stage, Step, DecisionStep, ForeachStep, CallActivityStep } from "@/types/caseIr";
+import type { CaseIR, Stage, Step, DecisionStep, ForeachStep, CallActivityStep, IoParam } from "@/types/caseIr";
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -27,14 +27,23 @@ function flattenSteps(stage: Stage): Step[] {
 function camundaAttrs(step: Step): string {
   const tech = step.tech ?? {};
   const parts: string[] = [];
+  if (tech.implementationType === "external") parts.push(`camunda:type="external"`);
   if (tech.topic) parts.push(`camunda:topic="${escapeXml(tech.topic)}"`);
   if (tech.asyncBefore) parts.push(`camunda:asyncBefore="true"`);
   if (tech.asyncAfter) parts.push(`camunda:asyncAfter="true"`);
   return parts.length ? " " + parts.join(" ") : "";
 }
 
+function moduleConfigToIoParams(step: Step): IoParam[] {
+  if (!step.moduleRef?.instanceConfig) return [];
+  return Object.entries(step.moduleRef.instanceConfig)
+    .filter(([, v]) => v !== undefined && v !== null && v !== "")
+    .map(([name, value]) => ({ name, value: String(value) }));
+}
+
 function camundaIoXml(step: Step, ind: string): string {
-  const params = step.tech?.inputParameters ?? [];
+  const moduleParams = moduleConfigToIoParams(step);
+  const params = [...(step.tech?.inputParameters ?? []), ...moduleParams];
   const outParams = step.tech?.outputParameters ?? [];
   if (!params.length && !outParams.length) return "";
   const ins = params.map(p => `${ind}      <camunda:inputParameter name="${escapeXml(p.name)}">${escapeXml(p.value ?? "")}</camunda:inputParameter>`).join("\n");
