@@ -1,14 +1,11 @@
 /**
  * ModuleConfigPanel – renders a dynamic config form from a module's configSchema.
- * Also allows attaching forms (existing or new) to the step via the module.
  */
 import { useState, useEffect, useMemo } from "react";
-import { Package, Plus, X, Eye, FileText } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
-import type { ModuleConfigField, ModuleRef, JsonPatch, FormTemplate, FormRef } from "@/types/caseIr";
+import { Package } from "lucide-react";
+import type { ModuleConfigField, ModuleRef, JsonPatch } from "@/types/caseIr";
 import { supabase } from "@/integrations/supabase/client";
 import { SectionHeader, Field, TextInput, MultilineInput, Toggle } from "./PropertyFields";
-import FormPreview from "../FormPreview";
 import "../studio.css";
 
 interface ModuleConfigPanelProps {
