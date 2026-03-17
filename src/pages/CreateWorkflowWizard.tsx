@@ -83,6 +83,7 @@ export default function CreateWorkflowWizard() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [genStatus, setGenStatus] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ---------- file upload ---------- */
@@ -146,6 +147,7 @@ export default function CreateWorkflowWizard() {
     }
 
     setGenerating(true);
+    setGenStatus("Preparing your workflow description…");
     try {
       // If a template was selected, fetch the template BPMN first
       let templateBpmn: string | undefined;
@@ -153,6 +155,8 @@ export default function CreateWorkflowWizard() {
         const res = await fetch(`/samples/${routerState.templateId}.bpmn`);
         if (res.ok) templateBpmn = await res.text();
       }
+
+      setGenStatus("AI is generating your workflow diagram…");
 
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-bpmn`,
@@ -171,8 +175,12 @@ export default function CreateWorkflowWizard() {
         throw new Error(err.error || `Error ${res.status}`);
       }
 
+      setGenStatus("Processing the generated workflow…");
+
       const { bpmnXml } = await res.json();
       const result = await importBpmn(bpmnXml, "ai-generated.bpmn");
+
+      setGenStatus("Done! Redirecting to the studio…");
 
       navigate("/studio", {
         state: {
@@ -185,6 +193,7 @@ export default function CreateWorkflowWizard() {
       toast.error(err.message || "Failed to generate workflow.");
     } finally {
       setGenerating(false);
+      setGenStatus("");
     }
   };
 
@@ -486,15 +495,32 @@ Example: Beverly Workflow
 
           {/* Ready message */}
           <div style={{ marginBottom: 24 }}>
-            <h3 style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 6 }}>
-              The Workflow is now ready to be designed!
-            </h3>
-            <p style={{ fontSize: "0.8rem", color: "hsl(var(--foreground-muted))", lineHeight: 1.5 }}>
-              You are ready to proceed. Our AI will generate a customized workflow tailored to your
-              specific requirements—no technical expertise required. Please review each section
-              carefully. Should you need to make adjustments, your workflow can be refined at any
-              time.
-            </p>
+            {generating ? (
+              <div style={{ textAlign: "center", padding: "24px 0" }}>
+                <Loader2 size={32} className="animate-spin" style={{ margin: "0 auto 12px", color: "hsl(var(--primary))" }} />
+                <h3 style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 6 }}>
+                  Generating your workflow…
+                </h3>
+                <p style={{ fontSize: "0.8rem", color: "hsl(var(--foreground-muted))", lineHeight: 1.5 }}>
+                  {genStatus}
+                </p>
+                <p style={{ fontSize: "0.75rem", color: "hsl(var(--foreground-muted))", marginTop: 8 }}>
+                  This typically takes 10–20 seconds depending on complexity.
+                </p>
+              </div>
+            ) : (
+              <>
+                <h3 style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: 6 }}>
+                  The Workflow is now ready to be designed!
+                </h3>
+                <p style={{ fontSize: "0.8rem", color: "hsl(var(--foreground-muted))", lineHeight: 1.5 }}>
+                  You are ready to proceed. Our AI will generate a customized workflow tailored to your
+                  specific requirements—no technical expertise required. Please review each section
+                  carefully. Should you need to make adjustments, your workflow can be refined at any
+                  time.
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}
