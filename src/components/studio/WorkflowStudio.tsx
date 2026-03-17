@@ -434,7 +434,63 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     setSelection({ kind: "boundaryEvent", stageId, groupId, stepId, boundaryEventId: newBe.id });
   }, [caseIr, handlePatch]);
 
-  return (
+  const nav = useNavigate();
+
+  const handleAttachForm = useCallback((stageId: string, groupId: string, formTemplate: FormTemplate) => {
+    if (!caseIr) return;
+    // Find the group and add a user step with the form attached
+    let basePath = "";
+    let si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si >= 0) {
+      basePath = `/stages/${si}`;
+    } else if (caseIr.alternativePaths) {
+      si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+      if (si >= 0) basePath = `/alternativePaths/${si}`;
+    }
+    if (!basePath) return;
+    const stageArr = basePath.startsWith("/stages") ? caseIr.stages : caseIr.alternativePaths!;
+    const gi = stageArr[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+
+    const newStep: Step = {
+      id: uid(),
+      name: `${formTemplate.name} Form`,
+      type: "user",
+      formRef: { formId: formTemplate.id, fieldOverrides: {} },
+    };
+    handlePatch([{ op: "add", path: `${basePath}/groups/${gi}/steps/-`, value: newStep }]);
+  }, [caseIr, handlePatch]);
+
+  const handleCreateNewForm = useCallback((stageId: string, groupId: string) => {
+    if (!caseIr) return;
+    let basePath = "";
+    let si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si >= 0) {
+      basePath = `/stages/${si}`;
+    } else if (caseIr.alternativePaths) {
+      si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+      if (si >= 0) basePath = `/alternativePaths/${si}`;
+    }
+    if (!basePath) return;
+    const stageArr = basePath.startsWith("/stages") ? caseIr.stages : caseIr.alternativePaths!;
+    const gi = stageArr[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+
+    // Add a placeholder step first, then navigate to form builder
+    const stepId = uid();
+    const newStep: Step = { id: stepId, name: "New Form Step", type: "user" };
+    const stepPath = `${basePath}/groups/${gi}/steps/${stageArr[si].groups[gi].steps.length}`;
+    handlePatch([{ op: "add", path: `${basePath}/groups/${gi}/steps/-`, value: newStep }]);
+
+    nav("/studio/form-builder", {
+      state: {
+        returnTo: "/studio",
+        stepBasePath: stepPath,
+        existingTemplates: caseIr.formTemplates ?? [],
+      },
+    });
+  }, [caseIr, handlePatch, nav]);
+
     <div className="flex flex-col h-full overflow-hidden bg-background">
       <Toolbar caseIr={caseIr} onImportBpmn={handleImportBpmn} onLoadSample={() => {}} />
 
