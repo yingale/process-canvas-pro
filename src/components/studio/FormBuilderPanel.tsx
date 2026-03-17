@@ -328,9 +328,15 @@ function TypePalette({ onAdd }: { onAdd: (type: FormFieldType) => void }) {
 interface FormBuilderPanelProps {
   fields: ModuleConfigField[];
   onFieldsChange: (fields: ModuleConfigField[]) => void;
+  /** Form templates stored in CaseIR */
+  formTemplates?: FormTemplate[];
+  onSaveTemplate?: (template: FormTemplate) => void;
+  onDeleteTemplate?: (templateId: string) => void;
 }
 
-export default function FormBuilderPanel({ fields, onFieldsChange }: FormBuilderPanelProps) {
+export default function FormBuilderPanel({
+  fields, onFieldsChange, formTemplates = [], onSaveTemplate, onDeleteTemplate,
+}: FormBuilderPanelProps) {
   const [mode, setMode] = useState<"custom" | "api">("custom");
   const [showPreview, setShowPreview] = useState(false);
   const [apiUrl, setApiUrl] = useState("");
