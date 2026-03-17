@@ -11,7 +11,7 @@ import {
   CircleDot, CheckSquare, Mail, Globe, Lock,
   Palette, SlidersHorizontal, Star, Repeat, ChevronDown, ChevronRight, X,
 } from "lucide-react";
-import type { ModuleConfigField, FormFieldType } from "@/types/caseIr";
+import type { ModuleConfigField, FormFieldType, FormTemplate } from "@/types/caseIr";
 import FormPreview from "./FormPreview";
 import "./studio.css";
 
