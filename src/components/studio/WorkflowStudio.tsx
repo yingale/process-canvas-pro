@@ -3,7 +3,7 @@
  * Hierarchy: Stage (Section) → Group → Step
  */
 import { useState, useCallback, useRef } from "react";
-import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType, ModuleConfigField } from "@/types/caseIr";
+import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType, ModuleConfigField, FormTemplate } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
