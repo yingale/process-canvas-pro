@@ -239,7 +239,7 @@ export default function FormBuilderPage() {
           )}
           {validationIssues.length === 0 && (
             <div className="flex items-center justify-center py-6 text-[13px] text-muted-foreground">
-              <Check size={20} className="mr-2 text-green-600" /> All checks passed
+              <Check size={20} className="mr-2 text-primary" /> All checks passed
             </div>
           )}
           <DialogFooter>
