@@ -12,13 +12,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   ChevronDown,
   ChevronRight,
-  Plus,
-  Copy,
-  ArrowUp,
-  ArrowDown,
-  X,
+  Settings,
   List,
   CircleDot,
   Type,
@@ -27,96 +28,71 @@ import {
   CheckSquare,
   Hash,
   FileUp,
-  LayoutList,
+  GitBranch,
 } from "lucide-react";
 import { useState } from "react";
 import type { QuestionType } from "@/types/questionnaire";
 
 const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
-  Dropdown: <List size={13} />,
-  RadioButton: <CircleDot size={13} />,
-  TextInput: <Type size={13} />,
-  TextArea: <AlignLeft size={13} />,
-  DatePicker: <Calendar size={13} />,
-  MultiSelect: <CheckSquare size={13} />,
-  NumberInput: <Hash size={13} />,
-  FileUpload: <FileUp size={13} />,
+  Dropdown: <List size={12} />,
+  RadioButton: <CircleDot size={12} />,
+  TextInput: <Type size={12} />,
+  TextArea: <AlignLeft size={12} />,
+  DatePicker: <Calendar size={12} />,
+  MultiSelect: <CheckSquare size={12} />,
+  NumberInput: <Hash size={12} />,
+  FileUpload: <FileUp size={12} />,
 };
 
-export default function LeftPanel() {
-  const {
-    flow,
-    questions,
-    selectedQuestionId,
-    setFlowField,
-    addQuestion,
-    addSection,
-    duplicateQuestion,
-    moveQuestion,
-    selectQuestion,
-    removeFirstQuestion,
-  } = useQuestionnaireStore();
+interface LeftPanelProps {
+  expandedId: string | null;
+  onSelectQuestion: (id: string) => void;
+}
 
-  const [settingsOpen, setSettingsOpen] = useState(true);
-  const [questionsOpen, setQuestionsOpen] = useState(true);
-  const [entryOpen, setEntryOpen] = useState(true);
+export default function LeftPanel({ expandedId, onSelectQuestion }: LeftPanelProps) {
+  const { flow, questions, setFlowField } = useQuestionnaireStore();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <div className="w-[280px] border-r border-border bg-card flex flex-col h-full flex-shrink-0">
-      <ScrollArea className="flex-1">
-        <div className="p-3 space-y-1">
-          {/* Flow Settings */}
-          <button
-            className="flex items-center gap-1.5 w-full text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground py-1.5"
-            onClick={() => setSettingsOpen(!settingsOpen)}
-          >
-            {settingsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            Flow Settings
-          </button>
+    <div className="w-[220px] border-r border-border bg-card flex flex-col h-full flex-shrink-0">
+      <div className="px-3 py-2 border-b border-border">
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Navigator</h3>
+      </div>
 
-          {settingsOpen && (
-            <div className="space-y-2.5 pb-3">
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {/* Flow Settings (collapsible) */}
+          <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-1.5 w-full text-left text-[11px] font-semibold text-muted-foreground hover:text-foreground py-1.5 px-1 rounded-md hover:bg-muted/50 transition-colors">
+                <Settings size={11} />
+                Flow Settings
+                {settingsOpen ? <ChevronDown size={11} className="ml-auto" /> : <ChevronRight size={11} className="ml-auto" />}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-2 px-1 pt-1 pb-2">
               <div>
-                <Label className="text-[11px]">Flow Name</Label>
-                <Input
-                  className="h-7 text-[12px] mt-1"
-                  value={flow.flowName}
-                  onChange={(e) => setFlowField("flowName", e.target.value)}
-                />
+                <Label className="text-[10px] text-muted-foreground">Flow Name</Label>
+                <Input className="h-6 text-[11px] mt-0.5" value={flow.flowName} onChange={(e) => setFlowField("flowName", e.target.value)} />
               </div>
               <div>
-                <Label className="text-[11px]">Flow ID</Label>
-                <Input
-                  className="h-7 text-[12px] mt-1 font-mono"
-                  value={flow.flowId}
-                  onChange={(e) => setFlowField("flowId", e.target.value)}
-                />
+                <Label className="text-[10px] text-muted-foreground">Flow ID</Label>
+                <Input className="h-6 text-[11px] mt-0.5 font-mono" value={flow.flowId} onChange={(e) => setFlowField("flowId", e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 <div>
-                  <Label className="text-[11px]">Category</Label>
-                  <Input
-                    className="h-7 text-[12px] mt-1"
-                    value={flow.category}
-                    onChange={(e) => setFlowField("category", e.target.value)}
-                  />
+                  <Label className="text-[10px] text-muted-foreground">Category</Label>
+                  <Input className="h-6 text-[11px] mt-0.5" value={flow.category} onChange={(e) => setFlowField("category", e.target.value)} />
                 </div>
                 <div>
-                  <Label className="text-[11px]">Sub Category</Label>
-                  <Input
-                    className="h-7 text-[12px] mt-1"
-                    value={flow.subCategory}
-                    onChange={(e) => setFlowField("subCategory", e.target.value)}
-                  />
+                  <Label className="text-[10px] text-muted-foreground">Sub Cat.</Label>
+                  <Input className="h-6 text-[11px] mt-0.5" value={flow.subCategory} onChange={(e) => setFlowField("subCategory", e.target.value)} />
                 </div>
               </div>
               <div>
-                <Label className="text-[11px]">Status</Label>
-                <Select
-                  value={flow.status}
-                  onValueChange={(v) => setFlowField("status", v)}
-                >
-                  <SelectTrigger className="h-7 text-[12px] mt-1">
+                <Label className="text-[10px] text-muted-foreground">Status</Label>
+                <Select value={flow.status} onValueChange={(v) => setFlowField("status", v)}>
+                  <SelectTrigger className="h-6 text-[11px] mt-0.5">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -127,169 +103,58 @@ export default function LeftPanel() {
                 </Select>
               </div>
               <div>
-                <Label className="text-[11px]">Tags (comma-separated)</Label>
+                <Label className="text-[10px] text-muted-foreground">Tags</Label>
                 <Input
-                  className="h-7 text-[12px] mt-1"
+                  className="h-6 text-[11px] mt-0.5"
                   value={flow.tags.join(", ")}
-                  onChange={(e) =>
-                    setFlowField(
-                      "tags",
-                      e.target.value.split(",").map((t) => t.trim()).filter(Boolean)
-                    )
-                  }
+                  onChange={(e) => setFlowField("tags", e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean))}
                 />
               </div>
-            </div>
-          )}
+            </CollapsibleContent>
+          </Collapsible>
 
-          {/* Separator */}
-          <div className="h-px bg-border" />
+          <div className="h-px bg-border my-1" />
 
-          {/* Questions List */}
-          <div className="flex items-center justify-between pt-1">
-            <button
-              className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground py-1.5"
-              onClick={() => setQuestionsOpen(!questionsOpen)}
-            >
-              {questionsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              Questions ({questions.length})
-            </button>
-            <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => addQuestion()}
-                title="Add Question"
-              >
-                <Plus size={12} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={addSection}
-                title="Add Section"
-              >
-                <LayoutList size={12} />
-              </Button>
-            </div>
+          {/* Question outline */}
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1 py-1">
+            Questions ({questions.length})
           </div>
 
-          {questionsOpen && (
-            <div className="space-y-0.5 pb-3">
-              {questions.length === 0 && (
-                <p className="text-[11px] text-muted-foreground italic px-2 py-3">
-                  No questions yet. Click + to add one.
-                </p>
-              )}
-              {questions.map((q, idx) => {
-                const isSelected = q.questionId === selectedQuestionId;
-                const isEntry = flow.firstQuestions.includes(q.questionId);
-                const branchCount = Object.keys(q._branches ?? {}).filter(
-                  (k) => (q._branches?.[k]?.nextEntityType ?? "none") !== "none"
-                ).length;
-
-                return (
-                  <div
-                    key={q.questionId}
-                    className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer text-[11px] transition-colors group ${
-                      isSelected
-                        ? "bg-primary/10 text-primary border border-primary/20"
-                        : "hover:bg-muted/60 border border-transparent"
-                    }`}
-                    onClick={() => selectQuestion(q.questionId)}
-                  >
-                    <span className="text-muted-foreground flex-shrink-0">
-                      {TYPE_ICONS[q.questionType]}
-                    </span>
-                    <span className="truncate flex-1 font-medium">
-                      {q.content || "Untitled"}
-                    </span>
-                    {isEntry && (
-                      <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 bg-primary/15 text-primary">
-                        EP
-                      </Badge>
-                    )}
-                    {branchCount > 0 && (
-                      <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
-                        {branchCount}B
-                      </Badge>
-                    )}
-                    <div className="hidden group-hover:flex gap-0.5">
-                      <button
-                        className="p-0.5 hover:text-primary"
-                        onClick={(e) => { e.stopPropagation(); duplicateQuestion(q.questionId); }}
-                        title="Duplicate"
-                      >
-                        <Copy size={10} />
-                      </button>
-                      {idx > 0 && (
-                        <button
-                          className="p-0.5 hover:text-primary"
-                          onClick={(e) => { e.stopPropagation(); moveQuestion(q.questionId, "up"); }}
-                        >
-                          <ArrowUp size={10} />
-                        </button>
-                      )}
-                      {idx < questions.length - 1 && (
-                        <button
-                          className="p-0.5 hover:text-primary"
-                          onClick={(e) => { e.stopPropagation(); moveQuestion(q.questionId, "down"); }}
-                        >
-                          <ArrowDown size={10} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          {questions.length === 0 && (
+            <p className="text-[10px] text-muted-foreground italic px-1 py-2">No questions yet.</p>
           )}
 
-          {/* Separator */}
-          <div className="h-px bg-border" />
+          {questions.map((q, idx) => {
+            const isActive = q.questionId === expandedId;
+            const isEntry = flow.firstQuestions.includes(q.questionId);
+            const branchCount = Object.keys(q._branches ?? {}).filter(
+              (k) => (q._branches?.[k]?.nextEntityType ?? "none") !== "none"
+            ).length;
 
-          {/* First Questions (Entry Points) */}
-          <button
-            className="flex items-center gap-1.5 w-full text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground py-1.5"
-            onClick={() => setEntryOpen(!entryOpen)}
-          >
-            {entryOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            Entry Points ({flow.firstQuestions.length})
-          </button>
-
-          {entryOpen && (
-            <div className="space-y-1 pb-3">
-              {flow.firstQuestions.length === 0 && (
-                <p className="text-[11px] text-muted-foreground italic px-2 py-2">
-                  No entry points. Mark questions as "Entry Point" in the editor.
-                </p>
-              )}
-              {flow.firstQuestions.map((fqId) => {
-                const q = questions.find((q) => q.questionId === fqId);
-                return (
-                  <div
-                    key={fqId}
-                    className="flex items-center gap-2 px-2 py-1 rounded-md bg-primary/5 text-[11px]"
-                  >
-                    <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 bg-primary/15 text-primary">
-                      EP
-                    </Badge>
-                    <span className="truncate flex-1">
-                      {q?.content || fqId}
-                    </span>
-                    <button
-                      className="p-0.5 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeFirstQuestion(fqId)}
-                    >
-                      <X size={10} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+            return (
+              <button
+                key={q.questionId}
+                className={`flex items-center gap-1.5 w-full text-left px-1.5 py-1.5 rounded-md text-[11px] transition-colors ${
+                  isActive
+                    ? "bg-primary/10 text-primary border border-primary/20"
+                    : "hover:bg-muted/50 border border-transparent"
+                }`}
+                onClick={() => onSelectQuestion(q.questionId)}
+              >
+                <span className="text-[10px] font-mono text-muted-foreground w-4 text-right flex-shrink-0">{idx + 1}</span>
+                <span className="text-muted-foreground flex-shrink-0">{TYPE_ICONS[q.questionType]}</span>
+                <span className="truncate flex-1 font-medium">{q.content || "Untitled"}</span>
+                {isEntry && (
+                  <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5 bg-primary/10 text-primary flex-shrink-0">EP</Badge>
+                )}
+                {branchCount > 0 && (
+                  <span className="flex-shrink-0 text-muted-foreground">
+                    <GitBranch size={9} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </ScrollArea>
     </div>
