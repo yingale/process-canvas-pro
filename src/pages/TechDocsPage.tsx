@@ -105,7 +105,16 @@ export default function TechDocsPage() {
             </button>
           </div>
 
-          <h2 className="text-lg font-semibold text-foreground mb-4">Document Preview</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Document Preview</h2>
+            <button
+              onClick={handleCopyDoc}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium border border-border bg-card transition-all hover:bg-muted ${docCopied ? "border-emerald-500/40 text-emerald-600" : ""}`}
+            >
+              {docCopied ? <Check size={13} /> : <Copy size={13} />}
+              {docCopied ? "Copied!" : "Copy All"}
+            </button>
+          </div>
           <div className="rounded-lg border border-border bg-card p-6 overflow-auto max-h-[600px]" ref={previewRef}>
             <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed">
               {TECH_DOC_CONTENT}
