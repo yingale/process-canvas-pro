@@ -28,6 +28,7 @@ export default function FormBuilderPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [validationOpen, setValidationOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [importJson, setImportJson] = useState("");
   const [importError, setImportError] = useState("");
   const [copied, setCopied] = useState(false);
