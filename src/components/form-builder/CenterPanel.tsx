@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useQuestionnaireStore } from "@/stores/questionnaireStore";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, FileUp, LayoutList } from "lucide-react";
+import { Plus, Pencil, FileUp, LayoutList, GitBranch, List } from "lucide-react";
 import TreeView from "./TreeView";
+import FlowGraphView from "./FlowGraphView";
 import type { QuestionType } from "@/types/questionnaire";
 
 const QUICK_TYPES: { type: QuestionType; label: string }[] = [
@@ -21,7 +23,8 @@ interface CenterPanelProps {
 }
 
 export default function CenterPanel({ onImport, expandedId, onToggleExpand }: CenterPanelProps) {
-  const { questions, addQuestion, addSection } = useQuestionnaireStore();
+  const { questions, addQuestion, addSection, selectedQuestionId, selectQuestion } = useQuestionnaireStore();
+  const [viewMode, setViewMode] = useState<"tree" | "graph">("tree");
 
   // Empty state
   if (questions.length === 0) {
@@ -53,50 +56,79 @@ export default function CenterPanel({ onImport, expandedId, onToggleExpand }: Ce
     );
   }
 
+  const handleGraphSelect = (id: string) => {
+    selectQuestion(id);
+    onToggleExpand(id);
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-muted/10 h-full overflow-hidden">
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-2 max-w-2xl mx-auto pb-24">
-          {/* Tree-based question rendering */}
-          <TreeView
-            expandedId={expandedId}
-            onToggleExpand={onToggleExpand}
-          />
+      {/* View mode toggle */}
+      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border bg-card flex-shrink-0">
+        <button
+          onClick={() => setViewMode("tree")}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+            viewMode === "tree"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          }`}
+        >
+          <List size={11} /> Tree
+        </button>
+        <button
+          onClick={() => setViewMode("graph")}
+          className={`flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+            viewMode === "graph"
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          }`}
+        >
+          <GitBranch size={11} /> Flow Graph
+        </button>
+      </div>
 
-          {/* Add question bar */}
-          <div className="flex items-center gap-2 pt-4 border-t border-dashed border-border mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-[12px] border-dashed"
-              onClick={() => addQuestion()}
-            >
-              <Plus size={13} className="mr-1" /> Add Question
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-[12px] text-muted-foreground"
-              onClick={addSection}
-            >
-              <LayoutList size={13} className="mr-1" /> Section
-            </Button>
-            <div className="h-4 w-px bg-border" />
-            {QUICK_TYPES.map((qt) => (
+      {viewMode === "graph" ? (
+        <FlowGraphView onSelectQuestion={handleGraphSelect} selectedQuestionId={selectedQuestionId} />
+      ) : (
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-2 max-w-2xl mx-auto pb-24">
+            <TreeView expandedId={expandedId} onToggleExpand={onToggleExpand} />
+
+            {/* Add question bar */}
+            <div className="flex items-center gap-2 pt-4 border-t border-dashed border-border mt-4">
               <Button
-                key={qt.type}
+                variant="outline"
+                size="sm"
+                className="h-8 text-[12px] border-dashed"
+                onClick={() => addQuestion()}
+              >
+                <Plus size={13} className="mr-1" /> Add Question
+              </Button>
+              <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-[10px] px-2 text-muted-foreground hover:text-foreground"
-                onClick={() => addQuestion(qt.type)}
-                title={`Add ${qt.label}`}
+                className="h-8 text-[12px] text-muted-foreground"
+                onClick={addSection}
               >
-                {qt.label}
+                <LayoutList size={13} className="mr-1" /> Section
               </Button>
-            ))}
+              <div className="h-4 w-px bg-border" />
+              {QUICK_TYPES.map((qt) => (
+                <Button
+                  key={qt.type}
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-[10px] px-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => addQuestion(qt.type)}
+                  title={`Add ${qt.label}`}
+                >
+                  {qt.label}
+                </Button>
+              ))}
+            </div>
           </div>
-        </div>
-      </ScrollArea>
+        </ScrollArea>
+      )}
     </div>
   );
 }
