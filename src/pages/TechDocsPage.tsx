@@ -32,6 +32,24 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 export default function TechDocsPage() {
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const scrollToModule = useCallback((searchKey: string) => {
+    const container = previewRef.current;
+    if (!container) return;
+    const pre = container.querySelector("pre");
+    if (!pre) return;
+    const text = pre.textContent || "";
+    const idx = text.indexOf(searchKey);
+    if (idx === -1) return;
+
+    // Estimate scroll position based on character index
+    const totalHeight = pre.scrollHeight;
+    const totalChars = text.length;
+    const ratio = idx / totalChars;
+    container.scrollTo({ top: ratio * totalHeight - 40, behavior: "smooth" });
+  }, []);
+
   return (
     <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
       <div className="mb-8">
