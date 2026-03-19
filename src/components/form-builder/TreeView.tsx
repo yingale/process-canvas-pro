@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import { useQuestionnaireStore } from "@/stores/questionnaireStore";
 import QuestionCard from "./QuestionCard";
 import { Badge } from "@/components/ui/badge";
-import { GitBranch, Unlink, Flag, CornerDownRight } from "lucide-react";
+import { GitBranch, Unlink, Flag, CornerDownRight, ExternalLink, XCircle } from "lucide-react";
 import type { Question } from "@/types/questionnaire";
 
 interface TreeNode {
