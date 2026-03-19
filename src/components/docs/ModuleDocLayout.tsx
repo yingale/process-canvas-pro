@@ -39,6 +39,14 @@ export default function ModuleDocLayout({ title, subtitle, badges, children, stu
             variant="outline"
             size="sm"
             className="h-7 text-[11px]"
+            onClick={() => exportPageAsDocx(title)}
+          >
+            <FileText size={12} className="mr-1" /> Download DOC
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-[11px]"
             onClick={() => exportPageAsPdf(title)}
           >
             <FileDown size={12} className="mr-1" /> Download PDF
