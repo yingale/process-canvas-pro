@@ -162,6 +162,8 @@ function TreeNodeRenderer({
   totalQuestions,
   questionIndex,
   isEntryPoint,
+  subprocessRefs,
+  endRefs,
 }: {
   node: TreeNode;
   depth: number;
@@ -170,22 +172,26 @@ function TreeNodeRenderer({
   totalQuestions: number;
   questionIndex: number;
   isEntryPoint?: boolean;
+  subprocessRefs: Map<string, SubprocessRef[]>;
+  endRefs: Map<string, EndRef[]>;
 }) {
   const { questions } = useQuestionnaireStore();
+  const qId = node.question.questionId;
+  const subs = subprocessRefs.get(qId) ?? [];
+  const ends = endRefs.get(qId) ?? [];
 
   if (node.isCycleRef) {
     return (
       <div className="ml-6 pl-4 py-1.5 flex items-center gap-2 text-[11px] text-muted-foreground italic" style={{ marginLeft: depth * 24 }}>
-        <CornerDownRight size={12} className="text-orange-500" />
+        <CornerDownRight size={12} className="text-amber-500" />
         <span>↩ Back to: {node.question.content || node.question.questionId}</span>
-        <Badge variant="outline" className="text-[8px] px-1 h-3.5 text-orange-500 border-orange-500/30">cycle</Badge>
+        <Badge variant="outline" className="text-[8px] px-1 h-3.5 text-amber-500 border-amber-500/30">cycle</Badge>
       </div>
     );
   }
 
   return (
     <div>
-      {/* Entry point indicator */}
       {depth === 0 && isEntryPoint && (
         <div className="flex items-center gap-1.5 mb-1 px-1">
           <Flag size={10} className="text-primary" />
@@ -193,9 +199,7 @@ function TreeNodeRenderer({
         </div>
       )}
 
-      {/* The question card */}
       <div style={{ marginLeft: depth > 0 ? depth * 24 : 0 }}>
-        {/* Branch connector line */}
         {depth > 0 && (
           <div className="flex items-center gap-1.5 ml-2 mb-0.5">
             <div className="w-4 border-t-2 border-dashed border-primary/20" />
@@ -213,17 +217,43 @@ function TreeNodeRenderer({
         />
       </div>
 
+      {/* Subprocess & End branch indicators */}
+      {(subs.length > 0 || ends.length > 0) && (
+        <div style={{ marginLeft: (depth + 1) * 24 }} className="space-y-1 mt-1">
+          {subs.map((s, i) => (
+            <div key={`sub-${i}`} className="flex items-center gap-1.5 py-1">
+              <GitBranch size={10} className="text-primary/50" />
+              <span className="text-[10px] text-muted-foreground font-medium bg-muted/50 px-1.5 py-0.5 rounded">
+                If "{s.optionLabel}"
+              </span>
+              <span className="text-[9px] font-medium text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                <ExternalLink size={9} /> Subprocess: {s.targetId}
+              </span>
+            </div>
+          ))}
+          {ends.map((e, i) => (
+            <div key={`end-${i}`} className="flex items-center gap-1.5 py-1">
+              <GitBranch size={10} className="text-primary/50" />
+              <span className="text-[10px] text-muted-foreground font-medium bg-muted/50 px-1.5 py-0.5 rounded">
+                If "{e.optionLabel}"
+              </span>
+              <span className="text-[9px] font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                <XCircle size={9} /> End
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Children (branched questions) */}
       {node.children.length > 0 && (
         <div className="relative">
-          {/* Vertical connector line */}
           <div
             className="absolute left-3 top-0 bottom-2 border-l-2 border-dashed border-primary/15"
             style={{ marginLeft: depth * 24 }}
           />
           {node.children.map((child, i) => (
             <div key={`${child.optionId}-${i}`} className="relative">
-              {/* Option label */}
               <div
                 className="flex items-center gap-1.5 py-1 mt-1"
                 style={{ marginLeft: (depth + 1) * 24 }}
@@ -240,6 +270,8 @@ function TreeNodeRenderer({
                 onToggleExpand={onToggleExpand}
                 totalQuestions={totalQuestions}
                 questionIndex={questions.findIndex((q) => q.questionId === child.node.question.questionId)}
+                subprocessRefs={subprocessRefs}
+                endRefs={endRefs}
               />
             </div>
           ))}
