@@ -114,13 +114,17 @@ export default function TechDocsPage() {
           <h2 className="text-lg font-semibold text-foreground mb-4">Module Summary</h2>
           <div className="grid gap-3">
             {MODULE_SUMMARIES.map((m) => (
-              <div key={m.name} className="rounded-lg border border-border bg-card p-4">
+              <button
+                key={m.name}
+                className="rounded-lg border border-border bg-card p-4 text-left transition-all hover:border-primary hover:shadow-sm cursor-pointer group"
+                onClick={() => scrollToModule(m.searchKey)}
+              >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-foreground">{m.name}</span>
+                  <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{m.name}</span>
                   <span className="toolbar-badge text-[10px] px-1.5 py-0.5 rounded font-mono">{m.category}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">{m.desc}</p>
-              </div>
+              </button>
             ))}
           </div>
         </div>
