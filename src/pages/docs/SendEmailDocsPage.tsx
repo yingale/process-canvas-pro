@@ -3,7 +3,7 @@
  * Includes: Template Builder, Template Selection, MongoDB Schema, HTML Builder Design
  */
 import ModuleDocLayout from "@/components/docs/ModuleDocLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { DocCard as Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/docs/DocCard";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
