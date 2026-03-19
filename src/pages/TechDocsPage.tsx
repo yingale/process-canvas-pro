@@ -1,4 +1,4 @@
-import { Download, FileText, FileCode } from "lucide-react";
+import { Download, FileText, FileCode, ShieldOff } from "lucide-react";
 import { TECH_DOC_CONTENT } from "@/lib/techDocContent";
 import "../components/studio/studio.css";
 
@@ -10,6 +10,15 @@ const MODULE_SUMMARIES = [
   { name: "Form Builder", category: "User Interaction", desc: "Dynamic forms with validation — existing, new, or API-driven" },
   { name: "Approval / Reviewer", category: "Governance", desc: "Multi-level approval with escalation and auto-approve rules" },
 ];
+
+function stripBranding(content: string): string {
+  return content
+    .replace(/WorkflowStudio/gi, "[Your Platform]")
+    .replace(/Workflow Studio/gi, "[Your Platform]")
+    .replace(/BPMN\s*⇄\s*Case IR/gi, "Process Automation")
+    .replace(/Pega[- ]?style/gi, "Enterprise")
+    .replace(/Pega/gi, "Platform");
+}
 
 function downloadFile(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
