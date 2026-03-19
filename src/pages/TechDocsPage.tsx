@@ -33,6 +33,7 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 export default function TechDocsPage() {
+  const navigate = useNavigate();
   const previewRef = useRef<HTMLDivElement>(null);
 
   const scrollToModule = useCallback((searchKey: string) => {
