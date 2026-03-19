@@ -97,7 +97,7 @@ export default function TechDocsPage() {
           </div>
 
           <h2 className="text-lg font-semibold text-foreground mb-4">Document Preview</h2>
-          <div className="rounded-lg border border-border bg-card p-6 overflow-auto max-h-[600px]">
+          <div className="rounded-lg border border-border bg-card p-6 overflow-auto max-h-[600px]" ref={previewRef}>
             <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed">
               {TECH_DOC_CONTENT}
             </pre>
