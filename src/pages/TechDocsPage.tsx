@@ -35,6 +35,13 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 export default function TechDocsPage() {
   const navigate = useNavigate();
   const previewRef = useRef<HTMLDivElement>(null);
+  const [docCopied, setDocCopied] = useState(false);
+
+  const handleCopyDoc = useCallback(async () => {
+    await navigator.clipboard.writeText(TECH_DOC_CONTENT);
+    setDocCopied(true);
+    setTimeout(() => setDocCopied(false), 2000);
+  }, []);
 
   const scrollToModule = useCallback((searchKey: string) => {
     const container = previewRef.current;
