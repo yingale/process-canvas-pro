@@ -60,6 +60,23 @@ export default function TechDocsPage() {
             </button>
           </div>
 
+          <div className="flex gap-3 mb-6">
+            <button
+              className="toolbar-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-dashed"
+              onClick={() => downloadFile(stripBranding(TECH_DOC_CONTENT), "tech-doc-unbranded.md", "text/markdown")}
+            >
+              <ShieldOff size={16} />
+              Markdown (No Branding)
+            </button>
+            <button
+              className="toolbar-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-dashed"
+              onClick={() => downloadFile(stripBranding(TECH_DOC_CONTENT), "tech-doc-unbranded.txt", "text/plain")}
+            >
+              <ShieldOff size={16} />
+              Text (No Branding)
+            </button>
+          </div>
+
           <h2 className="text-lg font-semibold text-foreground mb-4">Document Preview</h2>
           <div className="rounded-lg border border-border bg-card p-6 overflow-auto max-h-[600px]">
             <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed">
