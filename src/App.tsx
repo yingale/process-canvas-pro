@@ -14,6 +14,11 @@ import AllWorkflows from "./pages/AllWorkflows";
 import ProfilePage from "./pages/ProfilePage";
 import TechDocsPage from "./pages/TechDocsPage";
 import FormBuilderDocsPage from "./pages/FormBuilderDocsPage";
+import EmailReaderDocsPage from "./pages/docs/EmailReaderDocsPage";
+import DataExtractorDocsPage from "./pages/docs/DataExtractorDocsPage";
+import AiProcessorDocsPage from "./pages/docs/AiProcessorDocsPage";
+import SendEmailDocsPage from "./pages/docs/SendEmailDocsPage";
+import ApprovalDocsPage from "./pages/docs/ApprovalDocsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
