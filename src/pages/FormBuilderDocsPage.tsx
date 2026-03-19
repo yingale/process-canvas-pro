@@ -54,6 +54,9 @@ export default function FormBuilderDocsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => exportPageAsDocx("Form Builder — Documentation")}>
+            <FileText size={12} className="mr-1" /> Download DOC
+          </Button>
           <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => exportPageAsPdf("Form Builder — Documentation")}>
             <FileDown size={12} className="mr-1" /> Download PDF
           </Button>
