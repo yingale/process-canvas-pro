@@ -30,20 +30,20 @@ interface EndRef {
 function buildTree(
   questions: Question[],
   firstQuestions: string[]
-): { roots: TreeNode[]; unlinked: Question[] } {
+): { roots: TreeNode[]; unlinked: Question[]; subprocessRefs: Map<string, SubprocessRef[]>; endRefs: Map<string, EndRef[]> } {
   const qMap = new Map(questions.map((q) => [q.questionId, q]));
   const visited = new Set<string>();
+  const subprocessRefs = new Map<string, SubprocessRef[]>();
+  const endRefs = new Map<string, EndRef[]>();
 
   function buildNode(qId: string, ancestors: Set<string>): TreeNode | null {
     const q = qMap.get(qId);
     if (!q) return null;
 
-    // Cycle detection: if we're visiting an ancestor, mark as cycle ref
     if (ancestors.has(qId)) {
       return { question: q, children: [], isCycleRef: true };
     }
 
-    // If already visited in another branch, still show but don't recurse deeply
     const alreadyVisited = visited.has(qId);
     visited.add(qId);
 
@@ -52,17 +52,21 @@ function buildTree(
     if (!alreadyVisited) {
       const branches = q._branches ?? {};
       for (const [optId, branch] of Object.entries(branches)) {
-        if (branch.nextEntityType === "question" && branch.targetId) {
-          const opt = q.options.find((o) => o.id === optId);
+        const opt = q.options.find((o) => o.id === optId);
+        const label = opt?.display || optId;
+
+        if (branch.nextEntityType === "subprocess") {
+          if (!subprocessRefs.has(qId)) subprocessRefs.set(qId, []);
+          subprocessRefs.get(qId)!.push({ optionLabel: label, targetId: branch.targetId });
+        } else if (branch.nextEntityType === "end") {
+          if (!endRefs.has(qId)) endRefs.set(qId, []);
+          endRefs.get(qId)!.push({ optionLabel: label, targetId: branch.targetId });
+        } else if (branch.nextEntityType === "question" && branch.targetId) {
           const nextAncestors = new Set(ancestors);
           nextAncestors.add(qId);
           const childNode = buildNode(branch.targetId, nextAncestors);
           if (childNode) {
-            children.push({
-              optionLabel: opt?.display || optId,
-              optionId: optId,
-              node: childNode,
-            });
+            children.push({ optionLabel: label, optionId: optId, node: childNode, branchType: "question" });
           }
         }
       }
@@ -71,15 +75,12 @@ function buildTree(
     return { question: q, children };
   }
 
-  // Build from entry points
   const roots: TreeNode[] = [];
   for (const id of firstQuestions) {
     const node = buildNode(id, new Set());
     if (node) roots.push(node);
   }
 
-  // Also add questions that aren't entry points but aren't children of anything
-  // (standalone roots not in firstQuestions)
   for (const q of questions) {
     if (!visited.has(q.questionId)) {
       const node = buildNode(q.questionId, new Set());
@@ -87,11 +88,9 @@ function buildTree(
     }
   }
 
-  // Truly unlinked = none (all are now roots or children)
-  // But let's separate: questions that were visited as children vs standalone
   const unlinked = questions.filter((q) => !visited.has(q.questionId));
 
-  return { roots, unlinked };
+  return { roots, unlinked, subprocessRefs, endRefs };
 }
 
 interface TreeViewProps {
@@ -102,7 +101,7 @@ interface TreeViewProps {
 export default function TreeView({ expandedId, onToggleExpand }: TreeViewProps) {
   const { questions, flow } = useQuestionnaireStore();
 
-  const { roots, unlinked } = useMemo(
+  const { roots, unlinked, subprocessRefs, endRefs } = useMemo(
     () => buildTree(questions, flow.firstQuestions),
     [questions, flow.firstQuestions]
   );
