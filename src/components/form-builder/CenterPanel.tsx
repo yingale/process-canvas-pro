@@ -2,7 +2,7 @@ import { useQuestionnaireStore } from "@/stores/questionnaireStore";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, FileUp, LayoutList } from "lucide-react";
-import QuestionCard from "./QuestionCard";
+import TreeView from "./TreeView";
 import type { QuestionType } from "@/types/questionnaire";
 
 const QUICK_TYPES: { type: QuestionType; label: string }[] = [
@@ -34,7 +34,7 @@ export default function CenterPanel({ onImport, expandedId, onToggleExpand }: Ce
           <div>
             <h2 className="text-lg font-bold text-foreground">Start Building Your Form</h2>
             <p className="text-[13px] text-muted-foreground mt-1">
-              Add questions to create your questionnaire flow. Each question becomes an interactive card you can configure.
+              Add questions to create your questionnaire flow. Questions will appear as a tree showing the branching logic.
             </p>
           </div>
           <div className="flex gap-2 justify-center flex-wrap">
@@ -57,27 +57,19 @@ export default function CenterPanel({ onImport, expandedId, onToggleExpand }: Ce
     <div className="flex-1 flex flex-col bg-muted/10 h-full overflow-hidden">
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-2 max-w-2xl mx-auto pb-24">
-          {questions.map((q, idx) => (
-            <QuestionCard
-              key={q.questionId}
-              question={q}
-              index={idx}
-              total={questions.length}
-              isExpanded={expandedId === q.questionId}
-              onToggle={() => onToggleExpand(q.questionId)}
-            />
-          ))}
+          {/* Tree-based question rendering */}
+          <TreeView
+            expandedId={expandedId}
+            onToggleExpand={onToggleExpand}
+          />
 
           {/* Add question bar */}
-          <div className="flex items-center gap-2 pt-2">
+          <div className="flex items-center gap-2 pt-4 border-t border-dashed border-border mt-4">
             <Button
               variant="outline"
               size="sm"
               className="h-8 text-[12px] border-dashed"
-              onClick={() => {
-                addQuestion();
-                // New question will be auto-expanded via the store's selectedQuestionId
-              }}
+              onClick={() => addQuestion()}
             >
               <Plus size={13} className="mr-1" /> Add Question
             </Button>
