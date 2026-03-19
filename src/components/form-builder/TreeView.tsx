@@ -7,33 +7,43 @@ import { useMemo } from "react";
 import { useQuestionnaireStore } from "@/stores/questionnaireStore";
 import QuestionCard from "./QuestionCard";
 import { Badge } from "@/components/ui/badge";
-import { GitBranch, Unlink, Flag, CornerDownRight } from "lucide-react";
+import { GitBranch, Unlink, Flag, CornerDownRight, ExternalLink, XCircle } from "lucide-react";
 import type { Question } from "@/types/questionnaire";
 
 interface TreeNode {
   question: Question;
-  children: { optionLabel: string; optionId: string; node: TreeNode }[];
+  children: { optionLabel: string; optionId: string; node: TreeNode; branchType?: "question" | "subprocess" | "end" }[];
   /** Whether this node also appears elsewhere (cycle detection) */
   isCycleRef?: boolean;
+}
+
+interface SubprocessRef {
+  optionLabel: string;
+  targetId: string;
+}
+
+interface EndRef {
+  optionLabel: string;
+  targetId: string;
 }
 
 function buildTree(
   questions: Question[],
   firstQuestions: string[]
-): { roots: TreeNode[]; unlinked: Question[] } {
+): { roots: TreeNode[]; unlinked: Question[]; subprocessRefs: Map<string, SubprocessRef[]>; endRefs: Map<string, EndRef[]> } {
   const qMap = new Map(questions.map((q) => [q.questionId, q]));
   const visited = new Set<string>();
+  const subprocessRefs = new Map<string, SubprocessRef[]>();
+  const endRefs = new Map<string, EndRef[]>();
 
   function buildNode(qId: string, ancestors: Set<string>): TreeNode | null {
     const q = qMap.get(qId);
     if (!q) return null;
 
-    // Cycle detection: if we're visiting an ancestor, mark as cycle ref
     if (ancestors.has(qId)) {
       return { question: q, children: [], isCycleRef: true };
     }
 
-    // If already visited in another branch, still show but don't recurse deeply
     const alreadyVisited = visited.has(qId);
     visited.add(qId);
 
@@ -42,17 +52,21 @@ function buildTree(
     if (!alreadyVisited) {
       const branches = q._branches ?? {};
       for (const [optId, branch] of Object.entries(branches)) {
-        if (branch.nextEntityType === "question" && branch.targetId) {
-          const opt = q.options.find((o) => o.id === optId);
+        const opt = q.options.find((o) => o.id === optId);
+        const label = opt?.display || optId;
+
+        if (branch.nextEntityType === "subprocess") {
+          if (!subprocessRefs.has(qId)) subprocessRefs.set(qId, []);
+          subprocessRefs.get(qId)!.push({ optionLabel: label, targetId: branch.targetId });
+        } else if (branch.nextEntityType === "end") {
+          if (!endRefs.has(qId)) endRefs.set(qId, []);
+          endRefs.get(qId)!.push({ optionLabel: label, targetId: branch.targetId });
+        } else if (branch.nextEntityType === "question" && branch.targetId) {
           const nextAncestors = new Set(ancestors);
           nextAncestors.add(qId);
           const childNode = buildNode(branch.targetId, nextAncestors);
           if (childNode) {
-            children.push({
-              optionLabel: opt?.display || optId,
-              optionId: optId,
-              node: childNode,
-            });
+            children.push({ optionLabel: label, optionId: optId, node: childNode, branchType: "question" });
           }
         }
       }
@@ -61,15 +75,12 @@ function buildTree(
     return { question: q, children };
   }
 
-  // Build from entry points
   const roots: TreeNode[] = [];
   for (const id of firstQuestions) {
     const node = buildNode(id, new Set());
     if (node) roots.push(node);
   }
 
-  // Also add questions that aren't entry points but aren't children of anything
-  // (standalone roots not in firstQuestions)
   for (const q of questions) {
     if (!visited.has(q.questionId)) {
       const node = buildNode(q.questionId, new Set());
@@ -77,11 +88,9 @@ function buildTree(
     }
   }
 
-  // Truly unlinked = none (all are now roots or children)
-  // But let's separate: questions that were visited as children vs standalone
   const unlinked = questions.filter((q) => !visited.has(q.questionId));
 
-  return { roots, unlinked };
+  return { roots, unlinked, subprocessRefs, endRefs };
 }
 
 interface TreeViewProps {
@@ -92,7 +101,7 @@ interface TreeViewProps {
 export default function TreeView({ expandedId, onToggleExpand }: TreeViewProps) {
   const { questions, flow } = useQuestionnaireStore();
 
-  const { roots, unlinked } = useMemo(
+  const { roots, unlinked, subprocessRefs, endRefs } = useMemo(
     () => buildTree(questions, flow.firstQuestions),
     [questions, flow.firstQuestions]
   );
@@ -112,6 +121,8 @@ export default function TreeView({ expandedId, onToggleExpand }: TreeViewProps) 
           totalQuestions={questions.length}
           questionIndex={questions.findIndex((q) => q.questionId === root.question.questionId)}
           isEntryPoint={flow.firstQuestions.includes(root.question.questionId)}
+          subprocessRefs={subprocessRefs}
+          endRefs={endRefs}
         />
       ))}
 
@@ -151,6 +162,8 @@ function TreeNodeRenderer({
   totalQuestions,
   questionIndex,
   isEntryPoint,
+  subprocessRefs,
+  endRefs,
 }: {
   node: TreeNode;
   depth: number;
@@ -159,22 +172,26 @@ function TreeNodeRenderer({
   totalQuestions: number;
   questionIndex: number;
   isEntryPoint?: boolean;
+  subprocessRefs: Map<string, SubprocessRef[]>;
+  endRefs: Map<string, EndRef[]>;
 }) {
   const { questions } = useQuestionnaireStore();
+  const qId = node.question.questionId;
+  const subs = subprocessRefs.get(qId) ?? [];
+  const ends = endRefs.get(qId) ?? [];
 
   if (node.isCycleRef) {
     return (
       <div className="ml-6 pl-4 py-1.5 flex items-center gap-2 text-[11px] text-muted-foreground italic" style={{ marginLeft: depth * 24 }}>
-        <CornerDownRight size={12} className="text-orange-500" />
+        <CornerDownRight size={12} className="text-amber-500" />
         <span>↩ Back to: {node.question.content || node.question.questionId}</span>
-        <Badge variant="outline" className="text-[8px] px-1 h-3.5 text-orange-500 border-orange-500/30">cycle</Badge>
+        <Badge variant="outline" className="text-[8px] px-1 h-3.5 text-amber-500 border-amber-500/30">cycle</Badge>
       </div>
     );
   }
 
   return (
     <div>
-      {/* Entry point indicator */}
       {depth === 0 && isEntryPoint && (
         <div className="flex items-center gap-1.5 mb-1 px-1">
           <Flag size={10} className="text-primary" />
@@ -182,9 +199,7 @@ function TreeNodeRenderer({
         </div>
       )}
 
-      {/* The question card */}
       <div style={{ marginLeft: depth > 0 ? depth * 24 : 0 }}>
-        {/* Branch connector line */}
         {depth > 0 && (
           <div className="flex items-center gap-1.5 ml-2 mb-0.5">
             <div className="w-4 border-t-2 border-dashed border-primary/20" />
@@ -202,17 +217,43 @@ function TreeNodeRenderer({
         />
       </div>
 
+      {/* Subprocess & End branch indicators */}
+      {(subs.length > 0 || ends.length > 0) && (
+        <div style={{ marginLeft: (depth + 1) * 24 }} className="space-y-1 mt-1">
+          {subs.map((s, i) => (
+            <div key={`sub-${i}`} className="flex items-center gap-1.5 py-1">
+              <GitBranch size={10} className="text-primary/50" />
+              <span className="text-[10px] text-muted-foreground font-medium bg-muted/50 px-1.5 py-0.5 rounded">
+                If "{s.optionLabel}"
+              </span>
+              <span className="text-[9px] font-medium text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                <ExternalLink size={9} /> Subprocess: {s.targetId}
+              </span>
+            </div>
+          ))}
+          {ends.map((e, i) => (
+            <div key={`end-${i}`} className="flex items-center gap-1.5 py-1">
+              <GitBranch size={10} className="text-primary/50" />
+              <span className="text-[10px] text-muted-foreground font-medium bg-muted/50 px-1.5 py-0.5 rounded">
+                If "{e.optionLabel}"
+              </span>
+              <span className="text-[9px] font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                <XCircle size={9} /> End
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Children (branched questions) */}
       {node.children.length > 0 && (
         <div className="relative">
-          {/* Vertical connector line */}
           <div
             className="absolute left-3 top-0 bottom-2 border-l-2 border-dashed border-primary/15"
             style={{ marginLeft: depth * 24 }}
           />
           {node.children.map((child, i) => (
             <div key={`${child.optionId}-${i}`} className="relative">
-              {/* Option label */}
               <div
                 className="flex items-center gap-1.5 py-1 mt-1"
                 style={{ marginLeft: (depth + 1) * 24 }}
@@ -229,6 +270,8 @@ function TreeNodeRenderer({
                 onToggleExpand={onToggleExpand}
                 totalQuestions={totalQuestions}
                 questionIndex={questions.findIndex((q) => q.questionId === child.node.question.questionId)}
+                subprocessRefs={subprocessRefs}
+                endRefs={endRefs}
               />
             </div>
           ))}
