@@ -1,6 +1,6 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Download, FileText, FileCode, ShieldOff, ExternalLink } from "lucide-react";
+import { Download, FileText, FileCode, ShieldOff, ExternalLink, Copy, Check } from "lucide-react";
 import { TECH_DOC_CONTENT } from "@/lib/techDocContent";
 import "../components/studio/studio.css";
 
