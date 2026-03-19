@@ -2,9 +2,9 @@
  * FormBuilderDocsPage – UI Wireframe & Technical Documentation for the Form Builder
  */
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Layers, GitBranch, Eye, FileJson, Zap, LayoutGrid, Box, ListTree, Settings2, Database, CheckCircle2, AlertTriangle, BookOpen, FileDown } from "lucide-react";
+import { ArrowLeft, Layers, GitBranch, Eye, FileJson, Zap, LayoutGrid, Box, ListTree, Settings2, Database, CheckCircle2, AlertTriangle, BookOpen, FileDown, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { exportPageAsPdf } from "@/lib/pdfExport";
+import { exportPageAsPdf, exportPageAsDocx } from "@/lib/pdfExport";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
