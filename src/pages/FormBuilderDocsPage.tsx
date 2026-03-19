@@ -2,8 +2,9 @@
  * FormBuilderDocsPage – UI Wireframe & Technical Documentation for the Form Builder
  */
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Layers, GitBranch, Eye, FileJson, Zap, LayoutGrid, Box, ListTree, Settings2, Database, CheckCircle2, AlertTriangle, BookOpen } from "lucide-react";
+import { ArrowLeft, Layers, GitBranch, Eye, FileJson, Zap, LayoutGrid, Box, ListTree, Settings2, Database, CheckCircle2, AlertTriangle, BookOpen, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { exportPageAsPdf } from "@/lib/pdfExport";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -52,9 +53,14 @@ export default function FormBuilderDocsPage() {
             <h1 className="text-sm font-bold text-foreground">Form Builder — Wireframe & Documentation</h1>
           </div>
         </div>
-        <Button size="sm" className="h-7 text-[11px]" onClick={() => navigate("/studio/form-builder")}>
-          Open Form Builder →
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => exportPageAsPdf("Form Builder — Documentation")}>
+            <FileDown size={12} className="mr-1" /> Download PDF
+          </Button>
+          <Button size="sm" className="h-7 text-[11px]" onClick={() => navigate("/studio/form-builder")}>
+            Open Form Builder →
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1">

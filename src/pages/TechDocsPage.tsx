@@ -1,15 +1,16 @@
 import { useRef, useCallback } from "react";
-import { Download, FileText, FileCode, ShieldOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Download, FileText, FileCode, ShieldOff, ExternalLink } from "lucide-react";
 import { TECH_DOC_CONTENT } from "@/lib/techDocContent";
 import "../components/studio/studio.css";
 
 const MODULE_SUMMARIES = [
-  { name: "Email Reader", category: "Communication", desc: "Read emails and download attachments via Core API (MS Graph)", searchKey: "Module 1: Email Reader" },
-  { name: "Data Extractor", category: "Data Processing", desc: "Parse CSV/XLSX files, extract columns and rows", searchKey: "Module 2: Data Extractor" },
-  { name: "AI Processor", category: "Intelligence", desc: "Run LLM prompts with variable substitution, structured output", searchKey: "Module 3: AI Processor" },
-  { name: "Send Email Notification", category: "Communication", desc: "Send templated emails with attachments via Core API", searchKey: "Module 4: Send Email" },
-  { name: "Form Builder", category: "User Interaction", desc: "Dynamic forms with validation — existing, new, or API-driven", searchKey: "Module 5: Form Builder" },
-  { name: "Approval / Reviewer", category: "Governance", desc: "Multi-level approval with escalation and auto-approve rules", searchKey: "Module 6: Approval" },
+  { name: "Email Reader", category: "Communication", desc: "Read emails and download attachments via Core API (MS Graph)", searchKey: "Module 1: Email Reader", docPath: "/docs/email-reader" },
+  { name: "Data Extractor", category: "Data Processing", desc: "Parse CSV/XLSX files, extract columns and rows", searchKey: "Module 2: Data Extractor", docPath: "/docs/data-extractor" },
+  { name: "AI Processor", category: "Intelligence", desc: "Run LLM prompts with variable substitution, structured output", searchKey: "Module 3: AI Processor", docPath: "/docs/ai-processor" },
+  { name: "Send Email Notification", category: "Communication", desc: "Send templated emails with attachments via Core API", searchKey: "Module 4: Send Email", docPath: "/docs/send-email" },
+  { name: "Form Builder", category: "User Interaction", desc: "Dynamic forms with validation — existing, new, or API-driven", searchKey: "Module 5: Form Builder", docPath: "/docs/form-builder" },
+  { name: "Approval / Reviewer", category: "Governance", desc: "Multi-level approval with escalation and auto-approve rules", searchKey: "Module 6: Approval", docPath: "/docs/approval" },
 ];
 
 function stripBranding(content: string): string {
@@ -32,6 +33,7 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 export default function TechDocsPage() {
+  const navigate = useNavigate();
   const previewRef = useRef<HTMLDivElement>(null);
 
   const scrollToModule = useCallback((searchKey: string) => {
@@ -123,7 +125,13 @@ export default function TechDocsPage() {
                   <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{m.name}</span>
                   <span className="toolbar-badge text-[10px] px-1.5 py-0.5 rounded font-mono">{m.category}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">{m.desc}</p>
+                <p className="text-xs text-muted-foreground mb-2">{m.desc}</p>
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
+                  onClick={(e) => { e.stopPropagation(); navigate(m.docPath); }}
+                >
+                  <ExternalLink size={10} /> View Full Docs
+                </span>
               </button>
             ))}
           </div>

@@ -244,3 +244,30 @@
   font-size: 10px;
   color: hsl(var(--foreground-muted));
 }
+
+/* =============================================
+   Print / PDF Export styles
+   ============================================= */
+
+@media print {
+  body.printing-pdf .print\\:hidden,
+  body.printing-pdf header,
+  body.printing-pdf nav,
+  body.printing-pdf [data-sidebar],
+  body.printing-pdf footer {
+    display: none !important;
+  }
+
+  body.printing-pdf {
+    background: white !important;
+    color: black !important;
+    font-size: 12px !important;
+  }
+
+  body.printing-pdf .print\\:px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+  body.printing-pdf .print\\:py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+
+  @page {
+    margin: 1.5cm;
+  }
+}
