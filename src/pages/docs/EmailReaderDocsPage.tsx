@@ -2,7 +2,7 @@
  * Email Reader Module – Documentation Page
  */
 import ModuleDocLayout from "@/components/docs/ModuleDocLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DocCard as Card, CardContent, CardHeader, CardTitle } from "@/components/docs/DocCard";
 import { Separator } from "@/components/ui/separator";
 import { Mail, Download, Filter, Shield, Zap, Database, Settings2, GitBranch } from "lucide-react";
 

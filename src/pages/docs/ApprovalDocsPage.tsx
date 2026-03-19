@@ -2,7 +2,7 @@
  * Approval / Reviewer Module – Documentation Page
  */
 import ModuleDocLayout from "@/components/docs/ModuleDocLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DocCard as Card, CardContent, CardHeader, CardTitle } from "@/components/docs/DocCard";
 import { Separator } from "@/components/ui/separator";
 import { Shield, Settings2, Database, Zap, GitBranch, Users, AlertTriangle } from "lucide-react";
 
