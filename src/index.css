@@ -293,10 +293,9 @@
     display: none !important;
   }
 
-  /* Tabs: show ALL tab panels, not just active */
+  /* Tabs: show ALL tab panels during print */
   body.printing-pdf [role="tabpanel"][data-state="inactive"] {
     display: block !important;
-    opacity: 1 !important;
   }
   body.printing-pdf [role="tablist"] {
     display: none !important;
