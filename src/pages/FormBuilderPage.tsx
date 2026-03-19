@@ -18,6 +18,7 @@ import {
 import { useQuestionnaireStore } from "@/stores/questionnaireStore";
 import LeftPanel from "@/components/form-builder/LeftPanel";
 import CenterPanel from "@/components/form-builder/CenterPanel";
+import QuestionnairePreview from "@/components/form-builder/QuestionnairePreview";
 import type { QuestionnaireDocument, ValidationIssue } from "@/types/questionnaire";
 
 export default function FormBuilderPage() {
@@ -28,6 +29,7 @@ export default function FormBuilderPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [validationOpen, setValidationOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [importJson, setImportJson] = useState("");
   const [importError, setImportError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -145,6 +147,9 @@ export default function FormBuilderPage() {
             <Trash2 size={11} />
           </Button>
           <div className="w-px h-4 bg-border" />
+          <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setPreviewOpen(true)}>
+            <Eye size={10} className="mr-1" /> Preview
+          </Button>
           <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setImportOpen(true)}>
             <Upload size={10} className="mr-1" /> Import
           </Button>
@@ -252,6 +257,18 @@ export default function FormBuilderPage() {
             </div>
             <Button variant="outline" onClick={() => setValidationOpen(false)} className="text-[12px]">Close</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl h-[80vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-5 pb-0">
+            <DialogTitle className="flex items-center gap-2"><Eye size={18} /> Form Preview</DialogTitle>
+            <DialogDescription>Step through the questionnaire as an end user would experience it.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <QuestionnairePreview />
+          </div>
         </DialogContent>
       </Dialog>
     </div>
