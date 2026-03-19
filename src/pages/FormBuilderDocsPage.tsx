@@ -42,7 +42,7 @@ export default function FormBuilderDocsPage() {
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-card flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-card flex-shrink-0 print:hidden">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => navigate(-1)}>
             <ArrowLeft size={12} className="mr-1" /> Back
