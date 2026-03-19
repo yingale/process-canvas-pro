@@ -18,6 +18,7 @@ import {
 import { useQuestionnaireStore } from "@/stores/questionnaireStore";
 import LeftPanel from "@/components/form-builder/LeftPanel";
 import CenterPanel from "@/components/form-builder/CenterPanel";
+import QuestionnairePreview from "@/components/form-builder/QuestionnairePreview";
 import type { QuestionnaireDocument, ValidationIssue } from "@/types/questionnaire";
 
 export default function FormBuilderPage() {
