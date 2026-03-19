@@ -1,14 +1,15 @@
+import { useRef, useCallback } from "react";
 import { Download, FileText, FileCode, ShieldOff } from "lucide-react";
 import { TECH_DOC_CONTENT } from "@/lib/techDocContent";
 import "../components/studio/studio.css";
 
 const MODULE_SUMMARIES = [
-  { name: "Email Reader", category: "Communication", desc: "Read emails and download attachments via Core API (MS Graph)" },
-  { name: "Data Extractor", category: "Data Processing", desc: "Parse CSV/XLSX files, extract columns and rows" },
-  { name: "AI Processor", category: "Intelligence", desc: "Run LLM prompts with variable substitution, structured output" },
-  { name: "Send Email Notification", category: "Communication", desc: "Send templated emails with attachments via Core API" },
-  { name: "Form Builder", category: "User Interaction", desc: "Dynamic forms with validation — existing, new, or API-driven" },
-  { name: "Approval / Reviewer", category: "Governance", desc: "Multi-level approval with escalation and auto-approve rules" },
+  { name: "Email Reader", category: "Communication", desc: "Read emails and download attachments via Core API (MS Graph)", searchKey: "Module 1: Email Reader" },
+  { name: "Data Extractor", category: "Data Processing", desc: "Parse CSV/XLSX files, extract columns and rows", searchKey: "Module 2: Data Extractor" },
+  { name: "AI Processor", category: "Intelligence", desc: "Run LLM prompts with variable substitution, structured output", searchKey: "Module 3: AI Processor" },
+  { name: "Send Email Notification", category: "Communication", desc: "Send templated emails with attachments via Core API", searchKey: "Module 4: Send Email" },
+  { name: "Form Builder", category: "User Interaction", desc: "Dynamic forms with validation — existing, new, or API-driven", searchKey: "Module 5: Form Builder" },
+  { name: "Approval / Reviewer", category: "Governance", desc: "Multi-level approval with escalation and auto-approve rules", searchKey: "Module 6: Approval" },
 ];
 
 function stripBranding(content: string): string {
@@ -31,6 +32,24 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 }
 
 export default function TechDocsPage() {
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const scrollToModule = useCallback((searchKey: string) => {
+    const container = previewRef.current;
+    if (!container) return;
+    const pre = container.querySelector("pre");
+    if (!pre) return;
+    const text = pre.textContent || "";
+    const idx = text.indexOf(searchKey);
+    if (idx === -1) return;
+
+    // Estimate scroll position based on character index
+    const totalHeight = pre.scrollHeight;
+    const totalChars = text.length;
+    const ratio = idx / totalChars;
+    container.scrollTo({ top: ratio * totalHeight - 40, behavior: "smooth" });
+  }, []);
+
   return (
     <div className="min-h-screen p-6 md:p-10 max-w-7xl mx-auto">
       <div className="mb-8">
@@ -78,7 +97,7 @@ export default function TechDocsPage() {
           </div>
 
           <h2 className="text-lg font-semibold text-foreground mb-4">Document Preview</h2>
-          <div className="rounded-lg border border-border bg-card p-6 overflow-auto max-h-[600px]">
+          <div className="rounded-lg border border-border bg-card p-6 overflow-auto max-h-[600px]" ref={previewRef}>
             <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed">
               {TECH_DOC_CONTENT}
             </pre>
@@ -95,13 +114,17 @@ export default function TechDocsPage() {
           <h2 className="text-lg font-semibold text-foreground mb-4">Module Summary</h2>
           <div className="grid gap-3">
             {MODULE_SUMMARIES.map((m) => (
-              <div key={m.name} className="rounded-lg border border-border bg-card p-4">
+              <button
+                key={m.name}
+                className="rounded-lg border border-border bg-card p-4 text-left transition-all hover:border-primary hover:shadow-sm cursor-pointer group"
+                onClick={() => scrollToModule(m.searchKey)}
+              >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-semibold text-foreground">{m.name}</span>
+                  <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{m.name}</span>
                   <span className="toolbar-badge text-[10px] px-1.5 py-0.5 rounded font-mono">{m.category}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">{m.desc}</p>
-              </div>
+              </button>
             ))}
           </div>
         </div>
