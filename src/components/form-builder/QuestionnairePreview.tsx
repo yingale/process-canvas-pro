@@ -1,10 +1,11 @@
 /**
  * QuestionnairePreview – Step-by-step form preview with branching navigation & progress.
+ * Page 1 always shows ALL firstQuestions together. Subsequent pages follow branching logic.
  */
 import { useState, useCallback, useMemo } from "react";
 import {
   ChevronLeft, ChevronRight, RotateCcw, CheckCircle2, Circle,
-  ChevronDown, Type, Hash, Calendar, Upload, List, ToggleLeft,
+  ChevronDown, Type, Hash, Calendar, Upload, List,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -23,10 +24,11 @@ const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
   FileUpload: <Upload size={14} />,
 };
 
+/** Each page holds one or more questionIds displayed together */
 interface PreviewState {
-  path: string[][]; // each step is an array of questionIds (first page = all firstQuestions)
+  pages: string[][]; // pages[0] = firstQuestions, pages[1+] = single-question pages from branching
   answers: Record<string, string | string[]>;
-  currentIndex: number;
+  currentPage: number;
   completed: boolean;
 }
 
@@ -39,28 +41,29 @@ export default function QuestionnairePreview() {
     return m;
   }, [questions]);
 
-  const firstQuestionId = flow.firstQuestions[0] ?? questions[0]?.questionId;
+  const firstPage =
+    flow.firstQuestions.length > 0
+      ? flow.firstQuestions.filter((id) => questionMap.has(id))
+      : questions.length > 0
+      ? [questions[0].questionId]
+      : [];
 
   const [state, setState] = useState<PreviewState>({
-    path: firstQuestionId ? [firstQuestionId] : [],
+    pages: firstPage.length > 0 ? [firstPage] : [],
     answers: {},
-    currentIndex: 0,
+    currentPage: 0,
     completed: false,
   });
 
-  const currentQId = state.path[state.currentIndex];
-  const currentQuestion = currentQId ? questionMap.get(currentQId) : undefined;
+  const currentPageQIds = state.pages[state.currentPage] ?? [];
 
-  const isOptionType = (t: QuestionType) =>
-    ["Dropdown", "RadioButton", "MultiSelect"].includes(t);
-
-  // Resolve next question based on branching
-  const resolveNext = useCallback(
+  /** Resolve next question for a single question based on its answer */
+  const resolveNextForQuestion = useCallback(
     (question: Question, answer: string | string[]): string | null => {
       const branches = question._branches ?? {};
+      const isOpt = ["Dropdown", "RadioButton", "MultiSelect"].includes(question.questionType);
 
-      if (isOptionType(question.questionType) && question.options.length > 0) {
-        // For single-select, check the selected option's branch
+      if (isOpt && question.options.length > 0) {
         const selectedOpt = typeof answer === "string" ? answer : answer[0];
         const opt = question.options.find((o) => o.display === selectedOpt || o.id === selectedOpt);
         if (opt) {
@@ -72,63 +75,83 @@ export default function QuestionnairePreview() {
         }
       }
 
-      // Default: go to next question in the list order
+      // Default: next in list order
       const idx = questions.findIndex((q) => q.questionId === question.questionId);
       if (idx >= 0 && idx < questions.length - 1) return questions[idx + 1].questionId;
       return null;
     },
-    [questions]
+    [questions],
   );
 
   const handleAnswer = useCallback(
-    (value: string | string[]) => {
+    (questionId: string, value: string | string[]) => {
       setState((s) => ({
         ...s,
-        answers: { ...s.answers, [currentQId]: value },
+        answers: { ...s.answers, [questionId]: value },
       }));
     },
-    [currentQId]
+    [],
   );
 
   const handleNext = useCallback(() => {
-    if (!currentQuestion) return;
-    const answer = state.answers[currentQId] ?? "";
-    const nextId = resolveNext(currentQuestion, answer);
+    // Collect all next targets from current page's questions
+    const nextIds = new Set<string>();
+    let hasEnd = false;
 
-    if (!nextId || nextId === "__end__") {
+    for (const qId of currentPageQIds) {
+      const q = questionMap.get(qId);
+      if (!q) continue;
+      const answer = state.answers[qId] ?? "";
+      const nextId = resolveNextForQuestion(q, answer);
+      if (nextId === "__end__") hasEnd = true;
+      else if (nextId) nextIds.add(nextId);
+    }
+
+    // Remove any IDs already on the current page (avoid self-loops)
+    for (const qId of currentPageQIds) nextIds.delete(qId);
+
+    if (nextIds.size === 0 || (hasEnd && nextIds.size === 0)) {
       setState((s) => ({ ...s, completed: true }));
       return;
     }
 
+    // Each next target becomes its own page (single question per page after the first)
+    const newPages: string[][] = [];
+    for (const id of nextIds) {
+      newPages.push([id]);
+    }
+
     setState((s) => {
-      // If going forward from a past point, trim the future path
-      const newPath = [...s.path.slice(0, s.currentIndex + 1), nextId];
-      return { ...s, path: newPath, currentIndex: newPath.length - 1 };
+      const trimmed = s.pages.slice(0, s.currentPage + 1);
+      // If multiple branches diverge, show first one; others queued
+      const combined = [...trimmed, ...newPages];
+      return { ...s, pages: combined, currentPage: trimmed.length };
     });
-  }, [currentQuestion, currentQId, state.answers, resolveNext]);
+  }, [currentPageQIds, questionMap, state.answers, resolveNextForQuestion]);
 
   const handleBack = useCallback(() => {
     setState((s) => {
       if (s.completed) return { ...s, completed: false };
-      if (s.currentIndex <= 0) return s;
-      return { ...s, currentIndex: s.currentIndex - 1 };
+      if (s.currentPage <= 0) return s;
+      return { ...s, currentPage: s.currentPage - 1 };
     });
   }, []);
 
   const handleRestart = useCallback(() => {
     setState({
-      path: firstQuestionId ? [firstQuestionId] : [],
+      pages: firstPage.length > 0 ? [firstPage] : [],
       answers: {},
-      currentIndex: 0,
+      currentPage: 0,
       completed: false,
     });
-  }, [firstQuestionId]);
+  }, [firstPage]);
 
-  // Progress calculation
+  // Progress
+  const totalEstimate = Math.max(questions.length, state.pages.length);
   const progressPercent = state.completed
     ? 100
-    : questions.length > 0
-    ? Math.round(((state.currentIndex + 1) / questions.length) * 100)
+    : totalEstimate > 0
+    ? Math.round(((state.currentPage + 1) / totalEstimate) * 100)
     : 0;
 
   if (questions.length === 0) {
@@ -139,7 +162,7 @@ export default function QuestionnairePreview() {
     );
   }
 
-  if (!firstQuestionId) {
+  if (firstPage.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-sm">
         <p>No entry point defined. Mark a question as the first question.</p>
@@ -147,38 +170,42 @@ export default function QuestionnairePreview() {
     );
   }
 
+  // Flatten all visited question IDs for the summary
+  const allVisitedQIds = state.pages.slice(0, state.currentPage + 1).flat();
+
   return (
     <div className="flex flex-col h-full">
       {/* Progress header */}
       <div className="px-6 pt-5 pb-3 space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            Question {state.currentIndex + 1} of ~{questions.length}
+            Page {state.currentPage + 1} of ~{totalEstimate}
+            {currentPageQIds.length > 1 && ` (${currentPageQIds.length} questions)`}
           </span>
           <span>{progressPercent}%</span>
         </div>
         <Progress value={progressPercent} className="h-2" />
-        {/* Breadcrumb dots */}
+        {/* Page dots */}
         <div className="flex items-center gap-1 pt-1 flex-wrap">
-          {state.path.map((qId, i) => {
-            const q = questionMap.get(qId);
-            const isCurrent = i === state.currentIndex && !state.completed;
-            const isPast = i < state.currentIndex || state.completed;
+          {state.pages.map((pageQIds, i) => {
+            const isCurrent = i === state.currentPage && !state.completed;
+            const isPast = i < state.currentPage || state.completed;
+            const label = i === 0 && pageQIds.length > 1 ? `1 (${pageQIds.length})` : `${i + 1}`;
             return (
               <button
-                key={`${qId}-${i}`}
-                onClick={() => !state.completed && setState((s) => ({ ...s, currentIndex: i }))}
+                key={i}
+                onClick={() => !state.completed && i <= state.currentPage && setState((s) => ({ ...s, currentPage: i }))}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors ${
                   isCurrent
                     ? "bg-primary text-primary-foreground"
                     : isPast
-                    ? "bg-primary/20 text-primary"
+                    ? "bg-primary/20 text-primary cursor-pointer"
                     : "bg-muted text-muted-foreground"
                 }`}
-                title={q?.content || qId}
+                title={pageQIds.join(", ")}
               >
                 {isPast ? <CheckCircle2 size={10} /> : <Circle size={10} />}
-                {i + 1}
+                {label}
               </button>
             );
           })}
@@ -194,9 +221,8 @@ export default function QuestionnairePreview() {
             <p className="text-sm text-muted-foreground text-center max-w-xs">
               All questions have been answered. Review your answers below.
             </p>
-            {/* Answer summary */}
             <div className="w-full max-w-md space-y-2 mt-4">
-              {state.path.map((qId) => {
+              {allVisitedQIds.map((qId) => {
                 const q = questionMap.get(qId);
                 const ans = state.answers[qId];
                 return (
@@ -210,35 +236,39 @@ export default function QuestionnairePreview() {
               })}
             </div>
           </div>
-        ) : currentQuestion ? (
-          <div className="max-w-lg mx-auto space-y-5">
-            {/* Question header */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">{TYPE_ICONS[currentQuestion.questionType]}</span>
-                <Badge variant="outline" className="text-[9px]">{currentQuestion.questionType}</Badge>
-                {currentQuestion.mandatory === "True" && (
-                  <Badge variant="destructive" className="text-[9px]">Required</Badge>
-                )}
-              </div>
-              <h2 className="text-xl font-semibold text-foreground leading-tight">
-                {currentQuestion.content || "Untitled Question"}
-              </h2>
-              {currentQuestion.contentAbstract && (
-                <p className="text-sm text-muted-foreground">{currentQuestion.contentAbstract}</p>
-              )}
-            </div>
-
-            {/* Answer input */}
-            <div className="space-y-2">
-              <QuestionInput
-                question={currentQuestion}
-                value={state.answers[currentQId]}
-                onChange={handleAnswer}
-              />
-            </div>
+        ) : (
+          <div className="max-w-lg mx-auto space-y-8">
+            {currentPageQIds.map((qId) => {
+              const question = questionMap.get(qId);
+              if (!question) return null;
+              return (
+                <div key={qId} className="space-y-4">
+                  {/* Question header */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">{TYPE_ICONS[question.questionType]}</span>
+                      <Badge variant="outline" className="text-[9px]">{question.questionType}</Badge>
+                      {question.mandatory === "True" && (
+                        <Badge variant="destructive" className="text-[9px]">Required</Badge>
+                      )}
+                    </div>
+                    <h2 className="text-xl font-semibold text-foreground leading-tight">
+                      {question.content || "Untitled Question"}
+                    </h2>
+                    {question.contentAbstract && (
+                      <p className="text-sm text-muted-foreground">{question.contentAbstract}</p>
+                    )}
+                  </div>
+                  <QuestionInput
+                    question={question}
+                    value={state.answers[qId]}
+                    onChange={(v) => handleAnswer(qId, v)}
+                  />
+                </div>
+              );
+            })}
           </div>
-        ) : null}
+        )}
       </div>
 
       {/* Navigation footer */}
@@ -247,7 +277,7 @@ export default function QuestionnairePreview() {
           variant="outline"
           size="sm"
           onClick={handleBack}
-          disabled={state.currentIndex === 0 && !state.completed}
+          disabled={state.currentPage === 0 && !state.completed}
         >
           <ChevronLeft size={14} className="mr-1" /> Back
         </Button>
