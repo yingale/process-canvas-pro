@@ -121,6 +121,8 @@ export default function TreeView({ expandedId, onToggleExpand }: TreeViewProps) 
           totalQuestions={questions.length}
           questionIndex={questions.findIndex((q) => q.questionId === root.question.questionId)}
           isEntryPoint={flow.firstQuestions.includes(root.question.questionId)}
+          subprocessRefs={subprocessRefs}
+          endRefs={endRefs}
         />
       ))}
 
