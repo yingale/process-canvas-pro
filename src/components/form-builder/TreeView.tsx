@@ -12,9 +12,19 @@ import type { Question } from "@/types/questionnaire";
 
 interface TreeNode {
   question: Question;
-  children: { optionLabel: string; optionId: string; node: TreeNode }[];
+  children: { optionLabel: string; optionId: string; node: TreeNode; branchType?: "question" | "subprocess" | "end" }[];
   /** Whether this node also appears elsewhere (cycle detection) */
   isCycleRef?: boolean;
+}
+
+interface SubprocessRef {
+  optionLabel: string;
+  targetId: string;
+}
+
+interface EndRef {
+  optionLabel: string;
+  targetId: string;
 }
 
 function buildTree(
