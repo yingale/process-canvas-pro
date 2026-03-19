@@ -250,24 +250,74 @@
    ============================================= */
 
 @media print {
-  body.printing-pdf .print\\:hidden,
+  /* Hide chrome: header, sidebar, footer, nav, toolbar */
+  body.printing-pdf .print\:hidden,
   body.printing-pdf header,
   body.printing-pdf nav,
   body.printing-pdf [data-sidebar],
-  body.printing-pdf footer {
+  body.printing-pdf footer,
+  body.printing-pdf .app-sidebar,
+  body.printing-pdf .toolbar,
+  body.printing-pdf .app-header,
+  body.printing-pdf .app-footer {
     display: none !important;
   }
 
+  /* Reset all scroll containers so full content is visible */
+  body.printing-pdf,
+  body.printing-pdf *  {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Fix layout: sidebar gone, main fills page */
+  body.printing-pdf .app-layout {
+    display: block !important;
+  }
+  body.printing-pdf .app-layout-right {
+    width: 100% !important;
+  }
+  body.printing-pdf .app-layout-main {
+    overflow: visible !important;
+  }
+
+  /* ScrollArea radix viewport — remove scroll clipping */
+  body.printing-pdf [data-radix-scroll-area-viewport] {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+  /* Hide scrollbar decorations */
+  body.printing-pdf [data-radix-scroll-area-scrollbar] {
+    display: none !important;
+  }
+
+  /* Tabs: show ALL tab panels, not just active */
+  body.printing-pdf [role="tabpanel"][data-state="inactive"] {
+    display: block !important;
+    opacity: 1 !important;
+  }
+  body.printing-pdf [role="tablist"] {
+    display: none !important;
+  }
+
+  /* Content styling */
   body.printing-pdf {
     background: white !important;
     color: black !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  body.printing-pdf .print\\:px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-  body.printing-pdf .print\\:py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+  /* Page breaks */
+  body.printing-pdf section {
+    break-inside: avoid;
+  }
 
   @page {
     margin: 1.5cm;
+    size: A4;
   }
 }
