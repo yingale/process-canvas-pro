@@ -2,12 +2,12 @@
  * ModuleDocLayout – shared layout for module documentation pages with PDF download
  */
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, FileDown } from "lucide-react";
+import { ArrowLeft, BookOpen, FileDown, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { exportPageAsPdf } from "@/lib/pdfExport";
+import { exportPageAsPdf, exportPageAsDocx } from "@/lib/pdfExport";
 
 interface ModuleDocLayoutProps {
   title: string;
@@ -35,6 +35,14 @@ export default function ModuleDocLayout({ title, subtitle, badges, children, stu
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-[11px]"
+            onClick={() => exportPageAsDocx(title)}
+          >
+            <FileText size={12} className="mr-1" /> Download DOC
+          </Button>
           <Button
             variant="outline"
             size="sm"
