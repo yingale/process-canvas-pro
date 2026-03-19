@@ -4,12 +4,12 @@ import { TECH_DOC_CONTENT } from "@/lib/techDocContent";
 import "../components/studio/studio.css";
 
 const MODULE_SUMMARIES = [
-  { name: "Email Reader", category: "Communication", desc: "Read emails and download attachments via Core API (MS Graph)" },
-  { name: "Data Extractor", category: "Data Processing", desc: "Parse CSV/XLSX files, extract columns and rows" },
-  { name: "AI Processor", category: "Intelligence", desc: "Run LLM prompts with variable substitution, structured output" },
-  { name: "Send Email Notification", category: "Communication", desc: "Send templated emails with attachments via Core API" },
-  { name: "Form Builder", category: "User Interaction", desc: "Dynamic forms with validation — existing, new, or API-driven" },
-  { name: "Approval / Reviewer", category: "Governance", desc: "Multi-level approval with escalation and auto-approve rules" },
+  { name: "Email Reader", category: "Communication", desc: "Read emails and download attachments via Core API (MS Graph)", searchKey: "Module 1: Email Reader" },
+  { name: "Data Extractor", category: "Data Processing", desc: "Parse CSV/XLSX files, extract columns and rows", searchKey: "Module 2: Data Extractor" },
+  { name: "AI Processor", category: "Intelligence", desc: "Run LLM prompts with variable substitution, structured output", searchKey: "Module 3: AI Processor" },
+  { name: "Send Email Notification", category: "Communication", desc: "Send templated emails with attachments via Core API", searchKey: "Module 4: Send Email" },
+  { name: "Form Builder", category: "User Interaction", desc: "Dynamic forms with validation — existing, new, or API-driven", searchKey: "Module 5: Form Builder" },
+  { name: "Approval / Reviewer", category: "Governance", desc: "Multi-level approval with escalation and auto-approve rules", searchKey: "Module 6: Approval" },
 ];
 
 function stripBranding(content: string): string {
