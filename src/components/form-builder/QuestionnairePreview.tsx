@@ -24,7 +24,7 @@ const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
 };
 
 interface PreviewState {
-  path: string[]; // ordered questionIds visited
+  path: string[][]; // each step is an array of questionIds (first page = all firstQuestions)
   answers: Record<string, string | string[]>;
   currentIndex: number;
   completed: boolean;
