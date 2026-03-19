@@ -1,4 +1,4 @@
-import { Download, FileText, FileCode } from "lucide-react";
+import { Download, FileText, FileCode, ShieldOff } from "lucide-react";
 import { TECH_DOC_CONTENT } from "@/lib/techDocContent";
 import "../components/studio/studio.css";
 
@@ -10,6 +10,15 @@ const MODULE_SUMMARIES = [
   { name: "Form Builder", category: "User Interaction", desc: "Dynamic forms with validation — existing, new, or API-driven" },
   { name: "Approval / Reviewer", category: "Governance", desc: "Multi-level approval with escalation and auto-approve rules" },
 ];
+
+function stripBranding(content: string): string {
+  return content
+    .replace(/WorkflowStudio/gi, "[Your Platform]")
+    .replace(/Workflow Studio/gi, "[Your Platform]")
+    .replace(/BPMN\s*⇄\s*Case IR/gi, "Process Automation")
+    .replace(/Pega[- ]?style/gi, "Enterprise")
+    .replace(/Pega/gi, "Platform");
+}
 
 function downloadFile(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
@@ -48,6 +57,23 @@ export default function TechDocsPage() {
             >
               <FileText size={16} />
               Download as Text
+            </button>
+          </div>
+
+          <div className="flex gap-3 mb-6">
+            <button
+              className="toolbar-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-dashed"
+              onClick={() => downloadFile(stripBranding(TECH_DOC_CONTENT), "tech-doc-unbranded.md", "text/markdown")}
+            >
+              <ShieldOff size={16} />
+              Markdown (No Branding)
+            </button>
+            <button
+              className="toolbar-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border-dashed"
+              onClick={() => downloadFile(stripBranding(TECH_DOC_CONTENT), "tech-doc-unbranded.txt", "text/plain")}
+            >
+              <ShieldOff size={16} />
+              Text (No Branding)
             </button>
           </div>
 
