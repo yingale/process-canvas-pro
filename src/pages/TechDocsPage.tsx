@@ -125,7 +125,13 @@ export default function TechDocsPage() {
                   <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{m.name}</span>
                   <span className="toolbar-badge text-[10px] px-1.5 py-0.5 rounded font-mono">{m.category}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">{m.desc}</p>
+                <p className="text-xs text-muted-foreground mb-2">{m.desc}</p>
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
+                  onClick={(e) => { e.stopPropagation(); navigate(m.docPath); }}
+                >
+                  <ExternalLink size={10} /> View Full Docs
+                </span>
               </button>
             ))}
           </div>
