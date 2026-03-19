@@ -259,6 +259,18 @@ export default function FormBuilderPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl h-[80vh] flex flex-col p-0">
+          <DialogHeader className="px-6 pt-5 pb-0">
+            <DialogTitle className="flex items-center gap-2"><Eye size={18} /> Form Preview</DialogTitle>
+            <DialogDescription>Step through the questionnaire as an end user would experience it.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <QuestionnairePreview />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
