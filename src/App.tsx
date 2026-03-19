@@ -34,6 +34,7 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/" element={<Landing />} />
             <Route path="/create" element={<CreateWorkflowWizard />} />
+            <Route path="/create/case-view-config" element={<CaseViewConfigPage />} />
             <Route path="/studio" element={<StudioPage />} />
             <Route path="/studio/form-builder" element={<FormBuilderPage />} />
             <Route path="/studio/module-config" element={<ModuleConfigPage />} />
