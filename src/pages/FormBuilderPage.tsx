@@ -147,6 +147,9 @@ export default function FormBuilderPage() {
             <Trash2 size={11} />
           </Button>
           <div className="w-px h-4 bg-border" />
+          <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setPreviewOpen(true)}>
+            <Eye size={10} className="mr-1" /> Preview
+          </Button>
           <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setImportOpen(true)}>
             <Upload size={10} className="mr-1" /> Import
           </Button>
