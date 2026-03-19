@@ -1,5 +1,5 @@
+import { useRef } from "react";
 import { Download, FileText, FileCode, ShieldOff } from "lucide-react";
-import { TECH_DOC_CONTENT } from "@/lib/techDocContent";
 import "../components/studio/studio.css";
 
 const MODULE_SUMMARIES = [
