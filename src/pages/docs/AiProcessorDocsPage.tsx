@@ -2,7 +2,7 @@
  * AI Processor Module – Documentation Page
  */
 import ModuleDocLayout from "@/components/docs/ModuleDocLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DocCard as Card, CardContent, CardHeader, CardTitle } from "@/components/docs/DocCard";
 import { Separator } from "@/components/ui/separator";
 import { Brain, Settings2, Database, Zap, GitBranch, Shield } from "lucide-react";
 

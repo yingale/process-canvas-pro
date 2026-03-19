@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Layers, GitBranch, Eye, FileJson, Zap, LayoutGrid, Box, ListTree, Settings2, Database, CheckCircle2, AlertTriangle, BookOpen, FileDown, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportPageAsPdf, exportPageAsDocx } from "@/lib/pdfExport";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { DocCard as Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/docs/DocCard";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";

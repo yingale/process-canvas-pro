@@ -1,6 +1,6 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Download, FileText, FileCode, ShieldOff, ExternalLink } from "lucide-react";
+import { Download, FileText, FileCode, ShieldOff, ExternalLink, Copy, Check } from "lucide-react";
 import { TECH_DOC_CONTENT } from "@/lib/techDocContent";
 import "../components/studio/studio.css";
 
@@ -35,6 +35,13 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 export default function TechDocsPage() {
   const navigate = useNavigate();
   const previewRef = useRef<HTMLDivElement>(null);
+  const [docCopied, setDocCopied] = useState(false);
+
+  const handleCopyDoc = useCallback(async () => {
+    await navigator.clipboard.writeText(TECH_DOC_CONTENT);
+    setDocCopied(true);
+    setTimeout(() => setDocCopied(false), 2000);
+  }, []);
 
   const scrollToModule = useCallback((searchKey: string) => {
     const container = previewRef.current;
@@ -98,7 +105,16 @@ export default function TechDocsPage() {
             </button>
           </div>
 
-          <h2 className="text-lg font-semibold text-foreground mb-4">Document Preview</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Document Preview</h2>
+            <button
+              onClick={handleCopyDoc}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium border border-border bg-card transition-all hover:bg-muted ${docCopied ? "border-emerald-500/40 text-emerald-600" : ""}`}
+            >
+              {docCopied ? <Check size={13} /> : <Copy size={13} />}
+              {docCopied ? "Copied!" : "Copy All"}
+            </button>
+          </div>
           <div className="rounded-lg border border-border bg-card p-6 overflow-auto max-h-[600px]" ref={previewRef}>
             <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed">
               {TECH_DOC_CONTENT}
