@@ -20,7 +20,6 @@ import {
 import {
   ChevronDown,
   ChevronRight,
-  GripVertical,
   Plus,
   Trash2,
   Copy,
@@ -50,7 +49,7 @@ const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
   { value: "FileUpload", label: "File Upload" },
 ];
 
-const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
+export const TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
   Dropdown: <List size={14} />,
   RadioButton: <CircleDot size={14} />,
   TextInput: <Type size={14} />,
@@ -69,9 +68,19 @@ interface QuestionCardProps {
   total: number;
   isExpanded: boolean;
   onToggle: () => void;
+  depth?: number;
+  isTreeChild?: boolean;
 }
 
-export default function QuestionCard({ question, index, total, isExpanded, onToggle }: QuestionCardProps) {
+export default function QuestionCard({
+  question,
+  index,
+  total,
+  isExpanded,
+  onToggle,
+  depth = 0,
+  isTreeChild = false,
+}: QuestionCardProps) {
   const {
     flow,
     questions,
@@ -98,11 +107,11 @@ export default function QuestionCard({ question, index, total, isExpanded, onTog
   if (!isExpanded) {
     return (
       <div
-        className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card hover:border-primary/30 hover:shadow-sm cursor-pointer transition-all group"
+        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-card hover:border-primary/30 hover:shadow-sm cursor-pointer transition-all group ${
+          isTreeChild ? "border-l-2 border-l-primary/20" : ""
+        }`}
         onClick={onToggle}
       >
-        <GripVertical size={14} className="text-muted-foreground flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-        <span className="text-muted-foreground flex-shrink-0 w-5 text-center text-[11px] font-mono">{index + 1}</span>
         <span className="text-muted-foreground flex-shrink-0">{TYPE_ICONS[question.questionType]}</span>
         <span className="text-[13px] font-medium text-foreground truncate flex-1">
           {question.content || <span className="text-muted-foreground italic">Untitled question</span>}
@@ -124,11 +133,11 @@ export default function QuestionCard({ question, index, total, isExpanded, onTog
 
   // Expanded view
   return (
-    <div className="rounded-lg border-2 border-primary/30 bg-card shadow-sm overflow-hidden">
+    <div className={`rounded-lg border-2 border-primary/30 bg-card shadow-sm overflow-hidden ${
+      isTreeChild ? "border-l-4 border-l-primary/30" : ""
+    }`}>
       {/* Card header */}
       <div className="flex items-center gap-2 px-3 py-2 bg-primary/5 border-b border-border">
-        <GripVertical size={14} className="text-muted-foreground flex-shrink-0 cursor-grab" />
-        <span className="text-[11px] font-mono text-muted-foreground">{index + 1}</span>
         <span className="text-muted-foreground flex-shrink-0">{TYPE_ICONS[question.questionType]}</span>
         <span className="text-[13px] font-semibold text-foreground flex-1 truncate">
           {question.content || "Untitled question"}
@@ -224,136 +233,14 @@ export default function QuestionCard({ question, index, total, isExpanded, onTog
 
         {/* Options + Inline Branching */}
         {showOptions && (
-          <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/20">
-            <div className="flex items-center justify-between">
-              <h4 className="text-[12px] font-semibold text-foreground">Options</h4>
-              <Button variant="ghost" size="sm" className="h-6 text-[11px]" onClick={() => addOption(question.questionId)}>
-                <Plus size={11} className="mr-1" /> Add
-              </Button>
-            </div>
-
-            {question.options.length === 0 && (
-              <p className="text-[11px] text-muted-foreground italic py-2">No options yet. Click "+ Add" to create one.</p>
-            )}
-
-            {question.options.map((opt, idx) => {
-              const branch = question._branches?.[opt.id];
-              const branchType = branch?.nextEntityType ?? "none";
-              const hasBranch = branchType !== "none";
-
-              return (
-                <div key={opt.id} className="space-y-1.5">
-                  {/* Option row */}
-                  <div className="flex items-center gap-2 p-2 rounded-md bg-card border border-border/50">
-                    <GripVertical size={11} className="text-muted-foreground flex-shrink-0 cursor-grab" />
-                    <Input
-                      className="h-7 text-[11px] w-20 font-mono flex-shrink-0"
-                      value={opt.id}
-                      onChange={(e) => updateOption(question.questionId, idx, "id", e.target.value)}
-                      placeholder="ID"
-                    />
-                    <Input
-                      className="h-7 text-[11px] flex-1"
-                      value={opt.display}
-                      onChange={(e) => updateOption(question.questionId, idx, "display", e.target.value)}
-                      placeholder="Display text"
-                    />
-                    <Checkbox
-                      checked={opt.default ?? false}
-                      onCheckedChange={(v) => updateOption(question.questionId, idx, "default", v)}
-                      title="Default"
-                    />
-                    {/* Branch toggle */}
-                    <Button
-                      variant={hasBranch ? "secondary" : "ghost"}
-                      size="icon"
-                      className={`h-6 w-6 flex-shrink-0 ${hasBranch ? "text-primary" : "text-muted-foreground"}`}
-                      title="Configure branching"
-                      onClick={() => {
-                        if (hasBranch) {
-                          setBranch(question.questionId, opt.id, { id: opt.id, nextEntityType: "none", targetId: "" });
-                        } else {
-                          setBranch(question.questionId, opt.id, { id: opt.id, nextEntityType: "question", targetId: "" });
-                        }
-                      }}
-                    >
-                      <GitBranch size={11} />
-                    </Button>
-                    <button
-                      className="p-1 text-muted-foreground hover:text-destructive flex-shrink-0"
-                      onClick={() => removeOption(question.questionId, idx)}
-                    >
-                      <Trash2 size={11} />
-                    </button>
-                  </div>
-
-                  {/* Inline branch config */}
-                  {hasBranch && (
-                    <div className="ml-6 pl-3 border-l-2 border-primary/20 flex items-center gap-2 py-1">
-                      <GitBranch size={10} className="text-primary flex-shrink-0" />
-                      <Select
-                        value={branchType}
-                        onValueChange={(v) => {
-                          setBranch(question.questionId, opt.id, {
-                            id: opt.id,
-                            nextEntityType: v as OptionBranch["nextEntityType"],
-                            targetId: branch?.targetId ?? "",
-                          });
-                        }}
-                      >
-                        <SelectTrigger className="h-6 text-[10px] w-[120px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="question">Go to Question</SelectItem>
-                          <SelectItem value="end">End Flow</SelectItem>
-                          <SelectItem value="subprocess">Subprocess</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {branchType === "question" && (
-                        <Select
-                          value={branch?.targetId ?? ""}
-                          onValueChange={(v) => {
-                            setBranch(question.questionId, opt.id, { id: opt.id, nextEntityType: "question", targetId: v });
-                          }}
-                        >
-                          <SelectTrigger className="h-6 text-[10px] flex-1">
-                            <SelectValue placeholder="Select question..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {questions.filter((q) => q.questionId !== question.questionId).map((q) => (
-                              <SelectItem key={q.questionId} value={q.questionId}>
-                                {q.content || q.questionId}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-
-                      {branchType === "end" && (
-                        <Input
-                          className="h-6 text-[10px] flex-1 font-mono"
-                          value={branch?.targetId ?? ""}
-                          onChange={(e) => setBranch(question.questionId, opt.id, { id: opt.id, nextEntityType: "end", targetId: e.target.value })}
-                          placeholder="e.g., end-approved"
-                        />
-                      )}
-
-                      {branchType === "subprocess" && (
-                        <Input
-                          className="h-6 text-[10px] flex-1 font-mono"
-                          value={branch?.targetId ?? ""}
-                          onChange={(e) => setBranch(question.questionId, opt.id, { id: opt.id, nextEntityType: "subprocess", targetId: e.target.value })}
-                          placeholder="e.g., INVESTIGATION_WF1"
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <OptionsPanel
+            question={question}
+            questions={questions}
+            addOption={addOption}
+            updateOption={updateOption}
+            removeOption={removeOption}
+            setBranch={setBranch}
+          />
         )}
 
         {/* Advanced fields toggle */}
@@ -423,6 +310,152 @@ export default function QuestionCard({ question, index, total, isExpanded, onTog
           </CollapsibleContent>
         </Collapsible>
       </div>
+    </div>
+  );
+}
+
+/* ── Options sub-component ── */
+function OptionsPanel({
+  question,
+  questions,
+  addOption,
+  updateOption,
+  removeOption,
+  setBranch,
+}: {
+  question: Question;
+  questions: Question[];
+  addOption: (id: string) => void;
+  updateOption: (qId: string, idx: number, field: string, value: unknown) => void;
+  removeOption: (qId: string, idx: number) => void;
+  setBranch: (qId: string, optId: string, branch: OptionBranch) => void;
+}) {
+  return (
+    <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/20">
+      <div className="flex items-center justify-between">
+        <h4 className="text-[12px] font-semibold text-foreground">Options</h4>
+        <Button variant="ghost" size="sm" className="h-6 text-[11px]" onClick={() => addOption(question.questionId)}>
+          <Plus size={11} className="mr-1" /> Add
+        </Button>
+      </div>
+
+      {question.options.length === 0 && (
+        <p className="text-[11px] text-muted-foreground italic py-2">No options yet. Click "+ Add" to create one.</p>
+      )}
+
+      {question.options.map((opt, idx) => {
+        const branch = question._branches?.[opt.id];
+        const branchType = branch?.nextEntityType ?? "none";
+        const hasBranch = branchType !== "none";
+
+        return (
+          <div key={opt.id} className="space-y-1.5">
+            <div className="flex items-center gap-2 p-2 rounded-md bg-card border border-border/50">
+              <Input
+                className="h-7 text-[11px] w-20 font-mono flex-shrink-0"
+                value={opt.id}
+                onChange={(e) => updateOption(question.questionId, idx, "id", e.target.value)}
+                placeholder="ID"
+              />
+              <Input
+                className="h-7 text-[11px] flex-1"
+                value={opt.display}
+                onChange={(e) => updateOption(question.questionId, idx, "display", e.target.value)}
+                placeholder="Display text"
+              />
+              <Checkbox
+                checked={opt.default ?? false}
+                onCheckedChange={(v) => updateOption(question.questionId, idx, "default", v)}
+                title="Default"
+              />
+              <Button
+                variant={hasBranch ? "secondary" : "ghost"}
+                size="icon"
+                className={`h-6 w-6 flex-shrink-0 ${hasBranch ? "text-primary" : "text-muted-foreground"}`}
+                title="Configure branching"
+                onClick={() => {
+                  if (hasBranch) {
+                    setBranch(question.questionId, opt.id, { id: opt.id, nextEntityType: "none", targetId: "" });
+                  } else {
+                    setBranch(question.questionId, opt.id, { id: opt.id, nextEntityType: "question", targetId: "" });
+                  }
+                }}
+              >
+                <GitBranch size={11} />
+              </Button>
+              <button
+                className="p-1 text-muted-foreground hover:text-destructive flex-shrink-0"
+                onClick={() => removeOption(question.questionId, idx)}
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
+
+            {hasBranch && (
+              <div className="ml-6 pl-3 border-l-2 border-primary/20 flex items-center gap-2 py-1">
+                <GitBranch size={10} className="text-primary flex-shrink-0" />
+                <Select
+                  value={branchType}
+                  onValueChange={(v) => {
+                    setBranch(question.questionId, opt.id, {
+                      id: opt.id,
+                      nextEntityType: v as OptionBranch["nextEntityType"],
+                      targetId: branch?.targetId ?? "",
+                    });
+                  }}
+                >
+                  <SelectTrigger className="h-6 text-[10px] w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="question">Go to Question</SelectItem>
+                    <SelectItem value="end">End Flow</SelectItem>
+                    <SelectItem value="subprocess">Subprocess</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {branchType === "question" && (
+                  <Select
+                    value={branch?.targetId ?? ""}
+                    onValueChange={(v) => {
+                      setBranch(question.questionId, opt.id, { id: opt.id, nextEntityType: "question", targetId: v });
+                    }}
+                  >
+                    <SelectTrigger className="h-6 text-[10px] flex-1">
+                      <SelectValue placeholder="Select question..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {questions.filter((q) => q.questionId !== question.questionId).map((q) => (
+                        <SelectItem key={q.questionId} value={q.questionId}>
+                          {q.content || q.questionId}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {branchType === "end" && (
+                  <Input
+                    className="h-6 text-[10px] flex-1 font-mono"
+                    value={branch?.targetId ?? ""}
+                    onChange={(e) => setBranch(question.questionId, opt.id, { id: opt.id, nextEntityType: "end", targetId: e.target.value })}
+                    placeholder="e.g., end-approved"
+                  />
+                )}
+
+                {branchType === "subprocess" && (
+                  <Input
+                    className="h-6 text-[10px] flex-1 font-mono"
+                    value={branch?.targetId ?? ""}
+                    onChange={(e) => setBranch(question.questionId, opt.id, { id: opt.id, nextEntityType: "subprocess", targetId: e.target.value })}
+                    placeholder="e.g., INVESTIGATION_WF1"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
