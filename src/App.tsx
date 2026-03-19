@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Landing from "./pages/Landing";
 import CreateWorkflowWizard from "./pages/CreateWorkflowWizard";
+import CaseViewConfigPage from "./pages/CaseViewConfigPage";
 import StudioPage from "./pages/StudioPage";
 import FormBuilderPage from "./pages/FormBuilderPage";
 import ModuleConfigPage from "./pages/ModuleConfigPage";
@@ -33,6 +34,7 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/" element={<Landing />} />
             <Route path="/create" element={<CreateWorkflowWizard />} />
+            <Route path="/create/case-view-config" element={<CaseViewConfigPage />} />
             <Route path="/studio" element={<StudioPage />} />
             <Route path="/studio/form-builder" element={<FormBuilderPage />} />
             <Route path="/studio/module-config" element={<ModuleConfigPage />} />

@@ -180,9 +180,9 @@ export default function CreateWorkflowWizard() {
       const { bpmnXml } = await res.json();
       const result = await importBpmn(bpmnXml, "ai-generated.bpmn");
 
-      setGenStatus("Done! Redirecting to the studio…");
+      setGenStatus("Done! Redirecting to case view configuration…");
 
-      navigate("/studio", {
+      navigate("/create/case-view-config", {
         state: {
           generatedIr: result.caseIr,
           generatedWarnings: result.warnings,
