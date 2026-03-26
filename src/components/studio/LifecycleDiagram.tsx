@@ -84,12 +84,13 @@ function ContextMenu({ menu, onRename, onDuplicate, onDelete, onMoveUp, onMoveDo
 
 // ─── Step row ──────────────────────────────────────────────────────────────────
 
-function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, stageId, groupId }: {
+function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, stageId, groupId, formTemplates }: {
   step: Step; color: string; selected: boolean;
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void;
   onBoundaryClick?: (boundaryEventId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
   stageId?: string; groupId?: string;
+  formTemplates?: import("@/types/caseIr").FormTemplate[];
 }) {
   const [hover, setHover] = useState(false);
   const [dragOver, setDragOver] = useState(false);
