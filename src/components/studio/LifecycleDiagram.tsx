@@ -516,6 +516,7 @@ interface LifecycleDiagramProps {
   formTemplates?: FormTemplate[];
   onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
   onCreateNewForm?: (stageId: string, groupId: string) => void;
+  onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
 }
 
 export default function LifecycleDiagram({
