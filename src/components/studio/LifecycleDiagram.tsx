@@ -234,6 +234,9 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
               selected={selection?.kind === "step" && selection.stepId === step.id}
               onSelect={() => onSelectStep(stageId, group.id, step.id)}
               onContextMenu={e => onStepCtx(e, group.id, step.id)}
+              onDropNewForm={onDropNewForm}
+              stageId={stageId}
+              groupId={group.id}
             />
           ))}
           <button
