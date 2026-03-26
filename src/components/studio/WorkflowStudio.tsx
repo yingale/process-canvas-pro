@@ -748,7 +748,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
       {/* New Form Dialog for drag-drop */}
       <NewFormDialog
         open={!!newFormTarget}
-        onClose={() => setNewFormTarget(null)}
+        onClose={handleCloseFormDialog}
         targetStepName={
           newFormTarget && caseIr
             ? (() => {
@@ -764,6 +764,8 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
             : undefined
         }
         onCreateForm={handleCreateFormFromDialog}
+        createdFormId={createdForm?.id}
+        createdFormName={createdForm?.name}
         hasExistingForm={
           newFormTarget && caseIr
             ? (() => {
