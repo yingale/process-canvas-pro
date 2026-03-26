@@ -708,6 +708,40 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
           <EmptyState onImport={handleImportBpmn} />
         )}
       </div>
+
+      {/* New Form Dialog for drag-drop */}
+      <NewFormDialog
+        open={!!newFormTarget}
+        onClose={() => setNewFormTarget(null)}
+        targetStepName={
+          newFormTarget && caseIr
+            ? (() => {
+                const allStages = [...caseIr.stages, ...(caseIr.alternativePaths ?? [])];
+                for (const s of allStages) {
+                  for (const g of s.groups) {
+                    const step = g.steps.find(st => st.id === newFormTarget.stepId);
+                    if (step) return step.name;
+                  }
+                }
+                return undefined;
+              })()
+            : undefined
+        }
+        onCreateForm={handleCreateFormFromDialog}
+        hasExistingForm={
+          newFormTarget && caseIr
+            ? (() => {
+                const allStages = [...caseIr.stages, ...(caseIr.alternativePaths ?? [])];
+                for (const s of allStages) {
+                  for (const g of s.groups) {
+                    const step = g.steps.find(st => st.id === newFormTarget.stepId);
+                    if (step?.formRef) return true;
+                  }
+                }
+                return false;
+              })()
+            : false
+        }
+      />
     </div>
-  );
 }
