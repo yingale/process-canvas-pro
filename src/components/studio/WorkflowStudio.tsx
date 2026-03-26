@@ -744,4 +744,5 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
         }
       />
     </div>
+  );
 }
