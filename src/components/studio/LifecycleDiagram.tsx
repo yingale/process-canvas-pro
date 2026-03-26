@@ -143,9 +143,9 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
           )}
           {step.formRef && (
             <div className="flex items-center gap-1 mt-1">
-              <span className="step-form-badge text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
+              <span className="step-form-badge text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5" title={`Form ID: ${step.formRef.formId}`}>
                 <Radio size={7} />
-                Form
+                {formTemplates?.find(f => f.id === step.formRef?.formId)?.name ?? step.formRef.formId}
               </span>
             </div>
           )}

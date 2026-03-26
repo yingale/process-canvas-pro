@@ -464,6 +464,8 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     setNewFormTarget({ stageId, groupId, stepId });
   }, []);
 
+  const [createdForm, setCreatedForm] = useState<{ id: string; name: string } | null>(null);
+
   const handleCreateFormFromDialog = useCallback((formName: string) => {
     if (!caseIr || !newFormTarget) return;
     const { stageId, groupId, stepId } = newFormTarget;
@@ -485,7 +487,14 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     if (sti < 0) return;
 
     const templateId = uid();
-    const template: FormTemplate = { id: templateId, name: formName, fields: [] };
+    const template: FormTemplate = {
+      id: templateId,
+      name: formName,
+      fields: [
+        { key: "firstName", label: "First Name", type: "string", required: true },
+        { key: "lastName", label: "Last Name", type: "string", required: true },
+      ],
+    };
     const formRef: FormRef = { formId: templateId, fieldOverrides: {} };
 
     const existing = caseIr.formTemplates ?? [];
@@ -503,20 +512,16 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
       if (!updated.alternativePaths) updated.alternativePaths = [];
       setCaseIr(updated);
       sessionStorage.setItem("studio_caseIr", JSON.stringify(updated));
-
-      setNewFormTarget(null);
-      const stepPath = `${basePath}/groups/${gi}/steps/${sti}`;
-      nav("/studio/form-builder", {
-        state: {
-          returnTo: "/studio",
-          stepBasePath: stepPath,
-          existingTemplates: updated.formTemplates ?? [],
-        },
-      });
+      setCreatedForm({ id: templateId, name: formName });
     } catch (e) {
       console.error("Failed to create form:", e);
     }
-  }, [caseIr, newFormTarget, nav]);
+  }, [caseIr, newFormTarget]);
+
+  const handleCloseFormDialog = useCallback(() => {
+    setNewFormTarget(null);
+    setCreatedForm(null);
+  }, []);
 
   const handleAttachForm = useCallback((stageId: string, groupId: string, formTemplate: FormTemplate) => {
     if (!caseIr) return;
