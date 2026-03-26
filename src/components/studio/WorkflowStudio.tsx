@@ -12,6 +12,7 @@ import Toolbar from "./Toolbar";
 import LifecycleDiagram from "./LifecycleDiagram";
 import PropertiesPanel from "./PropertiesPanel";
 import AiChatPanel from "./AiChatPanel";
+import NewFormDialog from "./NewFormDialog";
 import PersonasPanel from "./PersonasPanel";
 import TeamPanel from "./TeamPanel";
 import BusinessRulesPanel from "./BusinessRulesPanel";
@@ -104,6 +105,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
   const [propsCollapsed, setPropsCollapsed] = useState(true);
   const [activeTab, setActiveTab] = useState("flow");
   const [formFields, setFormFields] = useState<ModuleConfigField[]>([]);
+  const [newFormTarget, setNewFormTarget] = useState<{ stageId: string; groupId: string; stepId: string } | null>(null);
 
   // Handle pending form template from form builder page
   useEffect(() => {
@@ -457,6 +459,64 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
 
   const nav = useNavigate();
 
+  const handleDropNewForm = useCallback((stageId: string, groupId: string, stepId: string) => {
+    setNewFormTarget({ stageId, groupId, stepId });
+  }, []);
+
+  const handleCreateFormFromDialog = useCallback((formName: string) => {
+    if (!caseIr || !newFormTarget) return;
+    const { stageId, groupId, stepId } = newFormTarget;
+
+    let basePath = "";
+    let si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si >= 0) {
+      basePath = `/stages/${si}`;
+    } else if (caseIr.alternativePaths) {
+      si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+      if (si >= 0) basePath = `/alternativePaths/${si}`;
+    }
+    if (!basePath) return;
+
+    const stageArr = basePath.startsWith("/stages") ? caseIr.stages : caseIr.alternativePaths!;
+    const gi = stageArr[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+    const sti = stageArr[si].groups[gi].steps.findIndex(s => s.id === stepId);
+    if (sti < 0) return;
+
+    const templateId = uid();
+    const template: FormTemplate = { id: templateId, name: formName, fields: [] };
+    const formRef: FormRef = { formId: templateId, fieldOverrides: {} };
+
+    const existing = caseIr.formTemplates ?? [];
+    const patch: JsonPatch = [];
+
+    if (existing.length === 0) {
+      patch.push({ op: "add", path: "/formTemplates", value: [template] });
+    } else {
+      patch.push({ op: "add", path: "/formTemplates/-", value: template });
+    }
+    patch.push({ op: "add", path: `${basePath}/groups/${gi}/steps/${sti}/formRef`, value: formRef });
+
+    try {
+      const updated = applyCaseIRPatch(caseIr, patch);
+      if (!updated.alternativePaths) updated.alternativePaths = [];
+      setCaseIr(updated);
+      sessionStorage.setItem("studio_caseIr", JSON.stringify(updated));
+
+      setNewFormTarget(null);
+      const stepPath = `${basePath}/groups/${gi}/steps/${sti}`;
+      nav("/studio/form-builder", {
+        state: {
+          returnTo: "/studio",
+          stepBasePath: stepPath,
+          existingTemplates: updated.formTemplates ?? [],
+        },
+      });
+    } catch (e) {
+      console.error("Failed to create form:", e);
+    }
+  }, [caseIr, newFormTarget, nav]);
+
   const handleAttachForm = useCallback((stageId: string, groupId: string, formTemplate: FormTemplate) => {
     if (!caseIr) return;
     // Find the group and add a user step with the form attached
@@ -591,6 +651,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
                     formTemplates={caseIr.formTemplates ?? []}
                     onAttachForm={handleAttachForm}
                     onCreateNewForm={handleCreateNewForm}
+                    onDropNewForm={handleDropNewForm}
                   />
                 </TabsContent>
                 <TabsContent value="personas" className="flex-1 overflow-auto mt-0">
@@ -647,6 +708,41 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
           <EmptyState onImport={handleImportBpmn} />
         )}
       </div>
+
+      {/* New Form Dialog for drag-drop */}
+      <NewFormDialog
+        open={!!newFormTarget}
+        onClose={() => setNewFormTarget(null)}
+        targetStepName={
+          newFormTarget && caseIr
+            ? (() => {
+                const allStages = [...caseIr.stages, ...(caseIr.alternativePaths ?? [])];
+                for (const s of allStages) {
+                  for (const g of s.groups) {
+                    const step = g.steps.find(st => st.id === newFormTarget.stepId);
+                    if (step) return step.name;
+                  }
+                }
+                return undefined;
+              })()
+            : undefined
+        }
+        onCreateForm={handleCreateFormFromDialog}
+        hasExistingForm={
+          newFormTarget && caseIr
+            ? (() => {
+                const allStages = [...caseIr.stages, ...(caseIr.alternativePaths ?? [])];
+                for (const s of allStages) {
+                  for (const g of s.groups) {
+                    const step = g.steps.find(st => st.id === newFormTarget.stepId);
+                    if (step?.formRef) return true;
+                  }
+                }
+                return false;
+              })()
+            : false
+        }
+      />
     </div>
   );
 }

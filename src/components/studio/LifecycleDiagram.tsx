@@ -84,12 +84,15 @@ function ContextMenu({ menu, onRename, onDuplicate, onDelete, onMoveUp, onMoveDo
 
 // ─── Step row ──────────────────────────────────────────────────────────────────
 
-function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick }: {
+function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, stageId, groupId }: {
   step: Step; color: string; selected: boolean;
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void;
   onBoundaryClick?: (boundaryEventId: string) => void;
+  onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
+  stageId?: string; groupId?: string;
 }) {
   const [hover, setHover] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const meta = STEP_TYPE_META[step.type];
   const inputCount = step.tech?.inputParameters?.length ?? 0;
   const outputCount = step.tech?.outputParameters?.length ?? 0;
@@ -104,9 +107,26 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
 
   return (
     <div
-      className={`group relative rounded-md cursor-pointer transition-all step-row ${selected ? "step-row--selected" : ""}`}
+      className={`group relative rounded-md cursor-pointer transition-all step-row ${selected ? "step-row--selected" : ""} ${dragOver ? "ring-2 ring-primary ring-offset-1" : ""}`}
       style={{ "--dynamic-color": color } as React.CSSProperties}
       onClick={onSelect} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("application/x-new-form")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          setDragOver(true);
+        }
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        if (e.dataTransfer.types.includes("application/x-new-form")) {
+          e.preventDefault();
+          setDragOver(false);
+          if (onDropNewForm && stageId && groupId) {
+            onDropNewForm(stageId, groupId, step.id);
+          }
+        }
+      }}
     >
       <div className="flex items-start gap-2.5 px-2.5 py-2">
         <div className="step-type-indicator" style={{ "--dynamic-color": meta.color } as React.CSSProperties} />
@@ -159,7 +179,7 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
 
 // ─── Group sub-section ─────────────────────────────────────────────────────────
 
-function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm }: {
+function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm }: {
   group: Group; stageId: string; color: string; selection: SelectionTarget;
   onSelectGroup: (stageId: string, groupId: string) => void;
   onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
@@ -170,6 +190,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
   formTemplates?: FormTemplate[];
   onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
   onCreateNewForm?: (stageId: string, groupId: string) => void;
+  onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [hover, setHover] = useState(false);
@@ -213,6 +234,9 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
               selected={selection?.kind === "step" && selection.stepId === step.id}
               onSelect={() => onSelectStep(stageId, group.id, step.id)}
               onContextMenu={e => onStepCtx(e, group.id, step.id)}
+              onDropNewForm={onDropNewForm}
+              stageId={stageId}
+              groupId={group.id}
             />
           ))}
           <button
@@ -235,7 +259,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
 
 // ─── Section card (Stage) ──────────────────────────────────────────────────────
 
-function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm }: {
+function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm }: {
   stage: Stage; stageIdx: number; color: string; selection: SelectionTarget;
   onSelectStage: (id: string) => void;
   onSelectGroup: (stageId: string, groupId: string) => void;
@@ -249,6 +273,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
   formTemplates?: FormTemplate[];
   onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
   onCreateNewForm?: (stageId: string, groupId: string) => void;
+  onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [headerHover, setHeaderHover] = useState(false);
@@ -304,6 +329,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
               formTemplates={formTemplates}
               onAttachForm={onAttachForm}
               onCreateNewForm={onCreateNewForm}
+              onDropNewForm={onDropNewForm}
             />
           ))}
 
@@ -490,6 +516,7 @@ interface LifecycleDiagramProps {
   formTemplates?: FormTemplate[];
   onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
   onCreateNewForm?: (stageId: string, groupId: string) => void;
+  onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
 }
 
 export default function LifecycleDiagram({
@@ -505,7 +532,7 @@ export default function LifecycleDiagram({
   onDeleteAltStage, onDeleteAltGroup, onDeleteAltStep,
   onDuplicateAltStep, onDuplicateAltStage,
   onMoveAltStage, onMoveAltGroup, onMoveAltStep,
-  formTemplates, onAttachForm, onCreateNewForm,
+  formTemplates, onAttachForm, onCreateNewForm, onDropNewForm,
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [altCtxMenu, setAltCtxMenu] = useState<CtxMenu | null>(null);
@@ -729,7 +756,7 @@ export default function LifecycleDiagram({
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
               onAddStep={onAddStep} onInsertModule={onInsertModule} onAddGroup={onAddGroup}
               onStageCtx={openStageCtx} onGroupCtx={openGroupCtx} onStepCtx={openStepCtx}
-              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} />
+              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} />
           ))}
           <button className="add-section-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
             onClick={onAddStage}>
@@ -757,7 +784,7 @@ export default function LifecycleDiagram({
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
               onAddStep={onAddAltStep} onInsertModule={onInsertModule} onAddGroup={onAddAltGroup}
               onStageCtx={openAltStageCtx} onGroupCtx={openAltGroupCtx} onStepCtx={openAltStepCtx}
-              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} />
+              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} />
           ))}
           <button className="add-section-btn add-alt-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
             onClick={onAddAltStage}>

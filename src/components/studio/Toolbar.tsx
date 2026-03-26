@@ -3,7 +3,7 @@
  */
 import { useState, useRef } from "react";
 import {
-  Upload, FileJson, Code, AlertTriangle, CheckCircle, X, Loader2
+  Upload, FileJson, Code, AlertTriangle, CheckCircle, X, Loader2, FormInput
 } from "lucide-react";
 import type { CaseIR } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
@@ -141,6 +141,20 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
 
       {caseIr && (
         <>
+          <button
+            className="toolbar-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-grab active:cursor-grabbing"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData("application/x-new-form", "true");
+              e.dataTransfer.effectAllowed = "copy";
+            }}
+          >
+            <FormInput size={13} />
+            New Form
+          </button>
+
+          <div className="toolbar-separator h-5 w-px" />
+
           <button
             className="toolbar-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
             onClick={handleExportJson}
