@@ -103,6 +103,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [warnings, setWarnings] = useState<string[]>(initialWarnings ?? []);
   const [propsCollapsed, setPropsCollapsed] = useState(true);
+  const [chatCollapsed, setChatCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("flow");
   const [formFields, setFormFields] = useState<ModuleConfigField[]>([]);
   const [newFormTarget, setNewFormTarget] = useState<{ stageId: string; groupId: string; stepId: string } | null>(null);
