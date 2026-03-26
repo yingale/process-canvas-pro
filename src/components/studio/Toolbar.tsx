@@ -142,6 +142,20 @@ export default function Toolbar({ caseIr, onImportBpmn, onLoadSample }: ToolbarP
       {caseIr && (
         <>
           <button
+            className="toolbar-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-grab active:cursor-grabbing"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData("application/x-new-form", "true");
+              e.dataTransfer.effectAllowed = "copy";
+            }}
+          >
+            <FormInput size={13} />
+            New Form
+          </button>
+
+          <div className="toolbar-separator h-5 w-px" />
+
+          <button
             className="toolbar-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
             onClick={handleExportJson}
           >
