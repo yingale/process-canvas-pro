@@ -105,6 +105,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
   const [propsCollapsed, setPropsCollapsed] = useState(true);
   const [activeTab, setActiveTab] = useState("flow");
   const [formFields, setFormFields] = useState<ModuleConfigField[]>([]);
+  const [newFormTarget, setNewFormTarget] = useState<{ stageId: string; groupId: string; stepId: string } | null>(null);
 
   // Handle pending form template from form builder page
   useEffect(() => {
