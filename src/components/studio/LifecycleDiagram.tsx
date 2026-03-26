@@ -259,7 +259,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
 
 // ─── Section card (Stage) ──────────────────────────────────────────────────────
 
-function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm }: {
+function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm }: {
   stage: Stage; stageIdx: number; color: string; selection: SelectionTarget;
   onSelectStage: (id: string) => void;
   onSelectGroup: (stageId: string, groupId: string) => void;
@@ -273,6 +273,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
   formTemplates?: FormTemplate[];
   onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
   onCreateNewForm?: (stageId: string, groupId: string) => void;
+  onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [headerHover, setHeaderHover] = useState(false);
