@@ -84,12 +84,15 @@ function ContextMenu({ menu, onRename, onDuplicate, onDelete, onMoveUp, onMoveDo
 
 // ─── Step row ──────────────────────────────────────────────────────────────────
 
-function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick }: {
+function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, stageId, groupId }: {
   step: Step; color: string; selected: boolean;
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void;
   onBoundaryClick?: (boundaryEventId: string) => void;
+  onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
+  stageId?: string; groupId?: string;
 }) {
   const [hover, setHover] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const meta = STEP_TYPE_META[step.type];
   const inputCount = step.tech?.inputParameters?.length ?? 0;
   const outputCount = step.tech?.outputParameters?.length ?? 0;
@@ -104,9 +107,26 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
 
   return (
     <div
-      className={`group relative rounded-md cursor-pointer transition-all step-row ${selected ? "step-row--selected" : ""}`}
+      className={`group relative rounded-md cursor-pointer transition-all step-row ${selected ? "step-row--selected" : ""} ${dragOver ? "ring-2 ring-primary ring-offset-1" : ""}`}
       style={{ "--dynamic-color": color } as React.CSSProperties}
       onClick={onSelect} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("application/x-new-form")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          setDragOver(true);
+        }
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        if (e.dataTransfer.types.includes("application/x-new-form")) {
+          e.preventDefault();
+          setDragOver(false);
+          if (onDropNewForm && stageId && groupId) {
+            onDropNewForm(stageId, groupId, step.id);
+          }
+        }
+      }}
     >
       <div className="flex items-start gap-2.5 px-2.5 py-2">
         <div className="step-type-indicator" style={{ "--dynamic-color": meta.color } as React.CSSProperties} />
