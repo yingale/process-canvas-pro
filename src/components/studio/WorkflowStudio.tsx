@@ -598,8 +598,38 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
       <div className="flex flex-1 overflow-hidden">
         {caseIr ? (
           <>
-            <div className="chat-sidebar flex flex-col overflow-hidden flex-shrink-0">
-              <AiChatPanel caseIr={caseIr} onApplyPatch={handlePatch} onUndoTo={handleUndoTo} />
+            {/* Collapsible Chat Panel */}
+            <div className={`flex flex-col overflow-hidden flex-shrink-0 border-r transition-all duration-200 ${chatCollapsed ? "w-10" : "chat-sidebar"}`}>
+              {chatCollapsed ? (
+                <div className="flex flex-col items-center py-2 gap-2">
+                  <button
+                    onClick={() => setChatCollapsed(false)}
+                    className="hover-btn w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                    title="Expand AI Chat"
+                  >
+                    <PanelLeftOpen size={14} />
+                  </button>
+                  <div className="writing-mode-vertical text-[10px] font-medium text-foreground-muted tracking-wider" style={{ writingMode: "vertical-rl" }}>
+                    AI Chat
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between px-3 py-1.5 border-b flex-shrink-0">
+                    <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                      <MessageSquare size={12} className="text-primary" /> AI Assistant
+                    </span>
+                    <button
+                      onClick={() => setChatCollapsed(true)}
+                      className="hover-btn w-6 h-6 rounded flex items-center justify-center transition-colors"
+                      title="Collapse AI Chat"
+                    >
+                      <PanelLeftClose size={13} />
+                    </button>
+                  </div>
+                  <AiChatPanel caseIr={caseIr} onApplyPatch={handlePatch} onUndoTo={handleUndoTo} />
+                </>
+              )}
             </div>
             <div className="flex-1 overflow-hidden flex flex-col">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden">
