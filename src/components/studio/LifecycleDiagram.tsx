@@ -238,6 +238,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
               onDropNewForm={onDropNewForm}
               stageId={stageId}
               groupId={group.id}
+              formTemplates={formTemplates}
             />
           ))}
           <button
