@@ -329,6 +329,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
               formTemplates={formTemplates}
               onAttachForm={onAttachForm}
               onCreateNewForm={onCreateNewForm}
+              onDropNewForm={onDropNewForm}
             />
           ))}
 
