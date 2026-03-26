@@ -3,7 +3,7 @@
  */
 import { useState, useRef } from "react";
 import {
-  Upload, FileJson, Code, AlertTriangle, CheckCircle, X, Loader2
+  Upload, FileJson, Code, AlertTriangle, CheckCircle, X, Loader2, FormInput
 } from "lucide-react";
 import type { CaseIR } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
