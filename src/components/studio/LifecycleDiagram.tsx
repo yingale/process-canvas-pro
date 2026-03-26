@@ -84,12 +84,13 @@ function ContextMenu({ menu, onRename, onDuplicate, onDelete, onMoveUp, onMoveDo
 
 // ─── Step row ──────────────────────────────────────────────────────────────────
 
-function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, stageId, groupId }: {
+function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, stageId, groupId, formTemplates }: {
   step: Step; color: string; selected: boolean;
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void;
   onBoundaryClick?: (boundaryEventId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
   stageId?: string; groupId?: string;
+  formTemplates?: import("@/types/caseIr").FormTemplate[];
 }) {
   const [hover, setHover] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -143,9 +144,9 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
           )}
           {step.formRef && (
             <div className="flex items-center gap-1 mt-1">
-              <span className="step-form-badge text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
+              <span className="step-form-badge text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5" title={`Form ID: ${step.formRef.formId}`}>
                 <Radio size={7} />
-                Form
+                {formTemplates?.find(f => f.id === step.formRef?.formId)?.name ?? step.formRef.formId}
               </span>
             </div>
           )}
@@ -237,6 +238,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
               onDropNewForm={onDropNewForm}
               stageId={stageId}
               groupId={group.id}
+              formTemplates={formTemplates}
             />
           ))}
           <button
