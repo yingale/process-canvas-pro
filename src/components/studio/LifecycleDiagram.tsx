@@ -264,6 +264,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
               onSelect={() => onSelectStep(stageId, group.id, step.id)}
               onContextMenu={e => onStepCtx(e, group.id, step.id)}
               onDropNewForm={onDropNewForm}
+              onDropNode={onDropNode}
               stageId={stageId}
               groupId={group.id}
               formTemplates={formTemplates}
