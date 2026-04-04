@@ -511,6 +511,8 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     if (gi < 0) return;
 
     handlePatch([{ op: "add", path: `${basePath}/groups/${gi}/steps/-`, value: newStep }]);
+    // Open config dialog for the newly dropped node
+    setNodeConfigTarget({ stepId: newStep.id, stageId, groupId });
   }, [caseIr, handlePatch]);
 
   const [createdForm, setCreatedForm] = useState<{ id: string; name: string } | null>(null);
