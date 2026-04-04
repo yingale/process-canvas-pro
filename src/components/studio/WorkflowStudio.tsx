@@ -837,6 +837,60 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
             : false
         }
       />
+
+      {/* Node Config Dialog for drag-drop */}
+      {(() => {
+        if (!nodeConfigTarget || !caseIr) return null;
+        const allStages = [...caseIr.stages, ...(caseIr.alternativePaths ?? [])];
+        let currentStep: Step | null = null;
+        let previousStep: Step | null = null;
+        for (const s of allStages) {
+          for (const g of s.groups) {
+            const idx = g.steps.findIndex(st => st.id === nodeConfigTarget.stepId);
+            if (idx >= 0) {
+              currentStep = g.steps[idx];
+              previousStep = idx > 0 ? g.steps[idx - 1] : null;
+              break;
+            }
+          }
+          if (currentStep) break;
+        }
+        return (
+          <NodeConfigDialog
+            open
+            onClose={() => setNodeConfigTarget(null)}
+            currentStep={currentStep}
+            previousStep={previousStep}
+            workflowId={caseIr.id}
+            onSave={(config, inputMappings, outputMappings) => {
+              if (!currentStep?.moduleRef) return;
+              const allStages2 = [...caseIr.stages, ...(caseIr.alternativePaths ?? [])];
+              for (const s of allStages2) {
+                let basePath = "";
+                let si = caseIr.stages.findIndex(st => st.id === s.id);
+                if (si >= 0) basePath = `/stages/${si}`;
+                else if (caseIr.alternativePaths) {
+                  si = caseIr.alternativePaths.findIndex(st => st.id === s.id);
+                  if (si >= 0) basePath = `/alternativePaths/${si}`;
+                }
+                if (!basePath) continue;
+                const stageArr = basePath.startsWith("/stages") ? caseIr.stages : caseIr.alternativePaths!;
+                for (let gi = 0; gi < stageArr[si].groups.length; gi++) {
+                  const sti = stageArr[si].groups[gi].steps.findIndex(st => st.id === nodeConfigTarget.stepId);
+                  if (sti >= 0) {
+                    handlePatch([{
+                      op: "replace",
+                      path: `${basePath}/groups/${gi}/steps/${sti}/moduleRef/instanceConfig`,
+                      value: config,
+                    }]);
+                    return;
+                  }
+                }
+              }
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
