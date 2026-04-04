@@ -13,6 +13,8 @@ import LifecycleDiagram from "./LifecycleDiagram";
 import PropertiesPanel from "./PropertiesPanel";
 import AiChatPanel from "./AiChatPanel";
 import NewFormDialog from "./NewFormDialog";
+import NodesPanel from "./NodesPanel";
+import { getNodeDef } from "./automationNodes";
 import PersonasPanel from "./PersonasPanel";
 import TeamPanel from "./TeamPanel";
 import BusinessRulesPanel from "./BusinessRulesPanel";
