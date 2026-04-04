@@ -152,6 +152,19 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
               {outputCount > 0 && <span className="step-io-badge--output text-[9px] px-1 py-0.5 rounded font-mono">OUT:{outputCount}</span>}
             </div>
           )}
+          {step.moduleRef && (() => {
+            const nd = getNodeDef(step.moduleRef.moduleId);
+            if (!nd) return null;
+            return (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5"
+                  style={{ background: `${nd.color}18`, color: nd.color, border: `1px solid ${nd.color}30` }}>
+                  <Zap size={7} />
+                  {nd.name}
+                </span>
+              </div>
+            );
+          })()}
           {step.formRef && (
             <div className="flex items-center gap-1 mt-1">
               <span className="step-form-badge text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5" title={`Form ID: ${step.formRef.formId}`}>
