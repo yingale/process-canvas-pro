@@ -128,7 +128,15 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
             onDropNewForm(stageId, groupId, step.id);
           }
         }
-      }
+        if (e.dataTransfer.types.includes("application/x-automation-node")) {
+          e.preventDefault();
+          setDragOver(false);
+          const nodeId = e.dataTransfer.getData("application/x-automation-node");
+          if (onDropNode && stageId && groupId && nodeId) {
+            onDropNode(stageId, groupId, nodeId);
+          }
+        }
+      }}
     >
       <div className="flex items-start gap-2.5 px-2.5 py-2">
         <div className="step-type-indicator" style={{ "--dynamic-color": meta.color } as React.CSSProperties} />
