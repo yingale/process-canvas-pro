@@ -358,10 +358,12 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
               onInsertModule={onInsertModule}
               onGroupCtx={(e, gid) => onGroupCtx(e, stage.id, gid)}
               onStepCtx={(e, gid, sid) => onStepCtx(e, stage.id, gid, sid)}
-              formTemplates={formTemplates}
-              onAttachForm={onAttachForm}
-              onCreateNewForm={onCreateNewForm}
-              onDropNewForm={onDropNewForm}
+               formTemplates={formTemplates}
+               onAttachForm={onAttachForm}
+               onCreateNewForm={onCreateNewForm}
+               onDropNewForm={onDropNewForm}
+               onDropNode={onDropNode}
+             />
             />
           ))}
 
