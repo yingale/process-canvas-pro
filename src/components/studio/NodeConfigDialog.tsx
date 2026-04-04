@@ -322,7 +322,7 @@ export default function NodeConfigDialog({
               {curInputs.length > 0 && nodeDef.configFields.length > 0 && <Separator />}
 
               {/* Config Fields */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 {nodeDef.configFields.map((field) => (
                   <div key={field.key} className={field.type === "multiline" ? "col-span-2" : ""}>
                     <Label className="text-[11px] font-medium mb-1 block">
