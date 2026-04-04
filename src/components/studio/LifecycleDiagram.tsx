@@ -790,7 +790,7 @@ export default function LifecycleDiagram({
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
               onAddStep={onAddStep} onInsertModule={onInsertModule} onAddGroup={onAddGroup}
               onStageCtx={openStageCtx} onGroupCtx={openGroupCtx} onStepCtx={openStepCtx}
-              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} />
+              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} onDropNode={onDropNode} />
           ))}
           <button className="add-section-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
             onClick={onAddStage}>
