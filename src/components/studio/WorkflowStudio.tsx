@@ -466,6 +466,50 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     setNewFormTarget({ stageId, groupId, stepId });
   }, []);
 
+  const handleDropNode = useCallback((stageId: string, groupId: string, nodeId: string) => {
+    if (!caseIr) return;
+    const nodeDef = getNodeDef(nodeId);
+    if (!nodeDef) return;
+
+    // Build default instanceConfig from configFields
+    const instanceConfig: Record<string, unknown> = {};
+    nodeDef.configFields.forEach(f => {
+      if (f.defaultValue !== undefined) instanceConfig[f.key] = f.defaultValue;
+    });
+
+    const newStep: Step = {
+      id: uid(),
+      name: nodeDef.name,
+      type: "automation" as StepType,
+      description: nodeDef.description,
+      tech: {
+        implementationType: "external",
+        topic: nodeDef.topic,
+      },
+      moduleRef: {
+        moduleId: nodeDef.id,
+        instanceConfig,
+      } satisfies ModuleRef,
+    };
+
+    // Find stage in main flow or alt paths
+    let basePath = "";
+    let si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si >= 0) {
+      basePath = `/stages/${si}`;
+    } else if (caseIr.alternativePaths) {
+      si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+      if (si >= 0) basePath = `/alternativePaths/${si}`;
+    }
+    if (!basePath) return;
+
+    const stageArr = basePath.startsWith("/stages") ? caseIr.stages : caseIr.alternativePaths!;
+    const gi = stageArr[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+
+    handlePatch([{ op: "add", path: `${basePath}/groups/${gi}/steps/-`, value: newStep }]);
+  }, [caseIr, handlePatch]);
+
   const [createdForm, setCreatedForm] = useState<{ id: string; name: string } | null>(null);
 
   const handleCreateFormFromDialog = useCallback((formName: string) => {
