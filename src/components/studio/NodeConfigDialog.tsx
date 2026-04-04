@@ -188,9 +188,9 @@ export default function NodeConfigDialog({
         .maybeSingle()
         .then(({ data }) => {
           if (data) {
-            setConfig(data.config as Record<string, unknown>);
-            setInputMappings((data.input_mappings as IoMapping[]) || []);
-            setOutputMappings((data.output_mappings as IoMapping[]) || []);
+            setConfig(data.config as unknown as Record<string, unknown>);
+            setInputMappings((data.input_mappings as unknown as IoMapping[]) || []);
+            setOutputMappings((data.output_mappings as unknown as IoMapping[]) || []);
           }
         });
     }
