@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent, FormTemplate } from "@/types/caseIr";
+import { getNodeDef } from "./automationNodes";
 import ModulePicker from "./ModulePicker";
 import "./studio.css";
 
