@@ -477,13 +477,13 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
       if (f.defaultValue !== undefined) instanceConfig[f.key] = f.defaultValue;
     });
 
-    const newStep: Step = {
+    const newStep = {
       id: uid(),
       name: nodeDef.name,
-      type: "automation" as StepType,
+      type: "automation" as const,
       description: nodeDef.description,
       tech: {
-        implementationType: "external",
+        implementationType: "external" as const,
         topic: nodeDef.topic,
       },
       moduleRef: {
