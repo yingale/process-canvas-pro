@@ -245,7 +245,7 @@ export default function NodeConfigDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[95vw] w-[1100px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Zap size={16} className="text-primary" />
@@ -256,169 +256,178 @@ export default function NodeConfigDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-3">
-          <div className="space-y-5 pb-4">
-            {/* ── Section 1: Previous Step ──────────────────────────── */}
-            <div className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">1</div>
-                <h3 className="text-sm font-semibold text-foreground">Previous Step</h3>
+        <div className="flex-1 overflow-hidden">
+          <div className="grid grid-cols-[1fr_auto_1.2fr_auto_1fr] gap-0 h-full min-h-[400px]">
+            {/* ── LEFT: Previous Step ──────────────────────────── */}
+            <ScrollArea className="pr-3">
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground">1</div>
+                  <h3 className="text-sm font-semibold text-foreground">Previous Step</h3>
+                </div>
                 {previousStep && (
-                  <Badge variant="secondary" className="text-[10px] ml-auto">
+                  <Badge variant="secondary" className="text-[10px]">
                     {previousStep.name}
                   </Badge>
                 )}
-              </div>
 
-              {!previousStep ? (
-                <p className="text-xs text-muted-foreground italic">No previous step — this is the first node in the flow.</p>
-              ) : prevOutputs.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">Previous step has no defined outputs.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Available Outputs (drag to map)</p>
-                  {prevOutputVariable && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Output variable: <code className="text-primary">${`{${prevOutputVariable}}`}</code>
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {prevOutputs.map((o) => (
-                      <IoChip key={o.name} field={o} stepName={prevOutputVariable || previousStep.name} draggable />
+                {!previousStep ? (
+                  <p className="text-xs text-muted-foreground italic">No previous step — this is the first node in the flow.</p>
+                ) : prevOutputs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Previous step has no defined outputs.</p>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Available Outputs (drag to map)</p>
+                    {prevOutputVariable && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Output variable: <code className="text-primary">${`{${prevOutputVariable}}`}</code>
+                      </p>
+                    )}
+                    <div className="flex flex-col gap-2">
+                      {prevOutputs.map((o) => (
+                        <IoChip key={o.name} field={o} stepName={prevOutputVariable || previousStep!.name} draggable />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+
+            {/* ── Arrow Left→Middle ──────────────────────────── */}
+            <div className="flex items-center justify-center px-1">
+              <ChevronRight size={20} className="text-muted-foreground" />
+            </div>
+
+            {/* ── MIDDLE: Current Step Configuration ─────────── */}
+            <ScrollArea className="px-3 border-x border-border">
+              <div className="p-4 space-y-4" style={{ borderColor: nodeDef.color + "40" }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: nodeDef.color }}>2</div>
+                  <h3 className="text-sm font-semibold text-foreground">{nodeDef.name} Configuration</h3>
+                </div>
+
+                {/* Input Mappings (drop zones) */}
+                {curInputs.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Input Mappings</p>
+                    {curInputs.map((inp) => (
+                      <MappingDropZone
+                        key={inp.name}
+                        targetField={inp}
+                        mappings={inputMappings}
+                        onAddMapping={addInputMapping}
+                        onRemoveMapping={removeInputMapping}
+                      />
                     ))}
                   </div>
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* ── Arrow ──────────────────────────────────────────────── */}
-            <div className="flex justify-center">
-              <ChevronRight size={20} className="text-muted-foreground rotate-90" />
-            </div>
+                {curInputs.length > 0 && nodeDef.configFields.length > 0 && <Separator />}
 
-            {/* ── Section 2: Current Step Configuration ─────────────── */}
-            <div className="rounded-lg border p-4 space-y-4" style={{ borderColor: nodeDef.color + "40" }}>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: nodeDef.color }}>2</div>
-                <h3 className="text-sm font-semibold text-foreground">{nodeDef.name} Configuration</h3>
-              </div>
-
-              {/* Input Mappings (drop zones) */}
-              {curInputs.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Input Mappings</p>
-                  {curInputs.map((inp) => (
-                    <MappingDropZone
-                      key={inp.name}
-                      targetField={inp}
-                      mappings={inputMappings}
-                      onAddMapping={addInputMapping}
-                      onRemoveMapping={removeInputMapping}
-                    />
+                {/* Config Fields */}
+                <div className="grid grid-cols-1 gap-3">
+                  {nodeDef.configFields.map((field) => (
+                    <div key={field.key}>
+                      <Label className="text-[11px] font-medium mb-1 block">
+                        {field.label}
+                        {field.required && <span className="text-destructive ml-0.5">*</span>}
+                      </Label>
+                      {field.type === "boolean" ? (
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={config[field.key] === "true" || config[field.key] === true}
+                            onCheckedChange={(v) => updateConfigField(field.key, v ? "true" : "false")}
+                          />
+                          <span className="text-[10px] text-muted-foreground">{config[field.key] === "true" || config[field.key] === true ? "Yes" : "No"}</span>
+                        </div>
+                      ) : field.type === "select" ? (
+                        <Select
+                          value={String(config[field.key] ?? field.defaultValue ?? "")}
+                          onValueChange={(v) => updateConfigField(field.key, v)}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {field.options?.map((opt) => (
+                              <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : field.type === "multiline" ? (
+                        <Textarea
+                          value={String(config[field.key] ?? "")}
+                          onChange={(e) => updateConfigField(field.key, e.target.value)}
+                          className="text-xs min-h-[60px]"
+                          placeholder={field.hint}
+                        />
+                      ) : field.type === "slider" ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min={field.min ?? 0}
+                            max={field.max ?? 1}
+                            step={field.step ?? 0.1}
+                            value={Number(config[field.key] ?? field.defaultValue ?? 0)}
+                            onChange={(e) => updateConfigField(field.key, e.target.value)}
+                            className="flex-1"
+                          />
+                          <span className="text-[10px] text-muted-foreground w-8 text-right">{String(config[field.key] ?? field.defaultValue ?? "")}</span>
+                        </div>
+                      ) : (
+                        <Input
+                          type={field.type === "number" ? "number" : "text"}
+                          value={String(config[field.key] ?? "")}
+                          onChange={(e) => updateConfigField(field.key, e.target.value)}
+                          className="h-8 text-xs"
+                          placeholder={field.hint}
+                          min={field.min}
+                          max={field.max}
+                        />
+                      )}
+                      {field.hint && field.type !== "multiline" && (
+                        <p className="text-[9px] text-muted-foreground mt-0.5">{field.hint}</p>
+                      )}
+                    </div>
                   ))}
                 </div>
-              )}
-
-              {curInputs.length > 0 && nodeDef.configFields.length > 0 && <Separator />}
-
-              {/* Config Fields */}
-              <div className="grid grid-cols-1 gap-3">
-                {nodeDef.configFields.map((field) => (
-                  <div key={field.key} className={field.type === "multiline" ? "col-span-2" : ""}>
-                    <Label className="text-[11px] font-medium mb-1 block">
-                      {field.label}
-                      {field.required && <span className="text-destructive ml-0.5">*</span>}
-                    </Label>
-                    {field.type === "boolean" ? (
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={config[field.key] === "true" || config[field.key] === true}
-                          onCheckedChange={(v) => updateConfigField(field.key, v ? "true" : "false")}
-                        />
-                        <span className="text-[10px] text-muted-foreground">{config[field.key] === "true" || config[field.key] === true ? "Yes" : "No"}</span>
-                      </div>
-                    ) : field.type === "select" ? (
-                      <Select
-                        value={String(config[field.key] ?? field.defaultValue ?? "")}
-                        onValueChange={(v) => updateConfigField(field.key, v)}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {field.options?.map((opt) => (
-                            <SelectItem key={opt} value={opt} className="text-xs">{opt}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : field.type === "multiline" ? (
-                      <Textarea
-                        value={String(config[field.key] ?? "")}
-                        onChange={(e) => updateConfigField(field.key, e.target.value)}
-                        className="text-xs min-h-[60px]"
-                        placeholder={field.hint}
-                      />
-                    ) : field.type === "slider" ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="range"
-                          min={field.min ?? 0}
-                          max={field.max ?? 1}
-                          step={field.step ?? 0.1}
-                          value={Number(config[field.key] ?? field.defaultValue ?? 0)}
-                          onChange={(e) => updateConfigField(field.key, e.target.value)}
-                          className="flex-1"
-                        />
-                        <span className="text-[10px] text-muted-foreground w-8 text-right">{String(config[field.key] ?? field.defaultValue ?? "")}</span>
-                      </div>
-                    ) : (
-                      <Input
-                        type={field.type === "number" ? "number" : "text"}
-                        value={String(config[field.key] ?? "")}
-                        onChange={(e) => updateConfigField(field.key, e.target.value)}
-                        className="h-8 text-xs"
-                        placeholder={field.hint}
-                        min={field.min}
-                        max={field.max}
-                      />
-                    )}
-                    {field.hint && field.type !== "multiline" && (
-                      <p className="text-[9px] text-muted-foreground mt-0.5">{field.hint}</p>
-                    )}
-                  </div>
-                ))}
               </div>
+            </ScrollArea>
+
+            {/* ── Arrow Middle→Right ─────────────────────────── */}
+            <div className="flex items-center justify-center px-1">
+              <ChevronRight size={20} className="text-muted-foreground" />
             </div>
 
-            {/* ── Arrow ──────────────────────────────────────────────── */}
-            <div className="flex justify-center">
-              <ChevronRight size={20} className="text-muted-foreground rotate-90" />
-            </div>
-
-            {/* ── Section 3: Output of Current Step ─────────────────── */}
-            <div className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-[10px] font-bold text-accent-foreground">3</div>
-                <h3 className="text-sm font-semibold text-foreground">Output</h3>
-              </div>
-
-              {curOutputs.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">This node has no defined outputs.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                    Available for next step (variable: <code className="text-primary">${`{${config.outputVariable || nodeDef.id + "Result"}}`}</code>)
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {curOutputs.map((o) => (
-                      <IoChip key={o.name} field={o} stepName={String(config.outputVariable || nodeDef.id + "Result")} />
-                    ))}
-                  </div>
+            {/* ── RIGHT: Output of Current Step ─────────────── */}
+            <ScrollArea className="pl-3">
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-[10px] font-bold text-accent-foreground">3</div>
+                  <h3 className="text-sm font-semibold text-foreground">Output</h3>
                 </div>
-              )}
-            </div>
+
+                {curOutputs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">This node has no defined outputs.</p>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                      Available for next step
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Variable: <code className="text-primary">${`{${config.outputVariable || nodeDef.id + "Result"}}`}</code>
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {curOutputs.map((o) => (
+                        <IoChip key={o.name} field={o} stepName={String(config.outputVariable || nodeDef.id + "Result")} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="flex-shrink-0 gap-2 pt-2 border-t">
           <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
