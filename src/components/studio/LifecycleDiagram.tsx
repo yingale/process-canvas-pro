@@ -233,8 +233,26 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
       {!collapsed && (
         <div className="ml-4 mt-1">
           {group.steps.length === 0 && (
-            <div className="text-center py-3 text-[10px] rounded-lg mb-1.5 text-foreground-subtle border border-dashed">
-              No steps
+            <div
+              className="text-center py-3 text-[10px] rounded-lg mb-1.5 text-foreground-subtle border border-dashed transition-colors"
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes("application/x-automation-node")) {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "copy";
+                  e.currentTarget.classList.add("ring-2", "ring-primary");
+                }
+              }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove("ring-2", "ring-primary"); }}
+              onDrop={(e) => {
+                if (e.dataTransfer.types.includes("application/x-automation-node")) {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove("ring-2", "ring-primary");
+                  const nodeId = e.dataTransfer.getData("application/x-automation-node");
+                  if (nodeId && onDropNode) onDropNode(stageId, group.id, nodeId);
+                }
+              }}
+            >
+              Drop a node here or add steps
             </div>
           )}
           {group.steps.map(step => (
