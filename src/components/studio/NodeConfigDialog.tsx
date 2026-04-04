@@ -369,7 +369,7 @@ export default function NodeConfigDialog({
                           onChange={(e) => updateConfigField(field.key, e.target.value)}
                           className="flex-1"
                         />
-                        <span className="text-[10px] text-muted-foreground w-8 text-right">{config[field.key] ?? field.defaultValue}</span>
+                        <span className="text-[10px] text-muted-foreground w-8 text-right">{String(config[field.key] ?? field.defaultValue ?? "")}</span>
                       </div>
                     ) : (
                       <Input
