@@ -778,6 +778,10 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
                 </TabsContent>
               </Tabs>
             </div>
+            {/* Nodes Panel (between diagram and properties) */}
+            <div className="w-[220px] flex-shrink-0 border-l overflow-hidden">
+              <NodesPanel />
+            </div>
             <PropertiesPanel
               caseIr={caseIr}
               selection={selection}
