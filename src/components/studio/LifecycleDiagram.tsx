@@ -364,7 +364,6 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
                onDropNewForm={onDropNewForm}
                onDropNode={onDropNode}
              />
-            />
           ))}
 
           <button
