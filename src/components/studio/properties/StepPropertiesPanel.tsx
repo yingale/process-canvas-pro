@@ -322,25 +322,127 @@ export default function StepPropertiesPanel({
         </div>
       )}
 
-      {step.moduleRef && (
-        <div className="px-4 py-3">
-          <button
-            className="step-form-action-btn w-full justify-center gap-1.5 py-2"
-            onClick={() => {
-              if (caseIr) sessionStorage.setItem("studio_caseIr", JSON.stringify(caseIr));
-              navigate("/studio/module-config", {
-                state: {
-                  returnTo: "/studio",
-                  stepBasePath: basePath,
-                  moduleRef: step.moduleRef,
-                },
-              });
-            }}
-          >
-            <Settings2 size={12} /> Configure Module
-          </button>
-        </div>
-      )}
+      {step.moduleRef && (() => {
+        const nodeDef = getNodeDef(step.moduleRef.moduleId);
+        if (nodeDef) {
+          return (
+            <div>
+              <SectionHeader
+                title={`${nodeDef.name} Configuration`}
+                open={openGroups.has("node-config")}
+                onToggle={() => toggleGroup("node-config")}
+              />
+              {openGroups.has("node-config") && (
+                <div className="px-4 py-3 space-y-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap size={12} style={{ color: nodeDef.color }} />
+                    <span className="text-[10px] font-mono text-foreground-muted">
+                      topic: {nodeDef.topic}
+                    </span>
+                  </div>
+                  {nodeDef.configFields.map(field => {
+                    const config = (step.moduleRef?.instanceConfig ?? {}) as Record<string, unknown>;
+                    const val = config[field.key] ?? field.defaultValue ?? "";
+                    return (
+                      <Field key={field.key} label={field.label} hint={field.hint}>
+                        {field.type === "boolean" ? (
+                          <Toggle
+                            checked={val === true || val === "true"}
+                            onChange={v => {
+                              const newConfig = { ...config, [field.key]: v };
+                              onPatch([{ op: "replace", path: `${basePath}/moduleRef/instanceConfig`, value: newConfig }]);
+                            }}
+                            label=""
+                          />
+                        ) : field.type === "select" ? (
+                          <select
+                            className="studio-select w-full text-[12px] rounded-md px-2.5 py-1.5"
+                            value={String(val)}
+                            onChange={e => {
+                              const newConfig = { ...config, [field.key]: e.target.value };
+                              onPatch([{ op: "replace", path: `${basePath}/moduleRef/instanceConfig`, value: newConfig }]);
+                            }}
+                          >
+                            {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        ) : field.type === "multiline" ? (
+                          <MultilineInput
+                            value={String(val)}
+                            onChange={v => {
+                              const newConfig = { ...config, [field.key]: v };
+                              onPatch([{ op: "replace", path: `${basePath}/moduleRef/instanceConfig`, value: newConfig }]);
+                            }}
+                            placeholder={field.hint}
+                          />
+                        ) : field.type === "number" || field.type === "slider" ? (
+                          <TextInput
+                            value={String(val)}
+                            onChange={v => {
+                              const newConfig = { ...config, [field.key]: v };
+                              onPatch([{ op: "replace", path: `${basePath}/moduleRef/instanceConfig`, value: newConfig }]);
+                            }}
+                            placeholder={field.hint}
+                          />
+                        ) : (
+                          <TextInput
+                            value={String(val)}
+                            onChange={v => {
+                              const newConfig = { ...config, [field.key]: v };
+                              onPatch([{ op: "replace", path: `${basePath}/moduleRef/instanceConfig`, value: newConfig }]);
+                            }}
+                            placeholder={field.hint}
+                          />
+                        )}
+                      </Field>
+                    );
+                  })}
+                  {nodeDef.inputs.length > 0 && (
+                    <div className="mt-2">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-foreground-muted mb-1">Expected Inputs</div>
+                      {nodeDef.inputs.map(io => (
+                        <div key={io.name} className="flex items-center gap-1.5 text-[10px] py-0.5">
+                          <span className="step-io-badge--input px-1 py-0.5 rounded font-mono">{io.name}</span>
+                          <span className="text-foreground-subtle">{io.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {nodeDef.outputs.length > 0 && (
+                    <div className="mt-2">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-foreground-muted mb-1">Outputs</div>
+                      {nodeDef.outputs.map(io => (
+                        <div key={io.name} className="flex items-center gap-1.5 text-[10px] py-0.5">
+                          <span className="step-io-badge--output px-1 py-0.5 rounded font-mono">{io.name}</span>
+                          <span className="text-foreground-subtle">{io.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        }
+        return (
+          <div className="px-4 py-3">
+            <button
+              className="step-form-action-btn w-full justify-center gap-1.5 py-2"
+              onClick={() => {
+                if (caseIr) sessionStorage.setItem("studio_caseIr", JSON.stringify(caseIr));
+                navigate("/studio/module-config", {
+                  state: {
+                    returnTo: "/studio",
+                    stepBasePath: basePath,
+                    moduleRef: step.moduleRef,
+                  },
+                });
+              }}
+            >
+              <Settings2 size={12} /> Configure Module
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Form management section */}
       <StepFormSection

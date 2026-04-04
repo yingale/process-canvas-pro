@@ -112,7 +112,7 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
       style={{ "--dynamic-color": color } as React.CSSProperties}
       onClick={onSelect} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes("application/x-new-form")) {
+        if (e.dataTransfer.types.includes("application/x-new-form") || e.dataTransfer.types.includes("application/x-automation-node")) {
           e.preventDefault();
           e.dataTransfer.dropEffect = "copy";
           setDragOver(true);
@@ -127,7 +127,7 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
             onDropNewForm(stageId, groupId, step.id);
           }
         }
-      }}
+      }
     >
       <div className="flex items-start gap-2.5 px-2.5 py-2">
         <div className="step-type-indicator" style={{ "--dynamic-color": meta.color } as React.CSSProperties} />
