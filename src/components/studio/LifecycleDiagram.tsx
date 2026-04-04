@@ -189,7 +189,7 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
 
 // ─── Group sub-section ─────────────────────────────────────────────────────────
 
-function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm }: {
+function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm, onDropNode }: {
   group: Group; stageId: string; color: string; selection: SelectionTarget;
   onSelectGroup: (stageId: string, groupId: string) => void;
   onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
@@ -201,6 +201,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
   onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
   onCreateNewForm?: (stageId: string, groupId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
+  onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [hover, setHover] = useState(false);
