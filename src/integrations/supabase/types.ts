@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      node_instance_configs: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          input_mappings: Json
+          node_id: string
+          node_type: string
+          output_mappings: Json
+          step_id: string
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          input_mappings?: Json
+          node_id: string
+          node_type: string
+          output_mappings?: Json
+          step_id: string
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          input_mappings?: Json
+          node_id?: string
+          node_type?: string
+          output_mappings?: Json
+          step_id?: string
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_instance_configs_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reusable_modules: {
         Row: {
           allowed_personas: string[] | null
