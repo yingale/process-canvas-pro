@@ -550,6 +550,7 @@ interface LifecycleDiagramProps {
   onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
   onCreateNewForm?: (stageId: string, groupId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
+  onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
 }
 
 export default function LifecycleDiagram({
@@ -565,7 +566,7 @@ export default function LifecycleDiagram({
   onDeleteAltStage, onDeleteAltGroup, onDeleteAltStep,
   onDuplicateAltStep, onDuplicateAltStage,
   onMoveAltStage, onMoveAltGroup, onMoveAltStep,
-  formTemplates, onAttachForm, onCreateNewForm, onDropNewForm,
+  formTemplates, onAttachForm, onCreateNewForm, onDropNewForm, onDropNode,
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [altCtxMenu, setAltCtxMenu] = useState<CtxMenu | null>(null);
