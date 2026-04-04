@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent, FormTemplate } from "@/types/caseIr";
+import { getNodeDef } from "./automationNodes";
 import ModulePicker from "./ModulePicker";
 import "./studio.css";
 
@@ -84,11 +85,12 @@ function ContextMenu({ menu, onRename, onDuplicate, onDelete, onMoveUp, onMoveDo
 
 // ─── Step row ──────────────────────────────────────────────────────────────────
 
-function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, stageId, groupId, formTemplates }: {
+function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, onDropNode, stageId, groupId, formTemplates }: {
   step: Step; color: string; selected: boolean;
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void;
   onBoundaryClick?: (boundaryEventId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
+  onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
   stageId?: string; groupId?: string;
   formTemplates?: import("@/types/caseIr").FormTemplate[];
 }) {
@@ -112,7 +114,7 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
       style={{ "--dynamic-color": color } as React.CSSProperties}
       onClick={onSelect} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes("application/x-new-form")) {
+        if (e.dataTransfer.types.includes("application/x-new-form") || e.dataTransfer.types.includes("application/x-automation-node")) {
           e.preventDefault();
           e.dataTransfer.dropEffect = "copy";
           setDragOver(true);
@@ -125,6 +127,14 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
           setDragOver(false);
           if (onDropNewForm && stageId && groupId) {
             onDropNewForm(stageId, groupId, step.id);
+          }
+        }
+        if (e.dataTransfer.types.includes("application/x-automation-node")) {
+          e.preventDefault();
+          setDragOver(false);
+          const nodeId = e.dataTransfer.getData("application/x-automation-node");
+          if (onDropNode && stageId && groupId && nodeId) {
+            onDropNode(stageId, groupId, nodeId);
           }
         }
       }}
@@ -142,6 +152,19 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
               {outputCount > 0 && <span className="step-io-badge--output text-[9px] px-1 py-0.5 rounded font-mono">OUT:{outputCount}</span>}
             </div>
           )}
+          {step.moduleRef && (() => {
+            const nd = getNodeDef(step.moduleRef.moduleId);
+            if (!nd) return null;
+            return (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5"
+                  style={{ background: `${nd.color}18`, color: nd.color, border: `1px solid ${nd.color}30` }}>
+                  <Zap size={7} />
+                  {nd.name}
+                </span>
+              </div>
+            );
+          })()}
           {step.formRef && (
             <div className="flex items-center gap-1 mt-1">
               <span className="step-form-badge text-[9px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5" title={`Form ID: ${step.formRef.formId}`}>
@@ -180,7 +203,7 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
 
 // ─── Group sub-section ─────────────────────────────────────────────────────────
 
-function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm }: {
+function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm, onDropNode }: {
   group: Group; stageId: string; color: string; selection: SelectionTarget;
   onSelectGroup: (stageId: string, groupId: string) => void;
   onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
@@ -192,6 +215,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
   onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
   onCreateNewForm?: (stageId: string, groupId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
+  onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [hover, setHover] = useState(false);
@@ -223,8 +247,26 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
       {!collapsed && (
         <div className="ml-4 mt-1">
           {group.steps.length === 0 && (
-            <div className="text-center py-3 text-[10px] rounded-lg mb-1.5 text-foreground-subtle border border-dashed">
-              No steps
+            <div
+              className="text-center py-3 text-[10px] rounded-lg mb-1.5 text-foreground-subtle border border-dashed transition-colors"
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes("application/x-automation-node")) {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "copy";
+                  e.currentTarget.classList.add("ring-2", "ring-primary");
+                }
+              }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove("ring-2", "ring-primary"); }}
+              onDrop={(e) => {
+                if (e.dataTransfer.types.includes("application/x-automation-node")) {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove("ring-2", "ring-primary");
+                  const nodeId = e.dataTransfer.getData("application/x-automation-node");
+                  if (nodeId && onDropNode) onDropNode(stageId, group.id, nodeId);
+                }
+              }}
+            >
+              Drop a node here or add steps
             </div>
           )}
           {group.steps.map(step => (
@@ -236,6 +278,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
               onSelect={() => onSelectStep(stageId, group.id, step.id)}
               onContextMenu={e => onStepCtx(e, group.id, step.id)}
               onDropNewForm={onDropNewForm}
+              onDropNode={onDropNode}
               stageId={stageId}
               groupId={group.id}
               formTemplates={formTemplates}
@@ -261,7 +304,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
 
 // ─── Section card (Stage) ──────────────────────────────────────────────────────
 
-function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm }: {
+function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm, onDropNode }: {
   stage: Stage; stageIdx: number; color: string; selection: SelectionTarget;
   onSelectStage: (id: string) => void;
   onSelectGroup: (stageId: string, groupId: string) => void;
@@ -276,6 +319,7 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
   onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
   onCreateNewForm?: (stageId: string, groupId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
+  onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [headerHover, setHeaderHover] = useState(false);
@@ -328,11 +372,12 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
               onInsertModule={onInsertModule}
               onGroupCtx={(e, gid) => onGroupCtx(e, stage.id, gid)}
               onStepCtx={(e, gid, sid) => onStepCtx(e, stage.id, gid, sid)}
-              formTemplates={formTemplates}
-              onAttachForm={onAttachForm}
-              onCreateNewForm={onCreateNewForm}
-              onDropNewForm={onDropNewForm}
-            />
+               formTemplates={formTemplates}
+               onAttachForm={onAttachForm}
+               onCreateNewForm={onCreateNewForm}
+               onDropNewForm={onDropNewForm}
+               onDropNode={onDropNode}
+             />
           ))}
 
           <button
@@ -519,6 +564,7 @@ interface LifecycleDiagramProps {
   onAttachForm?: (stageId: string, groupId: string, formTemplate: FormTemplate) => void;
   onCreateNewForm?: (stageId: string, groupId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
+  onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
 }
 
 export default function LifecycleDiagram({
@@ -534,7 +580,7 @@ export default function LifecycleDiagram({
   onDeleteAltStage, onDeleteAltGroup, onDeleteAltStep,
   onDuplicateAltStep, onDuplicateAltStage,
   onMoveAltStage, onMoveAltGroup, onMoveAltStep,
-  formTemplates, onAttachForm, onCreateNewForm, onDropNewForm,
+  formTemplates, onAttachForm, onCreateNewForm, onDropNewForm, onDropNode,
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [altCtxMenu, setAltCtxMenu] = useState<CtxMenu | null>(null);
@@ -758,7 +804,7 @@ export default function LifecycleDiagram({
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
               onAddStep={onAddStep} onInsertModule={onInsertModule} onAddGroup={onAddGroup}
               onStageCtx={openStageCtx} onGroupCtx={openGroupCtx} onStepCtx={openStepCtx}
-              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} />
+              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} onDropNode={onDropNode} />
           ))}
           <button className="add-section-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
             onClick={onAddStage}>
@@ -786,7 +832,7 @@ export default function LifecycleDiagram({
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
               onAddStep={onAddAltStep} onInsertModule={onInsertModule} onAddGroup={onAddAltGroup}
               onStageCtx={openAltStageCtx} onGroupCtx={openAltGroupCtx} onStepCtx={openAltStepCtx}
-              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} />
+              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} onDropNode={onDropNode} />
           ))}
           <button className="add-section-btn add-alt-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
             onClick={onAddAltStage}>

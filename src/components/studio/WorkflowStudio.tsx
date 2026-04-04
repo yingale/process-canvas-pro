@@ -4,7 +4,7 @@
  */
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType, ModuleConfigField, FormTemplate, FormRef } from "@/types/caseIr";
+import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType, ModuleConfigField, FormTemplate, FormRef, ModuleRef } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -13,6 +13,8 @@ import LifecycleDiagram from "./LifecycleDiagram";
 import PropertiesPanel from "./PropertiesPanel";
 import AiChatPanel from "./AiChatPanel";
 import NewFormDialog from "./NewFormDialog";
+import NodesPanel from "./NodesPanel";
+import { getNodeDef } from "./automationNodes";
 import PersonasPanel from "./PersonasPanel";
 import TeamPanel from "./TeamPanel";
 import BusinessRulesPanel from "./BusinessRulesPanel";
@@ -464,6 +466,50 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     setNewFormTarget({ stageId, groupId, stepId });
   }, []);
 
+  const handleDropNode = useCallback((stageId: string, groupId: string, nodeId: string) => {
+    if (!caseIr) return;
+    const nodeDef = getNodeDef(nodeId);
+    if (!nodeDef) return;
+
+    // Build default instanceConfig from configFields
+    const instanceConfig: Record<string, unknown> = {};
+    nodeDef.configFields.forEach(f => {
+      if (f.defaultValue !== undefined) instanceConfig[f.key] = f.defaultValue;
+    });
+
+    const newStep = {
+      id: uid(),
+      name: nodeDef.name,
+      type: "automation" as const,
+      description: nodeDef.description,
+      tech: {
+        implementationType: "external" as const,
+        topic: nodeDef.topic,
+      },
+      moduleRef: {
+        moduleId: nodeDef.id,
+        instanceConfig,
+      } satisfies ModuleRef,
+    };
+
+    // Find stage in main flow or alt paths
+    let basePath = "";
+    let si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si >= 0) {
+      basePath = `/stages/${si}`;
+    } else if (caseIr.alternativePaths) {
+      si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+      if (si >= 0) basePath = `/alternativePaths/${si}`;
+    }
+    if (!basePath) return;
+
+    const stageArr = basePath.startsWith("/stages") ? caseIr.stages : caseIr.alternativePaths!;
+    const gi = stageArr[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+
+    handlePatch([{ op: "add", path: `${basePath}/groups/${gi}/steps/-`, value: newStep }]);
+  }, [caseIr, handlePatch]);
+
   const [createdForm, setCreatedForm] = useState<{ id: string; name: string } | null>(null);
 
   const handleCreateFormFromDialog = useCallback((formName: string) => {
@@ -688,6 +734,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
                     onAttachForm={handleAttachForm}
                     onCreateNewForm={handleCreateNewForm}
                     onDropNewForm={handleDropNewForm}
+                    onDropNode={handleDropNode}
                   />
                 </TabsContent>
                 <TabsContent value="personas" className="flex-1 overflow-auto mt-0">
@@ -730,6 +777,10 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
                   />
                 </TabsContent>
               </Tabs>
+            </div>
+            {/* Nodes Panel (between diagram and properties) */}
+            <div className="w-[220px] flex-shrink-0 border-l overflow-hidden">
+              <NodesPanel />
             </div>
             <PropertiesPanel
               caseIr={caseIr}
