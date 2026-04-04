@@ -2758,3 +2758,21 @@
   white-space: nowrap;
   transition: all 0.15s;
 }
+
+/* ─── Nodes Panel ─────────────────────────────────────────────────────────── */
+
+.node-palette-card {
+  background: hsl(var(--surface));
+  border-color: hsl(var(--border));
+}
+
+.node-palette-card:hover {
+  background: hsl(var(--surface-raised));
+  border-color: var(--node-color, hsl(var(--border)));
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.06);
+}
+
+.node-palette-card:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
