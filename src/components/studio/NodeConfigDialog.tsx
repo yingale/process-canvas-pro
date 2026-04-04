@@ -225,7 +225,7 @@ export default function NodeConfigDialog({
 
       await supabase
         .from("node_instance_configs")
-        .upsert(payload, { onConflict: "workflow_id,step_id,node_id" });
+        .upsert(payload as any, { onConflict: "workflow_id,step_id,node_id" });
 
       onSave(config, inputMappings, outputMappings);
       onClose();
