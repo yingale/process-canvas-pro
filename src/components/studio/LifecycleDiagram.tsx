@@ -343,6 +343,8 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
               stageId={stageId}
               groupId={group.id}
               formTemplates={formTemplates}
+              personas={personas}
+              onTogglePersona={onTogglePersona}
             />
           ))}
           <button
