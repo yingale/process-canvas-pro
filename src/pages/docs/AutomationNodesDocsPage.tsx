@@ -1180,9 +1180,247 @@ INTERNAL_ERROR          │ 500  │ Unexpected server error`} />
 
       <Separator />
 
-      {/* ─── Section 8: Production Checklist ─── */}
+      {/* ─── Section 8: API Call Flow — When Which API Is Called ─── */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-foreground">8. Production Readiness Checklist</h2>
+        <h2 className="text-lg font-bold text-foreground">8. API Call Flow — When Which API Is Called</h2>
+        <p className="text-sm text-muted-foreground">
+          Sequence of API calls for each user action in the Studio, from workflow creation to Camunda execution.
+        </p>
+
+        <DocCard>
+          <CardHeader><CardTitle>Flow 1: Studio Page Load</CardTitle></CardHeader>
+          <CardContent>
+            <CopyBlock label="Sequence" code={`1. GET /api/nodes
+   → Load node registry (all 5 definitions) for the Nodes Panel palette
+   → Cached in-memory; called once on Studio mount
+
+2. GET /api/workflows/:wfId/node-configs
+   → Load ALL existing node instances for this workflow
+   → Populates badges on steps + restores previous config`} />
+          </CardContent>
+        </DocCard>
+
+        <DocCard>
+          <CardHeader><CardTitle>Flow 2: Drag & Drop Node onto Step</CardTitle></CardHeader>
+          <CardContent>
+            <CopyBlock label="Sequence" code={`1. User drags "Email Fetcher" from Nodes Panel onto Step-1
+   → Frontend reads node definition from cached registry (no API call)
+
+2. POST /api/workflows/:wfId/steps/step-1/nodes
+   Body: { "nodeId": "email-fetcher", "nodeType": "email-fetcher", "config": {}, "inputMappings": [], "outputMappings": [] }
+   → Creates node instance record
+   → Returns instanceId (UUID)
+
+3. Frontend opens Node Config Dialog (3-column popup)
+   → No additional API call yet — dialog pre-fills defaults from registry`} />
+          </CardContent>
+        </DocCard>
+
+        <DocCard>
+          <CardHeader><CardTitle>Flow 3: Configure Node (Save Config)</CardTitle></CardHeader>
+          <CardContent>
+            <CopyBlock label="Sequence" code={`1. User fills in config fields (emailId, filters, etc.)
+   User drags output variables from Previous Step → Current Step input mapping
+   User configures output mappings
+
+2. PUT /api/workflows/:wfId/steps/step-1/nodes/:instanceId
+   Body: {
+     "config": { "emailId": "invoices@acme.com", "subjectFilter": "Invoice*", ... },
+     "inputMappings": [],
+     "outputMappings": [
+       { "sourceField": "attachmentPaths", "targetVariable": "emailFetcherResult", "targetField": "attachmentPaths" }
+     ]
+   }
+   → Saves full config + mappings in one call
+   → Returns updated node instance`} />
+          </CardContent>
+        </DocCard>
+
+        <DocCard>
+          <CardHeader><CardTitle>Flow 4: Update Only I/O Mappings (Quick Edit)</CardTitle></CardHeader>
+          <CardContent>
+            <CopyBlock label="Sequence" code={`1. User re-opens node config dialog, only changes input/output wiring
+
+2. PATCH /api/workflows/:wfId/steps/step-1/nodes/:instanceId/mappings
+   Body: {
+     "inputMappings": [
+       { "sourceVariable": "emailFetcherResult", "sourceField": "attachmentPaths[0]", "targetField": "inputFile" }
+     ],
+     "outputMappings": [
+       { "sourceField": "chunks", "targetVariable": "chunkExtractorResult", "targetField": "chunks" }
+     ]
+   }
+   → Lightweight update — does NOT touch config fields
+   → Useful when rewiring chains without reconfiguring node`} />
+          </CardContent>
+        </DocCard>
+
+        <DocCard>
+          <CardHeader><CardTitle>Flow 5: Remove Node from Step</CardTitle></CardHeader>
+          <CardContent>
+            <CopyBlock label="Sequence" code={`1. User clicks "Remove" on node badge or inside config dialog
+
+2. DELETE /api/workflows/:wfId/steps/step-1/nodes/:instanceId
+   → Removes node instance config
+   → Frontend removes badge from step
+   → ⚠️ Downstream nodes referencing this node's output become orphaned
+     → Frontend shows warning: "Node X references removed variable"`} />
+          </CardContent>
+        </DocCard>
+
+        <DocCard>
+          <CardHeader><CardTitle>Flow 6: View Single Node Details</CardTitle></CardHeader>
+          <CardContent>
+            <CopyBlock label="Sequence" code={`1. User clicks node badge on a step to open config dialog
+
+2. GET /api/workflows/:wfId/steps/step-1/nodes/:instanceId
+   → Returns full node instance with config + mappings
+   → Dialog pre-fills all fields
+
+3. GET /api/nodes/:nodeId  (if definition not cached)
+   → Fetches schema for config fields, inputs, outputs
+   → Usually served from cache`} />
+          </CardContent>
+        </DocCard>
+
+        <DocCard>
+          <CardHeader><CardTitle>Flow 7: BPMN Export / Deploy to Camunda</CardTitle></CardHeader>
+          <CardContent>
+            <CopyBlock label="Sequence" code={`1. User clicks "Export BPMN" or "Deploy"
+
+2. GET /api/workflows/:wfId/node-configs
+   → Fetches ALL node instances across ALL steps for this workflow
+   → Returns array grouped by stepId
+
+3. For each node instance, the exporter:
+   a. Looks up topic from nodeDefinitions registry
+   b. Generates <bpmn:serviceTask camunda:type="external" camunda:topic="email-fetcher-fetch">
+   c. Converts inputMappings → <camunda:inputParameter>
+   d. Converts outputMappings → <camunda:outputParameter>
+
+4. Deploy BPMN XML to Camunda engine
+   → Camunda creates process definition`} />
+          </CardContent>
+        </DocCard>
+
+        <DocCard>
+          <CardHeader><CardTitle>Flow 8: Camunda Execution (Runtime)</CardTitle></CardHeader>
+          <CardContent>
+            <CopyBlock label="Sequence" code={`1. Process instance reaches ServiceTask with topic "email-fetcher-fetch"
+
+2. External Task Worker polls Camunda:
+   GET /engine-rest/external-task/fetchAndLock
+   → Worker receives task with process variables
+
+3. Worker calls YOUR API to get config:
+   GET /api/workflows/:wfId/steps/:stepId/nodes/:instanceId
+   → Gets config (emailId, filters, etc.) and mappings
+
+4. Worker executes business logic:
+   → Connects to MS Graph API
+   → Fetches emails matching filters
+   → Downloads attachments
+
+5. Worker completes task with output variables:
+   POST /engine-rest/external-task/:taskId/complete
+   Body: { "variables": {
+     "emailFetcherResult": {
+       "value": "{ \\"emails\\": [...], \\"attachmentPaths\\": [...] }",
+       "type": "Json"
+     }
+   }}
+
+6. Camunda resolves next task's inputMappings using \${emailFetcherResult.attachmentPaths}
+   → Cycle repeats for next node (Chunk Extractor, AI Processor, etc.)`} />
+          </CardContent>
+        </DocCard>
+
+        <DocCard>
+          <CardHeader><CardTitle>Flow 9: Full 5-Node Chain — Complete API Sequence</CardTitle></CardHeader>
+          <CardContent>
+            <CopyBlock label="End-to-End API Call Timeline" code={`═══════════════════════════════════════════════════════════════
+  DESIGN TIME (Studio UI)
+═══════════════════════════════════════════════════════════════
+
+① Page Load
+   GET /api/nodes                                    → Load palette
+   GET /api/workflows/wf-001/node-configs            → Load existing configs
+
+② Drag Email Fetcher → Step 1
+   POST /api/workflows/wf-001/steps/step-1/nodes     → Create instance → inst-001
+
+③ Configure Email Fetcher
+   PUT  /api/workflows/wf-001/steps/step-1/nodes/inst-001  → Save config
+
+④ Drag Chunk Extractor → Step 2
+   POST /api/workflows/wf-001/steps/step-2/nodes     → Create instance → inst-002
+
+⑤ Configure Chunk Extractor + wire input from Step 1
+   PUT  /api/workflows/wf-001/steps/step-2/nodes/inst-002  → Save config + inputMappings
+
+⑥ Drag AI Processor → Step 3
+   POST /api/workflows/wf-001/steps/step-3/nodes     → Create instance → inst-003
+
+⑦ Configure AI Processor + wire input from Step 2
+   PUT  /api/workflows/wf-001/steps/step-3/nodes/inst-003  → Save config + inputMappings
+
+⑧ Drag Column Extractor → Step 4
+   POST /api/workflows/wf-001/steps/step-4/nodes     → Create instance → inst-004
+
+⑨ Configure Column Extractor + wire inputs from Step 1 (file) & Step 3 (columns)
+   PUT  /api/workflows/wf-001/steps/step-4/nodes/inst-004  → Save config + inputMappings
+
+⑩ Drag Email Notification → Step 5
+   POST /api/workflows/wf-001/steps/step-5/nodes     → Create instance → inst-005
+
+⑪ Configure Email Notification + wire attachment from Step 4
+   PUT  /api/workflows/wf-001/steps/step-5/nodes/inst-005  → Save config + inputMappings
+
+⑫ Export BPMN
+   GET  /api/workflows/wf-001/node-configs            → Fetch all 5 configs
+   → Generate BPMN XML with 5 ServiceTasks + topics + mappings
+
+═══════════════════════════════════════════════════════════════
+  RUNTIME (Camunda Execution)
+═══════════════════════════════════════════════════════════════
+
+⑬ Email Fetcher Worker
+   GET  /api/workflows/wf-001/steps/step-1/nodes/inst-001  → Get config
+   → Execute: fetch emails, download attachments
+   → Complete task: set emailFetcherResult variable
+
+⑭ Chunk Extractor Worker
+   GET  /api/workflows/wf-001/steps/step-2/nodes/inst-002  → Get config
+   → Execute: read \${emailFetcherResult.attachmentPaths[0]}, extract 100 rows
+   → Complete task: set chunkExtractorResult variable
+
+⑮ AI Processor Worker
+   GET  /api/workflows/wf-001/steps/step-3/nodes/inst-003  → Get config
+   → Execute: send \${chunkExtractorResult.chunks} to LLM with prompt
+   → Complete task: set aiProcessorResult variable
+
+⑯ Column Extractor Worker
+   GET  /api/workflows/wf-001/steps/step-4/nodes/inst-004  → Get config
+   → Execute: extract columns \${aiProcessorResult.columnNames} from source file
+   → Complete task: set columnExtractorResult variable
+
+⑰ Email Notification Worker
+   GET  /api/workflows/wf-001/steps/step-5/nodes/inst-005  → Get config
+   → Execute: send email with \${columnExtractorResult.outputFile} attached
+   → Complete task: set emailNotificationResult variable
+
+═══════════════════════════════════════════════════════════════
+  TOTAL API CALLS: 17 (12 design-time + 5 runtime)
+═══════════════════════════════════════════════════════════════`} />
+          </CardContent>
+        </DocCard>
+      </section>
+
+      <Separator />
+
+      {/* ─── Section 9: Production Checklist ─── */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-bold text-foreground">9. Production Readiness Checklist</h2>
         <DocCard>
           <CardContent>
             <CopyBlock code={`✅ API Implementation
