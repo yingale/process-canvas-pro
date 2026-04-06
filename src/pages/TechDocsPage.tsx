@@ -11,6 +11,7 @@ const MODULE_SUMMARIES = [
   { name: "Send Email Notification", category: "Communication", desc: "Send templated emails with attachments via Core API", searchKey: "Module 4: Send Email", docPath: "/docs/send-email" },
   { name: "Form Builder", category: "User Interaction", desc: "Dynamic forms with validation — existing, new, or API-driven", searchKey: "Module 5: Form Builder", docPath: "/docs/form-builder" },
   { name: "Approval / Reviewer", category: "Governance", desc: "Multi-level approval with escalation and auto-approve rules", searchKey: "Module 6: Approval", docPath: "/docs/approval" },
+  { name: "Automation Nodes", category: "Integration", desc: "5-node automation pipeline — Email Fetcher, Chunk Extractor, AI Processor, Column Extractor, Email Notification", searchKey: "Automation Nodes", docPath: "/docs/automation-nodes" },
 ];
 
 function stripBranding(content: string): string {

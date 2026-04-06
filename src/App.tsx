@@ -49,6 +49,7 @@ const App = () => (
             <Route path="/docs/ai-processor" element={<AiProcessorDocsPage />} />
             <Route path="/docs/send-email" element={<SendEmailDocsPage />} />
             <Route path="/docs/approval" element={<ApprovalDocsPage />} />
+            <Route path="/docs/automation-nodes" element={<AutomationNodesDocsPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
