@@ -20,6 +20,7 @@ import DataExtractorDocsPage from "./pages/docs/DataExtractorDocsPage";
 import AiProcessorDocsPage from "./pages/docs/AiProcessorDocsPage";
 import SendEmailDocsPage from "./pages/docs/SendEmailDocsPage";
 import ApprovalDocsPage from "./pages/docs/ApprovalDocsPage";
+import AutomationNodesDocsPage from "./pages/docs/AutomationNodesDocsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/docs/ai-processor" element={<AiProcessorDocsPage />} />
             <Route path="/docs/send-email" element={<SendEmailDocsPage />} />
             <Route path="/docs/approval" element={<ApprovalDocsPage />} />
+            <Route path="/docs/automation-nodes" element={<AutomationNodesDocsPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
