@@ -1,49 +1,95 @@
 
 
-# Drag-and-Drop "New Form" Button in Studio Toolbar
+# Automation Nodes — Full API Contract Documentation Page
 
-## Overview
-Add a draggable "New Form" button to the Studio toolbar. Users drag it onto any step in the lifecycle diagram. On drop, a modal popup opens with a form name input, a "Create Form" button (which navigates to the form builder), and a "Preview" button. Once the form is created and saved, the form ID is stored in CaseIR (`formTemplates` + step's `formRef`), the popup closes, and the step card shows the attached form name with a badge.
+## What We're Building
+A new documentation page at `/docs/automation-nodes` with complete request/response JSON for every API endpoint related to automation nodes — registry, CRUD, I/O mapping, bulk retrieval, and MongoDB data models with sample documents.
 
-## Changes
+## API Endpoints Documented (with full request + response JSON)
 
-### 1. Toolbar — Add draggable "New Form" button (`src/components/studio/Toolbar.tsx`)
-- Add a new button with `draggable="true"` and `onDragStart` that sets `dataTransfer` with type `application/x-new-form`
-- Styled consistently with existing toolbar buttons, using a `FormInput` icon
-- Visual drag feedback via a ghost image or CSS class
+### Node Registry
+| # | Method | Endpoint | Purpose |
+|---|--------|----------|---------|
+| 1 | GET | `/api/nodes` | List all 5 node definitions |
+| 2 | GET | `/api/nodes/:nodeId` | Get single node definition |
 
-### 2. Step cards — Accept drop (`src/components/studio/LifecycleDiagram.tsx`)
-- Add `onDragOver` and `onDrop` handlers to each step card in the `StepCard` component
-- On drop of `application/x-new-form`, call a new callback `onDropNewForm(stageId, groupId, stepId)`
-- Visual drop indicator (highlight border) when dragging over a valid step
+### Node Instance CRUD
+| # | Method | Endpoint | Purpose |
+|---|--------|----------|---------|
+| 3 | POST | `/api/workflows/:wfId/steps/:stepId/nodes` | Attach node to step |
+| 4 | GET | `/api/workflows/:wfId/steps/:stepId/nodes` | List nodes on a step |
+| 5 | GET | `/api/workflows/:wfId/steps/:stepId/nodes/:instanceId` | Get single node instance |
+| 6 | PUT | `/api/workflows/:wfId/steps/:stepId/nodes/:instanceId` | Update full config + mappings |
+| 7 | PATCH | `/api/workflows/:wfId/steps/:stepId/nodes/:instanceId/mappings` | Update I/O mappings only |
+| 8 | DELETE | `/api/workflows/:wfId/steps/:stepId/nodes/:instanceId` | Remove node from step |
+| 9 | GET | `/api/workflows/:wfId/node-configs` | All node configs for workflow |
 
-### 3. New Form Dialog component (`src/components/studio/NewFormDialog.tsx`)
-- Modal dialog (using existing `Dialog` component) with:
-  - Text input for form name
-  - "Create Form" button — generates a `FormTemplate` with a unique ID and the entered name, adds it to `caseIr.formTemplates`, attaches `formRef` to the target step, then navigates to `/studio/form-builder` with the template context for editing
-  - "Preview" button — opens the form preview if a form is already attached
-  - Cancel/close button
-- Props: `open`, `onClose`, `targetStep` (stageId, groupId, stepId), callbacks for create and preview
+### Each endpoint includes:
+- **Headers** (Content-Type, Authorization)
+- **Request body** — full JSON with all fields
+- **Response body** — full JSON with realistic sample data
+- **Status codes** — 200/201/400/404/409/500 with error response examples
+- **curl example**
 
-### 4. WorkflowStudio — Wire the flow (`src/components/studio/WorkflowStudio.tsx`)
-- Add state for the new form dialog: `newFormDialogTarget` (stageId, groupId, stepId or null)
-- Add `handleDropNewForm(stageId, groupId, stepId)` — opens the dialog
-- Add `handleCreateFormFromDialog(name, stageId, groupId, stepId)`:
-  1. Create a `FormTemplate` with `id: uid()`, `name`, empty `fields`
-  2. Patch CaseIR to add to `formTemplates` array
-  3. Patch the target step to add `formRef: { formId, fieldOverrides: {} }`
-  4. Save IR to sessionStorage
-  5. Navigate to `/studio/form-builder` with return state
-  6. Close dialog
-- Pass `onDropNewForm` down to `LifecycleDiagram`
+## Per-Node Config Examples
+For each of the 5 nodes (Email Fetcher, Chunk Extractor, AI Processor, Column Extractor, Email Notification):
+- Complete request body with all config fields populated
+- Runtime output JSON that Camunda worker produces
+- I/O mapping example showing how to chain to next node
 
-### 5. Step card form badge (`src/components/studio/LifecycleDiagram.tsx`)
-- In `StepCard`, when `step.formRef` exists, show a small purple badge with the form name (looked up from `formTemplates` array)
-- Already partially implemented — verify and enhance if needed
+## MongoDB Data Model (with full JSON)
+Two collections with complete schemas and sample documents:
 
-## Files Modified
-1. `src/components/studio/Toolbar.tsx` — draggable button
-2. `src/components/studio/NewFormDialog.tsx` — new file, popup dialog
-3. `src/components/studio/WorkflowStudio.tsx` — dialog state, handlers, pass props
-4. `src/components/studio/LifecycleDiagram.tsx` — drop zone on steps, form badge display, pass through `onDropNewForm`
+**`nodeDefinitions`** — static registry
+```json
+{
+  "_id": "email-fetcher",
+  "name": "Email Fetcher",
+  "topic": "email-fetcher-fetch",
+  "category": "communication",
+  "configFields": [...],
+  "inputs": [],
+  "outputs": [...]
+}
+```
+
+**`nodeInstanceConfigs`** — runtime per workflow+step
+```json
+{
+  "_id": "uuid",
+  "workflowId": "uuid",
+  "stepId": "step-1",
+  "nodeId": "email-fetcher",
+  "nodeType": "email-fetcher",
+  "config": { "emailId": "user@co.com", ... },
+  "inputMappings": [...],
+  "outputMappings": [...]
+}
+```
+
+Including `$jsonSchema` validators, `createIndex()` commands, and design rationale.
+
+## Variable Chaining Section
+End-to-end example showing request/response for a 5-node chain:
+Email Fetcher → Chunk Extractor → AI Processor → Column Extractor → Email Notification
+
+## Error Response Contract
+```json
+{
+  "error": "Node not found",
+  "code": "NODE_NOT_FOUND",
+  "field": "nodeId",
+  "details": {}
+}
+```
+
+## Files to Create/Modify
+
+| File | Change |
+|------|--------|
+| `src/pages/docs/AutomationNodesDocsPage.tsx` | New — full API docs page with all request/response JSON blocks, copy buttons, using `ModuleDocLayout` |
+| `src/App.tsx` | Add route `/docs/automation-nodes` |
+| `src/pages/TechDocsPage.tsx` | Add "Automation Nodes" to `MODULE_SUMMARIES` |
+
+Uses existing `ModuleDocLayout` pattern with badges: `["REST API", "MongoDB", "Camunda Topics", "I/O Mapping", "Request/Response", "Variable Chaining"]`
 
