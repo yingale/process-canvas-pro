@@ -768,6 +768,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
                     onCreateNewForm={handleCreateNewForm}
                     onDropNewForm={handleDropNewForm}
                     onDropNode={handleDropNode}
+                    onToggleStepPersona={handleToggleStepPersona}
                   />
                 </TabsContent>
                 <TabsContent value="personas" className="flex-1 overflow-auto mt-0">
