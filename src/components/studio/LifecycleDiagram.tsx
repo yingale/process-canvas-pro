@@ -10,10 +10,10 @@ import {
   Repeat2, ExternalLink, Zap, Bell, Layers,
   ArrowUp, ArrowDown, Timer, Mail, Radio, Play,
   Square, AlertTriangle, Settings, ZoomIn, ZoomOut, Maximize2, Minimize2, X,
-  Workflow, GripVertical,
+  Workflow, GripVertical, Users, UserPlus, Check,
   type LucideIcon,
 } from "lucide-react";
-import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent, FormTemplate } from "@/types/caseIr";
+import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent, FormTemplate, Persona } from "@/types/caseIr";
 import { getNodeDef } from "./automationNodes";
 import ModulePicker from "./ModulePicker";
 import "./studio.css";
