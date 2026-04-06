@@ -21,6 +21,7 @@ import AiProcessorDocsPage from "./pages/docs/AiProcessorDocsPage";
 import SendEmailDocsPage from "./pages/docs/SendEmailDocsPage";
 import ApprovalDocsPage from "./pages/docs/ApprovalDocsPage";
 import AutomationNodesDocsPage from "./pages/docs/AutomationNodesDocsPage";
+import CamundaTopicsDocsPage from "./pages/docs/CamundaTopicsDocsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
