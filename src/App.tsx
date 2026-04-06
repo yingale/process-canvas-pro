@@ -20,6 +20,7 @@ import DataExtractorDocsPage from "./pages/docs/DataExtractorDocsPage";
 import AiProcessorDocsPage from "./pages/docs/AiProcessorDocsPage";
 import SendEmailDocsPage from "./pages/docs/SendEmailDocsPage";
 import ApprovalDocsPage from "./pages/docs/ApprovalDocsPage";
+import AutomationNodesDocsPage from "./pages/docs/AutomationNodesDocsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
