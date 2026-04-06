@@ -735,39 +735,44 @@ function resolveTemplateVars(template: string, variables: Variables): string {
           <CardContent className="space-y-3">
             <CopyBlock label="How the Studio generates BPMN XML from node configs" code={`function generateServiceTaskXml(step, nodeConfig) {
   const { nodeId, config, inputMappings, outputMappings } = nodeConfig;
-  const nodeDef = nodeRegistry[nodeId]; // e.g., { topic: "email-fetcher-fetch", ... }
+  const nodeDef = nodeRegistry[nodeId];
   
-  let xml = \`<bpmn:serviceTask id="\${step.id}" name="\${step.name}"
-    camunda:type="external"
-    camunda:topic="\${nodeDef.topic}">
-  <bpmn:extensionElements>
-    <camunda:inputOutput>\n\`;
+  let xml = '<bpmn:serviceTask id="' + step.id + '" name="' + step.name + '"'
+    + ' camunda:type="external"'
+    + ' camunda:topic="' + nodeDef.topic + '">'
+    + '<bpmn:extensionElements><camunda:inputOutput>';
 
   // 1. Always inject system variables
-  xml += \`      <camunda:inputParameter name="nodeInstanceId">\${nodeConfig.id}</camunda:inputParameter>\n\`;
-  xml += \`      <camunda:inputParameter name="workflowId">\${nodeConfig.workflowId}</camunda:inputParameter>\n\`;
-  xml += \`      <camunda:inputParameter name="stepId">\${step.id}</camunda:inputParameter>\n\`;
+  xml += inputParam("nodeInstanceId", nodeConfig.id);
+  xml += inputParam("workflowId", nodeConfig.workflowId);
+  xml += inputParam("stepId", step.id);
 
   // 2. Inject input mappings (references to previous step outputs)
   for (const mapping of inputMappings) {
-    xml += \`      <camunda:inputParameter name="\${mapping.target}">\\${\${mapping.source}}</camunda:inputParameter>\n\`;
+    // Value uses Camunda EL: \${"{"} mapping.source {"}"}
+    xml += inputParam(mapping.target, "$" + "{" + mapping.source + "}");
   }
 
   // 3. Inject all config fields
   for (const [key, value] of Object.entries(config)) {
-    xml += \`      <camunda:inputParameter name="\${key}">\${value}</camunda:inputParameter>\n\`;
+    xml += inputParam(key, value);
   }
 
   // 4. Inject output mappings
   for (const mapping of outputMappings) {
-    xml += \`      <camunda:outputParameter name="\${mapping.target}">\\${\${mapping.source}}</camunda:outputParameter>\n\`;
+    xml += outputParam(mapping.target, "$" + "{" + mapping.source + "}");
   }
 
-  xml += \`    </camunda:inputOutput>
-  </bpmn:extensionElements>
-</bpmn:serviceTask>\`;
-
+  xml += '</camunda:inputOutput></bpmn:extensionElements></bpmn:serviceTask>';
   return xml;
+}
+
+function inputParam(name, value) {
+  return '<camunda:inputParameter name="' + name + '">' + value + '</camunda:inputParameter>';
+}
+
+function outputParam(name, value) {
+  return '<camunda:outputParameter name="' + name + '">' + value + '</camunda:outputParameter>';
 }`} />
           </CardContent>
         </DocCard>
