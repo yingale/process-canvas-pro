@@ -85,7 +85,7 @@ function ContextMenu({ menu, onRename, onDuplicate, onDelete, onMoveUp, onMoveDo
 
 // ─── Step row ──────────────────────────────────────────────────────────────────
 
-function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, onDropNode, stageId, groupId, formTemplates }: {
+function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, onDropNode, stageId, groupId, formTemplates, personas, onTogglePersona }: {
   step: Step; color: string; selected: boolean;
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void;
   onBoundaryClick?: (boundaryEventId: string) => void;
@@ -93,9 +93,13 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
   onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
   stageId?: string; groupId?: string;
   formTemplates?: import("@/types/caseIr").FormTemplate[];
+  personas?: Persona[];
+  onTogglePersona?: (stageId: string, groupId: string, stepId: string, personaId: string) => void;
 }) {
   const [hover, setHover] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [showPersonaPicker, setShowPersonaPicker] = useState(false);
+  const personaPickerRef = useRef<HTMLDivElement>(null);
   const meta = STEP_TYPE_META[step.type];
   const inputCount = step.tech?.inputParameters?.length ?? 0;
   const outputCount = step.tech?.outputParameters?.length ?? 0;
