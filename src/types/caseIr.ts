@@ -167,6 +167,14 @@ export interface FormRef {
   fieldOverrides?: Record<string, Partial<ModuleConfigField>>;
 }
 
+export interface StepPersonaVariant {
+  personaId: string;
+  /** Per-persona overrides: different form, config, routing */
+  formRefOverride?: FormRef;
+  moduleRefOverride?: ModuleRef;
+  configOverrides?: Record<string, unknown>;
+}
+
 export interface BaseStep {
   id: string;
   name: string;
@@ -176,6 +184,10 @@ export interface BaseStep {
   boundaryEvents?: BoundaryEvent[];
   moduleRef?: ModuleRef;
   formRef?: FormRef;
+  /** Personas assigned to this step — step behavior can vary per persona */
+  personaIds?: string[];
+  /** Per-persona variant configs (optional) */
+  personaVariants?: StepPersonaVariant[];
 }
 
 export interface AutomationStep extends BaseStep { type: "automation"; }

@@ -10,10 +10,10 @@ import {
   Repeat2, ExternalLink, Zap, Bell, Layers,
   ArrowUp, ArrowDown, Timer, Mail, Radio, Play,
   Square, AlertTriangle, Settings, ZoomIn, ZoomOut, Maximize2, Minimize2, X,
-  Workflow, GripVertical,
+  Workflow, GripVertical, Users, UserPlus, Check,
   type LucideIcon,
 } from "lucide-react";
-import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent, FormTemplate } from "@/types/caseIr";
+import type { CaseIR, Stage, Group, Step, StepType, SelectionTarget, Trigger, EndEvent, BoundaryEvent, FormTemplate, Persona } from "@/types/caseIr";
 import { getNodeDef } from "./automationNodes";
 import ModulePicker from "./ModulePicker";
 import "./studio.css";
@@ -85,7 +85,7 @@ function ContextMenu({ menu, onRename, onDuplicate, onDelete, onMoveUp, onMoveDo
 
 // ─── Step row ──────────────────────────────────────────────────────────────────
 
-function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, onDropNode, stageId, groupId, formTemplates }: {
+function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryClick, onDropNewForm, onDropNode, stageId, groupId, formTemplates, personas, onTogglePersona }: {
   step: Step; color: string; selected: boolean;
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void;
   onBoundaryClick?: (boundaryEventId: string) => void;
@@ -93,9 +93,13 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
   onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
   stageId?: string; groupId?: string;
   formTemplates?: import("@/types/caseIr").FormTemplate[];
+  personas?: Persona[];
+  onTogglePersona?: (stageId: string, groupId: string, stepId: string, personaId: string) => void;
 }) {
   const [hover, setHover] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [showPersonaPicker, setShowPersonaPicker] = useState(false);
+  const personaPickerRef = useRef<HTMLDivElement>(null);
   const meta = STEP_TYPE_META[step.type];
   const inputCount = step.tech?.inputParameters?.length ?? 0;
   const outputCount = step.tech?.outputParameters?.length ?? 0;
@@ -188,6 +192,61 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
                 </button>
               ))}
             </div>
+           )}
+          {/* Persona badges */}
+          {(step.personaIds && step.personaIds.length > 0) && (
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              {step.personaIds.map(pid => {
+                const p = personas?.find(pp => pp.id === pid);
+                return (
+                  <span key={pid} className="text-[8px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5 bg-accent/20 text-accent-foreground border border-accent/30">
+                    <Users size={7} />
+                    {p?.name ?? pid}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          {/* Persona assign button */}
+          {hover && personas && personas.length > 0 && (
+            <div className="relative mt-1">
+              <button
+                className="text-[8px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5 bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                onClick={e => { e.stopPropagation(); setShowPersonaPicker(p => !p); }}
+                title="Assign persona"
+              >
+                <UserPlus size={8} /> Persona
+              </button>
+              {showPersonaPicker && (
+                <div ref={personaPickerRef} className="absolute left-0 bottom-full mb-1 z-50 rounded-lg border bg-card shadow-lg p-1.5 min-w-[140px]"
+                  onClick={e => e.stopPropagation()}>
+                  <div className="text-[9px] font-bold text-foreground px-1.5 pb-1">Assign Personas</div>
+                  {personas.map(p => {
+                    const isAssigned = step.personaIds?.includes(p.id) ?? false;
+                    return (
+                      <button
+                        key={p.id}
+                        className={`w-full flex items-center gap-1.5 px-1.5 py-1 rounded text-[10px] text-left transition-colors ${isAssigned ? "bg-accent/15 text-foreground" : "hover:bg-muted text-muted-foreground"}`}
+                        onClick={() => {
+                          if (onTogglePersona && stageId && groupId) {
+                            onTogglePersona(stageId, groupId, step.id, p.id);
+                          }
+                        }}
+                      >
+                        {isAssigned ? <Check size={9} className="text-primary" /> : <div className="w-[9px]" />}
+                        <Users size={9} />
+                        <span className="truncate">{p.name}</span>
+                        <span className="text-[8px] text-muted-foreground ml-auto">{p.role}</span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    className="w-full text-[9px] text-muted-foreground text-center pt-1 mt-1 border-t border-border"
+                    onClick={() => setShowPersonaPicker(false)}
+                  >Close</button>
+                </div>
+              )}
+            </div>
           )}
         </div>
         {hover && (
@@ -203,7 +262,7 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
 
 // ─── Group sub-section ─────────────────────────────────────────────────────────
 
-function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm, onDropNode }: {
+function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm, onDropNode, personas, onTogglePersona }: {
   group: Group; stageId: string; color: string; selection: SelectionTarget;
   onSelectGroup: (stageId: string, groupId: string) => void;
   onSelectStep: (stageId: string, groupId: string, stepId: string) => void;
@@ -216,6 +275,8 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
   onCreateNewForm?: (stageId: string, groupId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
   onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
+  personas?: Persona[];
+  onTogglePersona?: (stageId: string, groupId: string, stepId: string, personaId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [hover, setHover] = useState(false);
@@ -282,6 +343,8 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
               stageId={stageId}
               groupId={group.id}
               formTemplates={formTemplates}
+              personas={personas}
+              onTogglePersona={onTogglePersona}
             />
           ))}
           <button
@@ -304,7 +367,7 @@ function GroupSection({ group, stageId, color, selection, onSelectGroup, onSelec
 
 // ─── Section card (Stage) ──────────────────────────────────────────────────────
 
-function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm, onDropNode }: {
+function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelectGroup, onSelectStep, onAddStep, onInsertModule, onAddGroup, onStageCtx, onGroupCtx, onStepCtx, formTemplates, onAttachForm, onCreateNewForm, onDropNewForm, onDropNode, personas, onTogglePersona }: {
   stage: Stage; stageIdx: number; color: string; selection: SelectionTarget;
   onSelectStage: (id: string) => void;
   onSelectGroup: (stageId: string, groupId: string) => void;
@@ -320,6 +383,8 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
   onCreateNewForm?: (stageId: string, groupId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
   onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
+  personas?: Persona[];
+  onTogglePersona?: (stageId: string, groupId: string, stepId: string, personaId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [headerHover, setHeaderHover] = useState(false);
@@ -377,6 +442,8 @@ function SectionCard({ stage, stageIdx, color, selection, onSelectStage, onSelec
                onCreateNewForm={onCreateNewForm}
                onDropNewForm={onDropNewForm}
                onDropNode={onDropNode}
+               personas={personas}
+               onTogglePersona={onTogglePersona}
              />
           ))}
 
@@ -565,6 +632,7 @@ interface LifecycleDiagramProps {
   onCreateNewForm?: (stageId: string, groupId: string) => void;
   onDropNewForm?: (stageId: string, groupId: string, stepId: string) => void;
   onDropNode?: (stageId: string, groupId: string, nodeId: string) => void;
+  onToggleStepPersona?: (stageId: string, groupId: string, stepId: string, personaId: string) => void;
 }
 
 export default function LifecycleDiagram({
@@ -581,6 +649,7 @@ export default function LifecycleDiagram({
   onDuplicateAltStep, onDuplicateAltStage,
   onMoveAltStage, onMoveAltGroup, onMoveAltStep,
   formTemplates, onAttachForm, onCreateNewForm, onDropNewForm, onDropNode,
+  onToggleStepPersona,
 }: LifecycleDiagramProps) {
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [altCtxMenu, setAltCtxMenu] = useState<CtxMenu | null>(null);
@@ -804,7 +873,8 @@ export default function LifecycleDiagram({
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
               onAddStep={onAddStep} onInsertModule={onInsertModule} onAddGroup={onAddGroup}
               onStageCtx={openStageCtx} onGroupCtx={openGroupCtx} onStepCtx={openStepCtx}
-              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} onDropNode={onDropNode} />
+              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} onDropNode={onDropNode}
+              personas={caseIr.personas} onTogglePersona={onToggleStepPersona} />
           ))}
           <button className="add-section-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
             onClick={onAddStage}>
@@ -832,7 +902,8 @@ export default function LifecycleDiagram({
               onSelectStage={onSelectStage} onSelectGroup={onSelectGroup} onSelectStep={onSelectStep}
               onAddStep={onAddAltStep} onInsertModule={onInsertModule} onAddGroup={onAddAltGroup}
               onStageCtx={openAltStageCtx} onGroupCtx={openAltGroupCtx} onStepCtx={openAltStepCtx}
-              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} onDropNode={onDropNode} />
+              formTemplates={formTemplates} onAttachForm={onAttachForm} onCreateNewForm={onCreateNewForm} onDropNewForm={onDropNewForm} onDropNode={onDropNode}
+              personas={caseIr.personas} onTogglePersona={onToggleStepPersona} />
           ))}
           <button className="add-section-btn add-alt-btn flex-shrink-0 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed transition-all"
             onClick={onAddAltStage}>
