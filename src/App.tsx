@@ -51,6 +51,7 @@ const App = () => (
             <Route path="/docs/send-email" element={<SendEmailDocsPage />} />
             <Route path="/docs/approval" element={<ApprovalDocsPage />} />
             <Route path="/docs/automation-nodes" element={<AutomationNodesDocsPage />} />
+            <Route path="/docs/camunda-topics" element={<CamundaTopicsDocsPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

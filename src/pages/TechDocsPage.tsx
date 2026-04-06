@@ -12,6 +12,7 @@ const MODULE_SUMMARIES = [
   { name: "Form Builder", category: "User Interaction", desc: "Dynamic forms with validation — existing, new, or API-driven", searchKey: "Module 5: Form Builder", docPath: "/docs/form-builder" },
   { name: "Approval / Reviewer", category: "Governance", desc: "Multi-level approval with escalation and auto-approve rules", searchKey: "Module 6: Approval", docPath: "/docs/approval" },
   { name: "Automation Nodes", category: "Integration", desc: "5-node automation pipeline — Email Fetcher, Chunk Extractor, AI Processor, Column Extractor, Email Notification", searchKey: "Automation Nodes", docPath: "/docs/automation-nodes" },
+  { name: "Camunda Topics & Processor", category: "Runtime", desc: "External Task Workers, topic subscriptions, variable resolution engine, BPMN XML generation, error handling & retry strategy", searchKey: "Camunda Topics", docPath: "/docs/camunda-topics" },
 ];
 
 function stripBranding(content: string): string {
