@@ -515,6 +515,34 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     setNodeConfigTarget({ stepId: newStep.id, stageId, groupId });
   }, [caseIr, handlePatch]);
 
+  const handleToggleStepPersona = useCallback((stageId: string, groupId: string, stepId: string, personaId: string) => {
+    if (!caseIr) return;
+
+    let basePath = "";
+    let si = caseIr.stages.findIndex(s => s.id === stageId);
+    if (si >= 0) {
+      basePath = `/stages/${si}`;
+    } else if (caseIr.alternativePaths) {
+      si = caseIr.alternativePaths.findIndex(s => s.id === stageId);
+      if (si >= 0) basePath = `/alternativePaths/${si}`;
+    }
+    if (!basePath) return;
+
+    const stageArr = basePath.startsWith("/stages") ? caseIr.stages : caseIr.alternativePaths!;
+    const gi = stageArr[si].groups.findIndex(g => g.id === groupId);
+    if (gi < 0) return;
+    const stepi = stageArr[si].groups[gi].steps.findIndex(s => s.id === stepId);
+    if (stepi < 0) return;
+
+    const step = stageArr[si].groups[gi].steps[stepi];
+    const current = step.personaIds ?? [];
+    const newPersonaIds = current.includes(personaId)
+      ? current.filter(id => id !== personaId)
+      : [...current, personaId];
+
+    handlePatch([{ op: "replace", path: `${basePath}/groups/${gi}/steps/${stepi}/personaIds`, value: newPersonaIds }]);
+  }, [caseIr, handlePatch]);
+
   const [createdForm, setCreatedForm] = useState<{ id: string; name: string } | null>(null);
 
   const handleCreateFormFromDialog = useCallback((formName: string) => {
