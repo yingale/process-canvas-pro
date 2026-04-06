@@ -192,6 +192,61 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
                 </button>
               ))}
             </div>
+           )}
+          {/* Persona badges */}
+          {(step.personaIds && step.personaIds.length > 0) && (
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              {step.personaIds.map(pid => {
+                const p = personas?.find(pp => pp.id === pid);
+                return (
+                  <span key={pid} className="text-[8px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5 bg-accent/20 text-accent-foreground border border-accent/30">
+                    <Users size={7} />
+                    {p?.name ?? pid}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+          {/* Persona assign button */}
+          {hover && personas && personas.length > 0 && (
+            <div className="relative mt-1">
+              <button
+                className="text-[8px] px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5 bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                onClick={e => { e.stopPropagation(); setShowPersonaPicker(p => !p); }}
+                title="Assign persona"
+              >
+                <UserPlus size={8} /> Persona
+              </button>
+              {showPersonaPicker && (
+                <div ref={personaPickerRef} className="absolute left-0 bottom-full mb-1 z-50 rounded-lg border bg-card shadow-lg p-1.5 min-w-[140px]"
+                  onClick={e => e.stopPropagation()}>
+                  <div className="text-[9px] font-bold text-foreground px-1.5 pb-1">Assign Personas</div>
+                  {personas.map(p => {
+                    const isAssigned = step.personaIds?.includes(p.id) ?? false;
+                    return (
+                      <button
+                        key={p.id}
+                        className={`w-full flex items-center gap-1.5 px-1.5 py-1 rounded text-[10px] text-left transition-colors ${isAssigned ? "bg-accent/15 text-foreground" : "hover:bg-muted text-muted-foreground"}`}
+                        onClick={() => {
+                          if (onTogglePersona && stageId && groupId) {
+                            onTogglePersona(stageId, groupId, step.id, p.id);
+                          }
+                        }}
+                      >
+                        {isAssigned ? <Check size={9} className="text-primary" /> : <div className="w-[9px]" />}
+                        <Users size={9} />
+                        <span className="truncate">{p.name}</span>
+                        <span className="text-[8px] text-muted-foreground ml-auto">{p.role}</span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    className="w-full text-[9px] text-muted-foreground text-center pt-1 mt-1 border-t border-border"
+                    onClick={() => setShowPersonaPicker(false)}
+                  >Close</button>
+                </div>
+              )}
+            </div>
           )}
         </div>
         {hover && (
