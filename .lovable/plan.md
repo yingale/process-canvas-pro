@@ -1,95 +1,60 @@
 
 
-# Automation Nodes — Full API Contract Documentation Page
+# Refactor Automation Nodes to inputSchema/outputSchema Pattern + Update Docs
 
-## What We're Building
-A new documentation page at `/docs/automation-nodes` with complete request/response JSON for every API endpoint related to automation nodes — registry, CRUD, I/O mapping, bulk retrieval, and MongoDB data models with sample documents.
+## What Changes
 
-## API Endpoints Documented (with full request + response JSON)
+Refactor `automationNodes.ts` from flat `configFields[]` arrays to a structured `inputSchema`/`outputSchema`/`defaultConfig` pattern matching the user's proposed schema. Update all consuming components and both documentation pages.
 
-### Node Registry
-| # | Method | Endpoint | Purpose |
-|---|--------|----------|---------|
-| 1 | GET | `/api/nodes` | List all 5 node definitions |
-| 2 | GET | `/api/nodes/:nodeId` | Get single node definition |
+## 1. Refactor `automationNodes.ts` — New Interface & Data
 
-### Node Instance CRUD
-| # | Method | Endpoint | Purpose |
-|---|--------|----------|---------|
-| 3 | POST | `/api/workflows/:wfId/steps/:stepId/nodes` | Attach node to step |
-| 4 | GET | `/api/workflows/:wfId/steps/:stepId/nodes` | List nodes on a step |
-| 5 | GET | `/api/workflows/:wfId/steps/:stepId/nodes/:instanceId` | Get single node instance |
-| 6 | PUT | `/api/workflows/:wfId/steps/:stepId/nodes/:instanceId` | Update full config + mappings |
-| 7 | PATCH | `/api/workflows/:wfId/steps/:stepId/nodes/:instanceId/mappings` | Update I/O mappings only |
-| 8 | DELETE | `/api/workflows/:wfId/steps/:stepId/nodes/:instanceId` | Remove node from step |
-| 9 | GET | `/api/workflows/:wfId/node-configs` | All node configs for workflow |
-
-### Each endpoint includes:
-- **Headers** (Content-Type, Authorization)
-- **Request body** — full JSON with all fields
-- **Response body** — full JSON with realistic sample data
-- **Status codes** — 200/201/400/404/409/500 with error response examples
-- **curl example**
-
-## Per-Node Config Examples
-For each of the 5 nodes (Email Fetcher, Chunk Extractor, AI Processor, Column Extractor, Email Notification):
-- Complete request body with all config fields populated
-- Runtime output JSON that Camunda worker produces
-- I/O mapping example showing how to chain to next node
-
-## MongoDB Data Model (with full JSON)
-Two collections with complete schemas and sample documents:
-
-**`nodeDefinitions`** — static registry
-```json
-{
-  "_id": "email-fetcher",
-  "name": "Email Fetcher",
-  "topic": "email-fetcher-fetch",
-  "category": "communication",
-  "configFields": [...],
-  "inputs": [],
-  "outputs": [...]
+**New interface structure:**
+```text
+AutomationNodeDef {
+  id, name, description, icon, color, topic, category, version
+  inputSchema: {                    // JSON Schema for config inputs
+    type: "object",
+    properties: { [key]: { type, description, enum?, default?, minimum?, maximum? } },
+    required: string[]
+  }
+  outputSchema: {                   // JSON Schema for outputs
+    type: "object", 
+    properties: { [key]: { type, description, items? } }
+  }
+  defaultConfig: Record<string,any> // Centralized defaults
+  additionalOutputs?: NodeIoField[] // Conditional/optional outputs
+  configFields: ModuleConfigField[] // KEPT for backward compat (UI rendering)
 }
 ```
 
-**`nodeInstanceConfigs`** — runtime per workflow+step
-```json
-{
-  "_id": "uuid",
-  "workflowId": "uuid",
-  "stepId": "step-1",
-  "nodeId": "email-fetcher",
-  "nodeType": "email-fetcher",
-  "config": { "emailId": "user@co.com", ... },
-  "inputMappings": [...],
-  "outputMappings": [...]
-}
-```
+Each of the 5 nodes gets `inputSchema`, `outputSchema`, `defaultConfig`, and `version` fields added alongside existing `configFields` (which the UI components already consume). This is additive — no breaking changes.
 
-Including `$jsonSchema` validators, `createIndex()` commands, and design rationale.
-
-## Variable Chaining Section
-End-to-end example showing request/response for a 5-node chain:
-Email Fetcher → Chunk Extractor → AI Processor → Column Extractor → Email Notification
-
-## Error Response Contract
-```json
-{
-  "error": "Node not found",
-  "code": "NODE_NOT_FOUND",
-  "field": "nodeId",
-  "details": {}
-}
-```
-
-## Files to Create/Modify
+## 2. Update Consuming Components
 
 | File | Change |
 |------|--------|
-| `src/pages/docs/AutomationNodesDocsPage.tsx` | New — full API docs page with all request/response JSON blocks, copy buttons, using `ModuleDocLayout` |
-| `src/App.tsx` | Add route `/docs/automation-nodes` |
-| `src/pages/TechDocsPage.tsx` | Add "Automation Nodes" to `MODULE_SUMMARIES` |
+| `WorkflowStudio.tsx` | Use `defaultConfig` instead of iterating `configFields` for defaults |
+| `NodeConfigDialog.tsx` | Use `defaultConfig` for initial values fallback |
+| `StepPropertiesPanel.tsx` | No change needed (still uses `configFields` for UI) |
 
-Uses existing `ModuleDocLayout` pattern with badges: `["REST API", "MongoDB", "Camunda Topics", "I/O Mapping", "Request/Response", "Variable Chaining"]`
+## 3. Update `AutomationNodesDocsPage.tsx`
+
+- Replace `configFields` in all API response JSON with `inputSchema`/`outputSchema`/`defaultConfig` pattern
+- Update MongoDB data model section to show new schema structure
+- Update per-node config examples with the new format
+
+## 4. Update `CamundaTopicsDocsPage.tsx`
+
+- Update worker code examples to reference `inputSchema`/`outputSchema` where node definitions are shown
+- Update variable resolution examples to align with new schema property names
+
+## Files Modified
+
+| File | Change |
+|------|--------|
+| `src/components/studio/automationNodes.ts` | Add `inputSchema`, `outputSchema`, `defaultConfig`, `version` to interface and all 5 nodes |
+| `src/components/studio/WorkflowStudio.tsx` | Use `defaultConfig` for initial config |
+| `src/components/studio/NodeConfigDialog.tsx` | Use `defaultConfig` for fallback |
+| `src/pages/docs/AutomationNodesDocsPage.tsx` | Update all API JSON to new schema format |
+| `src/pages/docs/CamundaTopicsDocsPage.tsx` | Update worker examples with new schema references |
 
