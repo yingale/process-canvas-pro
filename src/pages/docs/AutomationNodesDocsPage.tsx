@@ -254,20 +254,32 @@ export default function AutomationNodesDocsPage() {
   "category": "communication",
   "icon": "mail",
   "version": "1.0.0",
-  "configFields": [
-    { "key": "emailId", "label": "Email Address", "type": "string", "required": true, "placeholder": "user@company.com" },
-    { "key": "subjectFilter", "label": "Subject Filter", "type": "string", "required": false },
-    { "key": "bodyFilter", "label": "Body Contains", "type": "string", "required": false },
-    { "key": "downloadAttachment", "label": "Download Attachments", "type": "boolean", "required": false, "default": true },
-    { "key": "maxEmails", "label": "Max Emails to Fetch", "type": "number", "required": false, "default": 10 },
-    { "key": "moveAfterRead", "label": "Move After Read", "type": "select", "required": false, "default": "archive", "options": ["archive", "trash", "none"] }
-  ],
-  "inputs": [],
-  "outputs": [
-    { "name": "emails", "type": "array", "description": "Array of email objects" },
-    { "name": "attachmentPaths", "type": "array", "description": "Downloaded attachment paths" },
-    { "name": "emailCount", "type": "number", "description": "Total emails fetched" }
-  ]
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "emailId": { "type": "string", "description": "Email address / mailbox identifier" },
+      "subjectFilter": { "type": "string", "description": "Filter by subject" },
+      "bodyFilter": { "type": "string", "description": "Filter by body content" },
+      "downloadAttachment": { "type": "boolean", "default": true },
+      "maxEmails": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 },
+      "moveAfterRead": { "type": "string", "enum": ["archive","trash","none","custom-folder"], "default": "archive" },
+      "outputVariable": { "type": "string", "default": "emailFetcherResult" }
+    },
+    "required": ["emailId", "outputVariable"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "emails": { "type": "array", "items": { "type": "object" } },
+      "attachmentPaths": { "type": "array", "items": { "type": "string" } },
+      "emailCount": { "type": "integer" }
+    }
+  },
+  "defaultConfig": {
+    "emailId": "", "subjectFilter": "", "bodyFilter": "",
+    "downloadAttachment": true, "maxEmails": 10,
+    "moveAfterRead": "archive", "outputVariable": "emailFetcherResult"
+  }
 }`}
           statusCodes={`200 OK — Node definition returned
 404 Not Found — { "error": "Node not found", "code": "NODE_NOT_FOUND" }
