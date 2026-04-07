@@ -737,54 +737,37 @@ Step 5: Email Notification
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["_id", "name", "topic", "category", "configFields", "inputs", "outputs"],
+      required: ["_id", "name", "topic", "category", "version", "inputSchema", "outputSchema", "defaultConfig"],
       properties: {
         _id: { bsonType: "string", description: "Unique node ID e.g. 'email-fetcher'" },
         name: { bsonType: "string", description: "Display name" },
         description: { bsonType: "string" },
         topic: { bsonType: "string", description: "Camunda External Task topic name" },
-        category: { enum: ["communication", "data-processing", "intelligence"], description: "Node category" },
+        category: { enum: ["communication", "extraction", "ai", "notification"], description: "Node category" },
         icon: { bsonType: "string" },
         version: { bsonType: "string", pattern: "^\\\\d+\\\\.\\\\d+\\\\.\\\\d+$" },
-        configFields: {
-          bsonType: "array",
-          items: {
-            bsonType: "object",
-            required: ["key", "label", "type"],
-            properties: {
-              key: { bsonType: "string" },
-              label: { bsonType: "string" },
-              type: { enum: ["string", "number", "boolean", "select", "textarea"] },
-              required: { bsonType: "bool" },
-              default: {},
-              placeholder: { bsonType: "string" },
-              options: { bsonType: "array", items: { bsonType: "string" } }
-            }
+        inputSchema: {
+          bsonType: "object",
+          description: "JSON Schema defining config inputs and validation rules",
+          required: ["type", "properties", "required"],
+          properties: {
+            type: { bsonType: "string", enum: ["object"] },
+            properties: { bsonType: "object", description: "Property definitions with type, description, enum, default, min, max" },
+            required: { bsonType: "array", items: { bsonType: "string" } }
           }
         },
-        inputs: {
-          bsonType: "array",
-          items: {
-            bsonType: "object",
-            required: ["name", "type"],
-            properties: {
-              name: { bsonType: "string" },
-              type: { bsonType: "string" },
-              description: { bsonType: "string" }
-            }
+        outputSchema: {
+          bsonType: "object",
+          description: "JSON Schema defining output variables produced by the worker",
+          required: ["type", "properties"],
+          properties: {
+            type: { bsonType: "string", enum: ["object"] },
+            properties: { bsonType: "object" }
           }
         },
-        outputs: {
-          bsonType: "array",
-          items: {
-            bsonType: "object",
-            required: ["name", "type"],
-            properties: {
-              name: { bsonType: "string" },
-              type: { bsonType: "string" },
-              description: { bsonType: "string" }
-            }
-          }
+        defaultConfig: {
+          bsonType: "object",
+          description: "Default configuration values used when creating new instances"
         }
       }
     }
@@ -800,20 +783,34 @@ db.nodeDefinitions.createIndex({ topic: 1 }, { unique: true });`} />
   "category": "communication",
   "icon": "mail",
   "version": "1.0.0",
-  "configFields": [
-    { "key": "emailId", "label": "Email Address", "type": "string", "required": true, "placeholder": "user@company.com" },
-    { "key": "subjectFilter", "label": "Subject Filter", "type": "string", "required": false },
-    { "key": "bodyFilter", "label": "Body Contains", "type": "string", "required": false },
-    { "key": "downloadAttachment", "label": "Download Attachments", "type": "boolean", "required": false, "default": true },
-    { "key": "maxEmails", "label": "Max Emails to Fetch", "type": "number", "required": false, "default": 10 },
-    { "key": "moveAfterRead", "label": "Move After Read", "type": "select", "required": false, "default": "archive", "options": ["archive", "trash", "none"] }
-  ],
-  "inputs": [],
-  "outputs": [
-    { "name": "emails", "type": "array", "description": "Array of email objects with subject, body, sender, date" },
-    { "name": "attachmentPaths", "type": "array", "description": "Array of downloaded attachment file paths" },
-    { "name": "emailCount", "type": "number", "description": "Total number of emails fetched" }
-  ]
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "emailId": { "type": "string", "description": "Email address / mailbox identifier" },
+      "subjectFilter": { "type": "string", "description": "Filter by subject" },
+      "bodyFilter": { "type": "string", "description": "Filter by body content" },
+      "downloadAttachment": { "type": "boolean", "default": true },
+      "maxEmails": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 },
+      "moveAfterRead": { "type": "string", "enum": ["archive","trash","none","custom-folder"], "default": "archive" },
+      "outputVariable": { "type": "string", "default": "emailFetcherResult" }
+    },
+    "required": ["emailId", "outputVariable"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "emails": { "type": "array", "description": "Array of email objects", "items": { "type": "object" } },
+      "attachmentDocIds": { "type": "array", "items": { "type": "string" } },
+      "attachmentPaths": { "type": "array", "items": { "type": "string" } },
+      "emailCount": { "type": "integer" },
+      "fetchedAt": { "type": "string" }
+    }
+  },
+  "defaultConfig": {
+    "emailId": "", "subjectFilter": "", "bodyFilter": "",
+    "downloadAttachment": true, "maxEmails": 10,
+    "moveAfterRead": "archive", "outputVariable": "emailFetcherResult"
+  }
 }`} />
           </CardContent>
         </DocCard>
