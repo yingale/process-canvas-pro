@@ -22,6 +22,7 @@ import SendEmailDocsPage from "./pages/docs/SendEmailDocsPage";
 import ApprovalDocsPage from "./pages/docs/ApprovalDocsPage";
 import AutomationNodesDocsPage from "./pages/docs/AutomationNodesDocsPage";
 import CamundaTopicsDocsPage from "./pages/docs/CamundaTopicsDocsPage";
+import RbacDocsPage from "./pages/docs/RbacDocsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/docs/approval" element={<ApprovalDocsPage />} />
             <Route path="/docs/automation-nodes" element={<AutomationNodesDocsPage />} />
             <Route path="/docs/camunda-topics" element={<CamundaTopicsDocsPage />} />
+            <Route path="/docs/rbac" element={<RbacDocsPage />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
