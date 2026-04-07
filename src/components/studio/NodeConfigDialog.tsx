@@ -168,11 +168,12 @@ export default function NodeConfigDialog({
   // Initialize config from step's existing instanceConfig
   useEffect(() => {
     if (!currentStep?.moduleRef || !nodeDef) return;
-    const initial: Record<string, unknown> = {};
-    nodeDef.configFields.forEach((f) => {
-      const existing = currentStep.moduleRef!.instanceConfig[f.key];
-      initial[f.key] = existing !== undefined ? existing : (f.defaultValue ?? "");
-    });
+    // Use defaultConfig as base, overlay with existing instanceConfig
+    const initial: Record<string, unknown> = { ...nodeDef.defaultConfig };
+    const existing = currentStep.moduleRef!.instanceConfig;
+    for (const key of Object.keys(initial)) {
+      if (existing[key] !== undefined) initial[key] = existing[key];
+    }
     setConfig(initial);
     setInputMappings([]);
     setOutputMappings([]);
