@@ -474,11 +474,8 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     const nodeDef = getNodeDef(nodeId);
     if (!nodeDef) return;
 
-    // Build default instanceConfig from configFields
-    const instanceConfig: Record<string, unknown> = {};
-    nodeDef.configFields.forEach(f => {
-      if (f.defaultValue !== undefined) instanceConfig[f.key] = f.defaultValue;
-    });
+    // Build default instanceConfig from defaultConfig (JSON Schema pattern)
+    const instanceConfig: Record<string, unknown> = { ...nodeDef.defaultConfig };
 
     const newStep = {
       id: uid(),

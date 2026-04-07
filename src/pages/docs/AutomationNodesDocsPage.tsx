@@ -83,119 +83,153 @@ export default function AutomationNodesDocsPage() {
       "category": "communication",
       "icon": "mail",
       "version": "1.0.0",
-      "configFields": [
-        { "key": "emailId", "label": "Email Address", "type": "string", "required": true, "placeholder": "user@company.com" },
-        { "key": "subjectFilter", "label": "Subject Filter", "type": "string", "required": false, "placeholder": "Invoice*" },
-        { "key": "bodyFilter", "label": "Body Contains", "type": "string", "required": false },
-        { "key": "downloadAttachment", "label": "Download Attachments", "type": "boolean", "required": false, "default": true },
-        { "key": "maxEmails", "label": "Max Emails to Fetch", "type": "number", "required": false, "default": 10 },
-        { "key": "moveAfterRead", "label": "Move After Read", "type": "select", "required": false, "default": "archive", "options": ["archive", "trash", "none"] }
-      ],
-      "inputs": [],
-      "outputs": [
-        { "name": "emails", "type": "array", "description": "Array of email objects with subject, body, sender, date" },
-        { "name": "attachmentPaths", "type": "array", "description": "Array of downloaded attachment file paths / document IDs" },
-        { "name": "emailCount", "type": "number", "description": "Total number of emails fetched" }
-      ]
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "emailId": { "type": "string", "description": "Email address / mailbox identifier" },
+          "subjectFilter": { "type": "string", "description": "Filter emails by subject" },
+          "bodyFilter": { "type": "string", "description": "Filter emails by body content" },
+          "downloadAttachment": { "type": "boolean", "description": "Download attachments", "default": true },
+          "maxEmails": { "type": "integer", "description": "Max emails to fetch", "default": 10, "minimum": 1, "maximum": 100 },
+          "moveAfterRead": { "type": "string", "enum": ["archive","trash","none","custom-folder"], "default": "archive" },
+          "outputVariable": { "type": "string", "default": "emailFetcherResult" }
+        },
+        "required": ["emailId", "outputVariable"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "emails": { "type": "array", "description": "Array of email objects", "items": { "type": "object" } },
+          "attachmentDocIds": { "type": "array", "items": { "type": "string" } },
+          "attachmentPaths": { "type": "array", "items": { "type": "string" } },
+          "emailCount": { "type": "integer" },
+          "fetchedAt": { "type": "string" }
+        }
+      },
+      "defaultConfig": {
+        "emailId": "", "subjectFilter": "", "bodyFilter": "",
+        "downloadAttachment": true, "maxEmails": 10,
+        "moveAfterRead": "archive", "outputVariable": "emailFetcherResult"
+      }
     },
     {
       "id": "chunk-extractor",
       "name": "Chunk Extractor",
-      "description": "Extract rows/chunks from CSV/XLSX files with configurable chunk size",
-      "topic": "chunk-extractor-process",
-      "category": "data-processing",
-      "icon": "file-spreadsheet",
+      "description": "Extract rows/chunks from CSV/XLSX files",
+      "topic": "chunk-extractor-execute",
+      "category": "extraction",
       "version": "1.0.0",
-      "configFields": [
-        { "key": "chunkSize", "label": "Rows per Chunk", "type": "number", "required": true, "default": 100 },
-        { "key": "startRow", "label": "Start Row", "type": "number", "required": false, "default": 1 },
-        { "key": "sheetName", "label": "Sheet Name (XLSX)", "type": "string", "required": false, "default": "Sheet1" },
-        { "key": "hasHeader", "label": "First Row is Header", "type": "boolean", "required": false, "default": true },
-        { "key": "delimiter", "label": "Delimiter (CSV)", "type": "string", "required": false, "default": "," }
-      ],
-      "inputs": [
-        { "name": "filePath", "type": "string", "description": "Path to input CSV/XLSX file" }
-      ],
-      "outputs": [
-        { "name": "chunks", "type": "array", "description": "Array of row arrays, each containing up to chunkSize rows" },
-        { "name": "headers", "type": "array", "description": "Column header names" },
-        { "name": "totalRows", "type": "number", "description": "Total number of data rows in the file" }
-      ]
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "inputVariable": { "type": "string", "description": "Variable from previous node" },
+          "chunkSize": { "type": "integer", "default": 100, "minimum": 1, "maximum": 10000 },
+          "startRow": { "type": "integer", "default": 1, "minimum": 1 },
+          "hasHeader": { "type": "boolean", "default": true },
+          "outputVariable": { "type": "string", "default": "chunkExtractorResult" }
+        },
+        "required": ["inputVariable", "chunkSize", "outputVariable"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "chunks": { "type": "array", "items": { "type": "object" } },
+          "totalRows": { "type": "integer" },
+          "headers": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "defaultConfig": { "inputVariable": "", "chunkSize": 100, "startRow": 1, "hasHeader": true, "outputVariable": "chunkExtractorResult" }
     },
     {
       "id": "ai-processor",
       "name": "AI Processor",
-      "description": "Run LLM prompts with variable substitution and structured JSON output",
-      "topic": "ai-processor-run",
-      "category": "intelligence",
-      "icon": "brain",
+      "description": "Process data with AI using custom prompts and structured output",
+      "topic": "ai-processor-execute",
+      "category": "ai",
       "version": "1.0.0",
-      "configFields": [
-        { "key": "prompt", "label": "Prompt Template", "type": "textarea", "required": true, "placeholder": "Analyze the following data: \${chunkData}" },
-        { "key": "model", "label": "Model", "type": "select", "required": false, "default": "gpt-4", "options": ["gpt-4", "gpt-3.5-turbo", "gemini-pro"] },
-        { "key": "outputFormat", "label": "Output Format", "type": "select", "required": false, "default": "json", "options": ["json", "text", "csv"] },
-        { "key": "temperature", "label": "Temperature", "type": "number", "required": false, "default": 0.3 },
-        { "key": "maxTokens", "label": "Max Tokens", "type": "number", "required": false, "default": 2000 },
-        { "key": "outputSchema", "label": "Output JSON Schema", "type": "textarea", "required": false, "placeholder": "{ \\"columns\\": [\\"name\\", \\"amount\\"] }" }
-      ],
-      "inputs": [
-        { "name": "chunkData", "type": "any", "description": "Data to process — rows, text, or structured input from previous step" },
-        { "name": "context", "type": "string", "description": "Optional additional context for the prompt" }
-      ],
-      "outputs": [
-        { "name": "result", "type": "any", "description": "LLM response — JSON object, text, or CSV string based on outputFormat" },
-        { "name": "columnNames", "type": "array", "description": "Extracted column names if output is structured" },
-        { "name": "tokensUsed", "type": "number", "description": "Total tokens consumed" }
-      ]
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "inputVariable": { "type": "string" },
+          "prompt": { "type": "string", "description": "AI prompt template" },
+          "outputFormat": { "type": "string", "enum": ["json","csv","text","column-names"], "default": "json" },
+          "model": { "type": "string", "enum": ["auto","gpt-4","gpt-3.5","gemini-pro"], "default": "auto" },
+          "temperature": { "type": "number", "default": 0.3, "minimum": 0, "maximum": 1 },
+          "outputVariable": { "type": "string", "default": "aiProcessorResult" }
+        },
+        "required": ["inputVariable", "prompt", "outputFormat", "outputVariable"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "aiResponse": { "type": "object" },
+          "columnNames": { "type": "array", "items": { "type": "string" } },
+          "tokensUsed": { "type": "integer" }
+        }
+      },
+      "defaultConfig": { "inputVariable": "", "prompt": "", "outputFormat": "json", "model": "auto", "temperature": 0.3, "outputVariable": "aiProcessorResult" }
     },
     {
       "id": "column-extractor",
       "name": "File Column Extractor",
-      "description": "Extract specific columns from a data file and produce a filtered output file",
-      "topic": "column-extractor-extract",
-      "category": "data-processing",
-      "icon": "columns",
+      "description": "Extract specific columns and produce filtered output file",
+      "topic": "column-extractor-execute",
+      "category": "extraction",
       "version": "1.0.0",
-      "configFields": [
-        { "key": "outputFormat", "label": "Output File Format", "type": "select", "required": false, "default": "csv", "options": ["csv", "xlsx", "json"] },
-        { "key": "includeHeader", "label": "Include Header Row", "type": "boolean", "required": false, "default": true },
-        { "key": "outputFileName", "label": "Output File Name", "type": "string", "required": false, "default": "extracted_output" }
-      ],
-      "inputs": [
-        { "name": "filePath", "type": "string", "description": "Path to the original full data file" },
-        { "name": "columnNames", "type": "array", "description": "Array of column names to extract" }
-      ],
-      "outputs": [
-        { "name": "outputFilePath", "type": "string", "description": "Path to the generated output file" },
-        { "name": "rowCount", "type": "number", "description": "Number of rows in output" },
-        { "name": "extractedColumns", "type": "array", "description": "Confirmed list of extracted column names" }
-      ]
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "inputFileVariable": { "type": "string" },
+          "columnsVariable": { "type": "string" },
+          "manualColumns": { "type": "string" },
+          "outputFormat": { "type": "string", "enum": ["csv","xlsx","json"], "default": "csv" },
+          "includeHeader": { "type": "boolean", "default": true },
+          "outputVariable": { "type": "string", "default": "columnExtractorResult" }
+        },
+        "required": ["inputFileVariable", "outputFormat", "outputVariable"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "outputFile": { "type": "string" },
+          "outputDocId": { "type": "string" },
+          "extractedColumns": { "type": "array", "items": { "type": "string" } },
+          "totalRows": { "type": "integer" }
+        }
+      },
+      "defaultConfig": { "inputFileVariable": "", "columnsVariable": "", "manualColumns": "", "outputFormat": "csv", "includeHeader": true, "outputVariable": "columnExtractorResult" }
     },
     {
       "id": "email-notification",
       "name": "Email Notification",
-      "description": "Send templated emails with optional file attachments via MS Graph API",
+      "description": "Send templated emails with optional file attachments",
       "topic": "email-notification-send",
-      "category": "communication",
-      "icon": "send",
+      "category": "notification",
       "version": "1.0.0",
-      "configFields": [
-        { "key": "to", "label": "To (Recipients)", "type": "string", "required": true, "placeholder": "user@company.com, user2@company.com" },
-        { "key": "cc", "label": "CC", "type": "string", "required": false },
-        { "key": "subject", "label": "Subject Template", "type": "string", "required": true, "placeholder": "Report Ready: \${outputFileName}" },
-        { "key": "bodyTemplate", "label": "Body Template (HTML)", "type": "textarea", "required": true, "placeholder": "<p>Please find attached the extracted report.</p>" },
-        { "key": "attachFile", "label": "Attach Output File", "type": "boolean", "required": false, "default": true },
-        { "key": "priority", "label": "Priority", "type": "select", "required": false, "default": "normal", "options": ["low", "normal", "high"] }
-      ],
-      "inputs": [
-        { "name": "outputFilePath", "type": "string", "description": "Path to file to attach" },
-        { "name": "recipientOverride", "type": "string", "description": "Optional dynamic recipient from previous step" }
-      ],
-      "outputs": [
-        { "name": "messageId", "type": "string", "description": "MS Graph message ID of sent email" },
-        { "name": "status", "type": "string", "description": "Delivery status: sent | queued | failed" },
-        { "name": "sentAt", "type": "string", "description": "ISO 8601 timestamp of send" }
-      ]
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "to": { "type": "string", "description": "Comma-separated recipients" },
+          "cc": { "type": "string" },
+          "subject": { "type": "string" },
+          "body": { "type": "string", "description": "HTML body template" },
+          "attachFileVariable": { "type": "string" },
+          "fromAlias": { "type": "string" },
+          "priority": { "type": "string", "enum": ["low","normal","high"], "default": "normal" },
+          "outputVariable": { "type": "string", "default": "emailNotificationResult" }
+        },
+        "required": ["to", "subject", "body", "outputVariable"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "sentStatus": { "type": "string" },
+          "messageId": { "type": "string" },
+          "recipients": { "type": "integer" },
+          "sentAt": { "type": "string" }
+        }
+      },
+      "defaultConfig": { "to": "", "cc": "", "subject": "", "body": "", "attachFileVariable": "", "fromAlias": "", "priority": "normal", "outputVariable": "emailNotificationResult" }
     }
   ],
   "total": 5
@@ -220,20 +254,32 @@ export default function AutomationNodesDocsPage() {
   "category": "communication",
   "icon": "mail",
   "version": "1.0.0",
-  "configFields": [
-    { "key": "emailId", "label": "Email Address", "type": "string", "required": true, "placeholder": "user@company.com" },
-    { "key": "subjectFilter", "label": "Subject Filter", "type": "string", "required": false },
-    { "key": "bodyFilter", "label": "Body Contains", "type": "string", "required": false },
-    { "key": "downloadAttachment", "label": "Download Attachments", "type": "boolean", "required": false, "default": true },
-    { "key": "maxEmails", "label": "Max Emails to Fetch", "type": "number", "required": false, "default": 10 },
-    { "key": "moveAfterRead", "label": "Move After Read", "type": "select", "required": false, "default": "archive", "options": ["archive", "trash", "none"] }
-  ],
-  "inputs": [],
-  "outputs": [
-    { "name": "emails", "type": "array", "description": "Array of email objects" },
-    { "name": "attachmentPaths", "type": "array", "description": "Downloaded attachment paths" },
-    { "name": "emailCount", "type": "number", "description": "Total emails fetched" }
-  ]
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "emailId": { "type": "string", "description": "Email address / mailbox identifier" },
+      "subjectFilter": { "type": "string", "description": "Filter by subject" },
+      "bodyFilter": { "type": "string", "description": "Filter by body content" },
+      "downloadAttachment": { "type": "boolean", "default": true },
+      "maxEmails": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 },
+      "moveAfterRead": { "type": "string", "enum": ["archive","trash","none","custom-folder"], "default": "archive" },
+      "outputVariable": { "type": "string", "default": "emailFetcherResult" }
+    },
+    "required": ["emailId", "outputVariable"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "emails": { "type": "array", "items": { "type": "object" } },
+      "attachmentPaths": { "type": "array", "items": { "type": "string" } },
+      "emailCount": { "type": "integer" }
+    }
+  },
+  "defaultConfig": {
+    "emailId": "", "subjectFilter": "", "bodyFilter": "",
+    "downloadAttachment": true, "maxEmails": 10,
+    "moveAfterRead": "archive", "outputVariable": "emailFetcherResult"
+  }
 }`}
           statusCodes={`200 OK — Node definition returned
 404 Not Found — { "error": "Node not found", "code": "NODE_NOT_FOUND" }
@@ -691,54 +737,37 @@ Step 5: Email Notification
   validator: {
     $jsonSchema: {
       bsonType: "object",
-      required: ["_id", "name", "topic", "category", "configFields", "inputs", "outputs"],
+      required: ["_id", "name", "topic", "category", "version", "inputSchema", "outputSchema", "defaultConfig"],
       properties: {
         _id: { bsonType: "string", description: "Unique node ID e.g. 'email-fetcher'" },
         name: { bsonType: "string", description: "Display name" },
         description: { bsonType: "string" },
         topic: { bsonType: "string", description: "Camunda External Task topic name" },
-        category: { enum: ["communication", "data-processing", "intelligence"], description: "Node category" },
+        category: { enum: ["communication", "extraction", "ai", "notification"], description: "Node category" },
         icon: { bsonType: "string" },
         version: { bsonType: "string", pattern: "^\\\\d+\\\\.\\\\d+\\\\.\\\\d+$" },
-        configFields: {
-          bsonType: "array",
-          items: {
-            bsonType: "object",
-            required: ["key", "label", "type"],
-            properties: {
-              key: { bsonType: "string" },
-              label: { bsonType: "string" },
-              type: { enum: ["string", "number", "boolean", "select", "textarea"] },
-              required: { bsonType: "bool" },
-              default: {},
-              placeholder: { bsonType: "string" },
-              options: { bsonType: "array", items: { bsonType: "string" } }
-            }
+        inputSchema: {
+          bsonType: "object",
+          description: "JSON Schema defining config inputs and validation rules",
+          required: ["type", "properties", "required"],
+          properties: {
+            type: { bsonType: "string", enum: ["object"] },
+            properties: { bsonType: "object", description: "Property definitions with type, description, enum, default, min, max" },
+            required: { bsonType: "array", items: { bsonType: "string" } }
           }
         },
-        inputs: {
-          bsonType: "array",
-          items: {
-            bsonType: "object",
-            required: ["name", "type"],
-            properties: {
-              name: { bsonType: "string" },
-              type: { bsonType: "string" },
-              description: { bsonType: "string" }
-            }
+        outputSchema: {
+          bsonType: "object",
+          description: "JSON Schema defining output variables produced by the worker",
+          required: ["type", "properties"],
+          properties: {
+            type: { bsonType: "string", enum: ["object"] },
+            properties: { bsonType: "object" }
           }
         },
-        outputs: {
-          bsonType: "array",
-          items: {
-            bsonType: "object",
-            required: ["name", "type"],
-            properties: {
-              name: { bsonType: "string" },
-              type: { bsonType: "string" },
-              description: { bsonType: "string" }
-            }
-          }
+        defaultConfig: {
+          bsonType: "object",
+          description: "Default configuration values used when creating new instances"
         }
       }
     }
@@ -754,20 +783,34 @@ db.nodeDefinitions.createIndex({ topic: 1 }, { unique: true });`} />
   "category": "communication",
   "icon": "mail",
   "version": "1.0.0",
-  "configFields": [
-    { "key": "emailId", "label": "Email Address", "type": "string", "required": true, "placeholder": "user@company.com" },
-    { "key": "subjectFilter", "label": "Subject Filter", "type": "string", "required": false },
-    { "key": "bodyFilter", "label": "Body Contains", "type": "string", "required": false },
-    { "key": "downloadAttachment", "label": "Download Attachments", "type": "boolean", "required": false, "default": true },
-    { "key": "maxEmails", "label": "Max Emails to Fetch", "type": "number", "required": false, "default": 10 },
-    { "key": "moveAfterRead", "label": "Move After Read", "type": "select", "required": false, "default": "archive", "options": ["archive", "trash", "none"] }
-  ],
-  "inputs": [],
-  "outputs": [
-    { "name": "emails", "type": "array", "description": "Array of email objects with subject, body, sender, date" },
-    { "name": "attachmentPaths", "type": "array", "description": "Array of downloaded attachment file paths" },
-    { "name": "emailCount", "type": "number", "description": "Total number of emails fetched" }
-  ]
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "emailId": { "type": "string", "description": "Email address / mailbox identifier" },
+      "subjectFilter": { "type": "string", "description": "Filter by subject" },
+      "bodyFilter": { "type": "string", "description": "Filter by body content" },
+      "downloadAttachment": { "type": "boolean", "default": true },
+      "maxEmails": { "type": "integer", "default": 10, "minimum": 1, "maximum": 100 },
+      "moveAfterRead": { "type": "string", "enum": ["archive","trash","none","custom-folder"], "default": "archive" },
+      "outputVariable": { "type": "string", "default": "emailFetcherResult" }
+    },
+    "required": ["emailId", "outputVariable"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "emails": { "type": "array", "description": "Array of email objects", "items": { "type": "object" } },
+      "attachmentDocIds": { "type": "array", "items": { "type": "string" } },
+      "attachmentPaths": { "type": "array", "items": { "type": "string" } },
+      "emailCount": { "type": "integer" },
+      "fetchedAt": { "type": "string" }
+    }
+  },
+  "defaultConfig": {
+    "emailId": "", "subjectFilter": "", "bodyFilter": "",
+    "downloadAttachment": true, "maxEmails": 10,
+    "moveAfterRead": "archive", "outputVariable": "emailFetcherResult"
+  }
 }`} />
           </CardContent>
         </DocCard>

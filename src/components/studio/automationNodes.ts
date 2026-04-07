@@ -1,8 +1,28 @@
 /**
  * Automation Node definitions for the Studio Nodes Panel.
  * Each node maps to a Camunda External Task topic with specific I/O configuration.
+ * 
+ * Uses JSON Schema pattern: inputSchema, outputSchema, defaultConfig for
+ * backend validation and Camunda worker integration.
  */
 import type { ModuleConfigField } from "@/types/caseIr";
+
+export interface JsonSchemaProperty {
+  type: string;
+  description?: string;
+  enum?: string[];
+  default?: unknown;
+  minimum?: number;
+  maximum?: number;
+  items?: { type: string };
+  pattern?: string;
+}
+
+export interface JsonSchemaObject {
+  type: "object";
+  properties: Record<string, JsonSchemaProperty>;
+  required: string[];
+}
 
 export interface AutomationNodeDef {
   id: string;
@@ -12,6 +32,12 @@ export interface AutomationNodeDef {
   color: string;
   topic: string; // Camunda external task topic
   category: "communication" | "extraction" | "ai" | "notification";
+  version: string;
+  inputSchema: JsonSchemaObject;
+  outputSchema: JsonSchemaObject;
+  defaultConfig: Record<string, unknown>;
+  additionalOutputs?: NodeIoField[];
+  // KEPT for backward compat — UI rendering in NodeConfigDialog & StepPropertiesPanel
   inputs: NodeIoField[];
   outputs: NodeIoField[];
   configFields: ModuleConfigField[];
@@ -32,6 +58,40 @@ export const AUTOMATION_NODES: AutomationNodeDef[] = [
     color: "hsl(213 88% 42%)",
     topic: "email-fetcher-fetch",
     category: "communication",
+    version: "1.0.0",
+    inputSchema: {
+      type: "object",
+      properties: {
+        emailId: { type: "string", description: "Email address / mailbox identifier" },
+        subjectFilter: { type: "string", description: "Filter emails by subject (contains)" },
+        bodyFilter: { type: "string", description: "Filter emails by body content" },
+        downloadAttachment: { type: "boolean", description: "Whether to download email attachments", default: true },
+        maxEmails: { type: "integer", description: "Maximum emails to fetch", default: 10, minimum: 1, maximum: 100 },
+        moveAfterRead: { type: "string", description: "Action after reading email", enum: ["archive", "trash", "none", "custom-folder"], default: "archive" },
+        outputVariable: { type: "string", description: "Variable name for downstream nodes", default: "emailFetcherResult" },
+      },
+      required: ["emailId", "outputVariable"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        emails: { type: "array", description: "List of fetched email objects", items: { type: "object" } },
+        attachmentDocIds: { type: "array", description: "Document IDs of downloaded attachments", items: { type: "string" } },
+        attachmentPaths: { type: "array", description: "File paths of downloaded attachments", items: { type: "string" } },
+        emailCount: { type: "integer", description: "Total number of emails fetched" },
+        fetchedAt: { type: "string", description: "ISO 8601 timestamp of fetch" },
+      },
+      required: [],
+    },
+    defaultConfig: {
+      emailId: "",
+      subjectFilter: "",
+      bodyFilter: "",
+      downloadAttachment: true,
+      maxEmails: 10,
+      moveAfterRead: "archive",
+      outputVariable: "emailFetcherResult",
+    },
     inputs: [],
     outputs: [
       { name: "emails", type: "array", description: "List of fetched email objects" },
@@ -56,6 +116,35 @@ export const AUTOMATION_NODES: AutomationNodeDef[] = [
     color: "hsl(32 90% 48%)",
     topic: "chunk-extractor-execute",
     category: "extraction",
+    version: "1.0.0",
+    inputSchema: {
+      type: "object",
+      properties: {
+        inputVariable: { type: "string", description: "Variable from previous node (e.g. emailFetcherResult.attachmentPaths[0])" },
+        chunkSize: { type: "integer", description: "Number of rows per chunk", default: 100, minimum: 1, maximum: 10000 },
+        startRow: { type: "integer", description: "Row number to start extraction from", default: 1, minimum: 1 },
+        hasHeader: { type: "boolean", description: "Whether the file has a header row", default: true },
+        outputVariable: { type: "string", description: "Variable name for downstream nodes", default: "chunkExtractorResult" },
+      },
+      required: ["inputVariable", "chunkSize", "outputVariable"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        chunks: { type: "array", description: "Array of extracted data chunks", items: { type: "object" } },
+        totalRows: { type: "integer", description: "Total number of rows in the file" },
+        totalChunks: { type: "integer", description: "Number of chunks produced" },
+        headers: { type: "array", description: "Column header names", items: { type: "string" } },
+      },
+      required: [],
+    },
+    defaultConfig: {
+      inputVariable: "",
+      chunkSize: 100,
+      startRow: 1,
+      hasHeader: true,
+      outputVariable: "chunkExtractorResult",
+    },
     inputs: [
       { name: "inputFile", type: "file", description: "File document ID or path from previous node" },
     ],
@@ -79,6 +168,37 @@ export const AUTOMATION_NODES: AutomationNodeDef[] = [
     color: "hsl(268 62% 52%)",
     topic: "ai-processor-execute",
     category: "ai",
+    version: "1.0.0",
+    inputSchema: {
+      type: "object",
+      properties: {
+        inputVariable: { type: "string", description: "Variable from previous node (e.g. chunkExtractorResult.chunks)" },
+        prompt: { type: "string", description: "AI prompt template. Use ${variable} for interpolation." },
+        outputFormat: { type: "string", description: "Expected output format", enum: ["json", "csv", "text", "column-names"], default: "json" },
+        model: { type: "string", description: "AI model to use", enum: ["auto", "gpt-4", "gpt-3.5", "gemini-pro"], default: "auto" },
+        temperature: { type: "number", description: "Sampling temperature", default: 0.3, minimum: 0, maximum: 1 },
+        outputVariable: { type: "string", description: "Variable name for downstream nodes", default: "aiProcessorResult" },
+      },
+      required: ["inputVariable", "prompt", "outputFormat", "outputVariable"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        aiResponse: { type: "object", description: "AI-generated response" },
+        columnNames: { type: "array", description: "Extracted column names (when applicable)", items: { type: "string" } },
+        tokensUsed: { type: "integer", description: "Total tokens consumed" },
+        model: { type: "string", description: "Model used for processing" },
+      },
+      required: [],
+    },
+    defaultConfig: {
+      inputVariable: "",
+      prompt: "",
+      outputFormat: "json",
+      model: "auto",
+      temperature: 0.3,
+      outputVariable: "aiProcessorResult",
+    },
     inputs: [
       { name: "inputData", type: "object", description: "Data from previous node to process" },
     ],
@@ -103,6 +223,37 @@ export const AUTOMATION_NODES: AutomationNodeDef[] = [
     color: "hsl(152 68% 38%)",
     topic: "column-extractor-execute",
     category: "extraction",
+    version: "1.0.0",
+    inputSchema: {
+      type: "object",
+      properties: {
+        inputFileVariable: { type: "string", description: "Variable pointing to the source file" },
+        columnsVariable: { type: "string", description: "Variable from AI processor with column names" },
+        manualColumns: { type: "string", description: "Comma-separated column names (if not using variable)" },
+        outputFormat: { type: "string", description: "Output file format", enum: ["csv", "xlsx", "json"], default: "csv" },
+        includeHeader: { type: "boolean", description: "Include header row in output", default: true },
+        outputVariable: { type: "string", description: "Variable name for downstream nodes", default: "columnExtractorResult" },
+      },
+      required: ["inputFileVariable", "outputFormat", "outputVariable"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        outputFile: { type: "string", description: "Path to the generated output file" },
+        outputDocId: { type: "string", description: "Document ID of the output file" },
+        extractedColumns: { type: "array", description: "Confirmed list of extracted column names", items: { type: "string" } },
+        totalRows: { type: "integer", description: "Number of rows in output" },
+      },
+      required: [],
+    },
+    defaultConfig: {
+      inputFileVariable: "",
+      columnsVariable: "",
+      manualColumns: "",
+      outputFormat: "csv",
+      includeHeader: true,
+      outputVariable: "columnExtractorResult",
+    },
     inputs: [
       { name: "inputFile", type: "file", description: "Original file to extract columns from" },
       { name: "columnNames", type: "array", description: "Column names to extract" },
@@ -128,6 +279,42 @@ export const AUTOMATION_NODES: AutomationNodeDef[] = [
     color: "hsl(199 80% 42%)",
     topic: "email-notification-send",
     category: "notification",
+    version: "1.0.0",
+    inputSchema: {
+      type: "object",
+      properties: {
+        to: { type: "string", description: "Comma-separated email addresses or ${variable}" },
+        cc: { type: "string", description: "CC recipients" },
+        subject: { type: "string", description: "Email subject. Use ${variable} for dynamic values." },
+        body: { type: "string", description: "Email body (HTML supported). Use ${variable} for interpolation." },
+        attachFileVariable: { type: "string", description: "Variable pointing to file from previous node" },
+        fromAlias: { type: "string", description: "Display name for the sender" },
+        priority: { type: "string", description: "Email priority", enum: ["low", "normal", "high"], default: "normal" },
+        outputVariable: { type: "string", description: "Variable name for downstream nodes", default: "emailNotificationResult" },
+      },
+      required: ["to", "subject", "body", "outputVariable"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        sentStatus: { type: "string", description: "Email send status" },
+        messageId: { type: "string", description: "Sent message ID" },
+        recipients: { type: "integer", description: "Number of recipients" },
+        attachmentCount: { type: "integer", description: "Number of attachments sent" },
+        sentAt: { type: "string", description: "ISO 8601 timestamp of send" },
+      },
+      required: [],
+    },
+    defaultConfig: {
+      to: "",
+      cc: "",
+      subject: "",
+      body: "",
+      attachFileVariable: "",
+      fromAlias: "",
+      priority: "normal",
+      outputVariable: "emailNotificationResult",
+    },
     inputs: [
       { name: "attachmentFile", type: "file", description: "File to attach (optional)" },
     ],
