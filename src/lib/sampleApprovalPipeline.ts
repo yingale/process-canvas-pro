@@ -203,21 +203,123 @@ export function createApprovalPipelineCaseIR(): CaseIR {
         groups: [
           {
             id: "grp_fail",
-            name: "Failure Flow",
+            name: "Rejection & Triage",
             steps: [
               {
                 id: "step_failure",
-                name: "Log Rejection",
+                name: "Notify Submitter",
                 type: "automation",
-                description: "Log rejection reason and notify submitter",
+                description: "Send rejection email with reason to original submitter",
                 tech: { topic: "email-notification-send" },
                 moduleRef: {
                   moduleId: "email-notification",
                   instanceConfig: {
                     to: "${submitterEmail}",
                     subject: "Data extraction rejected",
-                    body: "The data extraction was rejected. Reason: ${approvalResult.comments}",
+                    body: "Your data extraction was rejected. Reason: ${approvalResult.comments}",
                     outputVariable: "failureNotifyResult",
+                  },
+                },
+              },
+              {
+                id: "step_revise",
+                name: "Revise & Resubmit",
+                type: "user",
+                description: "Submitter reviews rejection feedback and can correct data or re-upload",
+                assignee: "${submitterEmail}",
+                candidateGroups: ["data-submitters"],
+                tech: { topic: "revision-task" },
+                moduleRef: {
+                  moduleId: "approval",
+                  instanceConfig: {
+                    inputVariable: "approvalResult",
+                    approverRole: "Submitter",
+                    slaHours: 48,
+                    onReject: "terminate",
+                    outputVariable: "revisionResult",
+                  },
+                },
+              },
+              {
+                id: "step_revise_decide",
+                name: "Resubmit or Escalate?",
+                type: "decision",
+                description: "Route based on submitter action — resubmit to AI or escalate to admin",
+                branches: [
+                  {
+                    id: "br_resubmit",
+                    label: "🔄 Resubmit",
+                    condition: "${revisionResult.decision == 'approved'}",
+                    targetStepId: "step_ai",
+                  },
+                  {
+                    id: "br_escalate",
+                    label: "⬆️ Escalate",
+                    condition: "${revisionResult.decision == 'rejected'}",
+                    targetStepId: "step_escalate",
+                  },
+                ],
+                defaultBranchId: "br_escalate",
+              },
+            ],
+          },
+          {
+            id: "grp_escalation",
+            name: "Escalation Path",
+            steps: [
+              {
+                id: "step_escalate",
+                name: "Escalate to Admin",
+                type: "user",
+                description: "Pipeline admin reviews the rejected case and makes final decision",
+                assignee: "${adminEmail}",
+                candidateGroups: ["pipeline-admins"],
+                tech: { topic: "escalation-review" },
+                moduleRef: {
+                  moduleId: "approval",
+                  instanceConfig: {
+                    inputVariable: "approvalResult",
+                    approverRole: "Pipeline Admin",
+                    slaHours: 72,
+                    onReject: "terminate",
+                    outputVariable: "escalationResult",
+                  },
+                },
+              },
+              {
+                id: "step_escalate_decide",
+                name: "Admin Decision",
+                type: "decision",
+                description: "Admin overrides approval or permanently closes the case",
+                branches: [
+                  {
+                    id: "br_override",
+                    label: "✅ Override Approve",
+                    condition: "${escalationResult.decision == 'approved'}",
+                    targetStepId: "step_extract",
+                  },
+                  {
+                    id: "br_close",
+                    label: "🛑 Close Case",
+                    condition: "${escalationResult.decision == 'rejected'}",
+                    targetStepId: "step_close",
+                  },
+                ],
+                defaultBranchId: "br_close",
+              },
+              {
+                id: "step_close",
+                name: "Close & Archive",
+                type: "automation",
+                description: "Archive rejection and notify all stakeholders of final closure",
+                tech: { topic: "email-notification-send" },
+                moduleRef: {
+                  moduleId: "email-notification",
+                  instanceConfig: {
+                    to: "${submitterEmail},${adminEmail}",
+                    subject: "Case permanently closed — ${caseIr.name}",
+                    body: "This data extraction case has been permanently closed after admin review.",
+                    outputVariable: "closeNotifyResult",
                   },
                 },
               },
