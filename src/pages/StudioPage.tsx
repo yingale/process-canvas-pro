@@ -3,6 +3,7 @@ import { useSearchParams, useLocation } from "react-router-dom";
 import WorkflowStudio from "@/components/studio/WorkflowStudio";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { EMAIL_FETCHER_BPMN } from "@/lib/sampleBpmn";
+import { createApprovalPipelineCaseIR } from "@/lib/sampleApprovalPipeline";
 import type { CaseIR, FormTemplate } from "@/types/caseIr";
 
 // Inline the file processing BPMN for template loading
