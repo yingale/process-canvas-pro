@@ -214,7 +214,7 @@ function buildDefinitionsTag(ir: CaseIR, processId: string): string {
     };
     const merged = { ...required, ...orig };
     delete merged["xmlns"];
-    const attrStr = Object.entries(merged).map(([k, v]) => `\n                  ${k}="${escapeXml(v)}"`).join("");
+    const attrStr = Object.entries(merged).map(([k, v]) => `\n                  ${k}="${escapeXml(String(v))}"`).join("");
     return `<bpmn:definitions${attrStr}>`;
   }
   return `<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
