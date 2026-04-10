@@ -113,9 +113,9 @@ function renderDecisionFlows(step: Step, nextId: string | null, endId: string, i
   return ds.branches.map((b, i) => {
     const target = b.targetStepId ?? nextId ?? endId;
     const condTag = b.condition && b.condition !== "${default}"
-      ? `\n${ind}  <conditionExpression xsi:type="tFormalExpression">${escapeXml(b.condition)}</conditionExpression>\n${ind}`
+      ? `\n${ind}  <bpmn:conditionExpression xsi:type="tFormalExpression">${escapeXml(b.condition)}</bpmn:conditionExpression>\n${ind}`
       : "";
-    return `${ind}<sequenceFlow id="flow_gw_${gwId}_${i}" name="${escapeXml(b.label)}" sourceRef="${gwId}" targetRef="${target}">${condTag}</sequenceFlow>`;
+    return `${ind}<bpmn:sequenceFlow id="flow_gw_${gwId}_${i}" name="${escapeXml(b.label)}" sourceRef="${gwId}" targetRef="${target}">${condTag}</bpmn:sequenceFlow>`;
   }).join("\n");
 }
 
@@ -129,12 +129,12 @@ function renderStepsChainXml(steps: Step[], ind: string, preIds?: ChainIds): str
   };
   const { startId, endId, flowIds } = ids;
   const lines: string[] = [];
-  lines.push(`${ind}<startEvent id="${startId}" />`);
+  lines.push(`${ind}<bpmn:startEvent id="${startId}" />`);
   steps.forEach(step => lines.push(renderStepElement(step, ind)));
-  lines.push(`${ind}<endEvent id="${endId}" />`);
+  lines.push(`${ind}<bpmn:endEvent id="${endId}" />`);
 
   const firstId = steps.length > 0 ? (steps[0].source?.bpmnElementId ?? steps[0].id) : endId;
-  lines.push(`${ind}<sequenceFlow id="${flowIds[0]}" sourceRef="${startId}" targetRef="${firstId}" />`);
+  lines.push(`${ind}<bpmn:sequenceFlow id="${flowIds[0]}" sourceRef="${startId}" targetRef="${firstId}" />`);
 
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
@@ -142,7 +142,7 @@ function renderStepsChainXml(steps: Step[], ind: string, preIds?: ChainIds): str
     const nextStep = steps[i + 1];
     const nextId = nextStep ? (nextStep.source?.bpmnElementId ?? nextStep.id) : endId;
     if (step.type !== "decision") {
-      lines.push(`${ind}<sequenceFlow id="${flowIds[i + 1]}" sourceRef="${stepId}" targetRef="${nextId}" />`);
+      lines.push(`${ind}<bpmn:sequenceFlow id="${flowIds[i + 1]}" sourceRef="${stepId}" targetRef="${nextId}" />`);
     } else {
       lines.push(renderDecisionFlows(step, nextId !== endId ? nextId : null, endId, ind));
     }
@@ -157,11 +157,11 @@ function renderStageAsSubProcess(stage: Stage, preIds?: ChainIds): string {
   const allSteps = flattenSteps(stage);
 
   const miAttr = (stage as any).collectionExpression
-    ? `\n      <multiInstanceLoopCharacteristics isSequential="${(stage as any).isSequential ?? false}" camunda:collection="${escapeXml((stage as any).collectionExpression)}" camunda:elementVariable="${escapeXml((stage as any).elementVariable ?? "item")}" />`
+    ? `\n      <bpmn:multiInstanceLoopCharacteristics isSequential="${(stage as any).isSequential ?? false}" camunda:collection="${escapeXml((stage as any).collectionExpression)}" camunda:elementVariable="${escapeXml((stage as any).elementVariable ?? "item")}" />`
     : "";
 
   const innerContent = renderStepsChainXml(allSteps, "      ", preIds);
-  return `    <subProcess id="${id}" name="${name}"${asyncAttr}>${miAttr}\n${innerContent}\n    </subProcess>`;
+  return `    <bpmn:subProcess id="${id}" name="${name}"${asyncAttr}>${miAttr}\n${innerContent}\n    </bpmn:subProcess>`;
 }
 
 function renderTrigger(ir: CaseIR): { xml: string; id: string } {
@@ -177,11 +177,11 @@ function renderTrigger(ir: CaseIR): { xml: string; id: string } {
   switch (ir.trigger.type) {
     case "timer": {
       const expr = ir.trigger.expression ?? "";
-      return { id, xml: `    <startEvent id="${id}"${name}${asyncAttrs}>\n      <timerEventDefinition>\n        <timeCycle xsi:type="tFormalExpression">${escapeXml(expr)}</timeCycle>\n      </timerEventDefinition>\n    </startEvent>` };
+      return { id, xml: `    <bpmn:startEvent id="${id}"${name}${asyncAttrs}>\n      <bpmn:timerEventDefinition>\n        <bpmn:timeCycle xsi:type="tFormalExpression">${escapeXml(expr)}</bpmn:timeCycle>\n      </bpmn:timerEventDefinition>\n    </bpmn:startEvent>` };
     }
-    case "message": return { id, xml: `    <startEvent id="${id}"${name}${asyncAttrs}>\n      <messageEventDefinition />\n    </startEvent>` };
-    case "signal": return { id, xml: `    <startEvent id="${id}"${name}${asyncAttrs}>\n      <signalEventDefinition />\n    </startEvent>` };
-    default: return { id, xml: `    <startEvent id="${id}"${asyncAttrs} />` };
+    case "message": return { id, xml: `    <bpmn:startEvent id="${id}"${name}${asyncAttrs}>\n      <bpmn:messageEventDefinition />\n    </bpmn:startEvent>` };
+    case "signal": return { id, xml: `    <bpmn:startEvent id="${id}"${name}${asyncAttrs}>\n      <bpmn:signalEventDefinition />\n    </bpmn:startEvent>` };
+    default: return { id, xml: `    <bpmn:startEvent id="${id}"${asyncAttrs} />` };
   }
 }
 
@@ -389,7 +389,7 @@ export function exportBpmn(ir: CaseIR): string {
     const origRef = origFlowRefs[flowId];
     const src = origRef?.sourceRef ?? srcId;
     const tgt = origRef?.targetRef ?? chainIds[i + 1];
-    return `    <sequenceFlow id="${flowId}" sourceRef="${src}" targetRef="${tgt}" />`;
+    return `    <bpmn:sequenceFlow id="${flowId}" sourceRef="${src}" targetRef="${tgt}" />`;
   });
 
   let diagramXml: string;
