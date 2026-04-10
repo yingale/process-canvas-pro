@@ -86,6 +86,14 @@
   color: hsl(270 60% 50%);
 }
 
+/* ─── Decision Branch Pills ───────────────────────────────────────────────── */
+
+.branch-target-pill {
+  background: hsl(var(--surface-raised));
+  color: hsl(var(--foreground-muted));
+  border: 1px solid hsl(var(--border));
+}
+
 /* ─── Boundary Event Badges ───────────────────────────────────────────────── */
 
 .boundary-badge--interrupting {
