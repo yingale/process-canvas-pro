@@ -239,6 +239,24 @@ export default function StepPropertiesPanel({
         <Field label="Name">
           <TextInput value={String(draft.name ?? "")} onChange={v => handleChange("name", v)} placeholder="Step name" />
         </Field>
+        <Field label="Type">
+          <select
+            className="studio-select w-full text-[12px] rounded-md px-2.5 py-1.5"
+            value={String(draft.type ?? step.type)}
+            onChange={e => {
+              const newType = e.target.value as import("@/types/caseIr").StepType;
+              handleChange("type", newType);
+              // If changing to decision, ensure branches array exists
+              if (newType === "decision" && !Array.isArray((draft as any).branches)) {
+                handleChange("branches", []);
+              }
+            }}
+          >
+            {Object.entries(STEP_TYPE_CONFIG).map(([key, cfg]) => (
+              <option key={key} value={key}>{cfg.label}</option>
+            ))}
+          </select>
+        </Field>
         <Field label="Description">
           <MultilineInput value={String(draft.description ?? "")} onChange={v => handleChange("description", v)} placeholder="Optional description…" />
         </Field>
