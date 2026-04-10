@@ -7,6 +7,7 @@ import { useMemo, useCallback } from "react";
 import ReactFlow, {
   Background,
   Controls,
+  Handle,
   type Node,
   type Edge,
   MarkerType,
@@ -19,7 +20,8 @@ import type { CaseIR, Step, Stage, DecisionStep } from "@/types/caseIr";
 
 function StartEventNode({ data }: { data: { label: string; subLabel?: string } }) {
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1 relative">
+      <Handle type="target" position={Position.Left} style={{ visibility: "hidden" }} />
       <div
         className="w-10 h-10 rounded-full border-[3px] flex items-center justify-center"
         style={{ borderColor: "hsl(134 60% 42%)", background: "hsl(134 60% 95%)" }}
@@ -30,15 +32,17 @@ function StartEventNode({ data }: { data: { label: string; subLabel?: string } }
         {data.label}
       </span>
       {data.subLabel && (
-        <span className="text-[8px] text-foreground-muted">{data.subLabel}</span>
+        <span className="text-[8px] text-muted-foreground">{data.subLabel}</span>
       )}
+      <Handle type="source" position={Position.Right} style={{ visibility: "hidden" }} />
     </div>
   );
 }
 
 function EndEventNode({ data }: { data: { label: string } }) {
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1 relative">
+      <Handle type="target" position={Position.Left} style={{ visibility: "hidden" }} />
       <div
         className="w-10 h-10 rounded-full border-[4px] flex items-center justify-center"
         style={{ borderColor: "hsl(0 68% 50%)", background: "hsl(0 68% 96%)" }}
@@ -46,6 +50,7 @@ function EndEventNode({ data }: { data: { label: string } }) {
         <div className="w-3 h-3 rounded-full" style={{ background: "hsl(0 68% 50%)" }} />
       </div>
       <span className="text-[10px] font-medium text-foreground">{data.label}</span>
+      <Handle type="source" position={Position.Right} style={{ visibility: "hidden" }} />
     </div>
   );
 }
@@ -53,9 +58,10 @@ function EndEventNode({ data }: { data: { label: string } }) {
 function TaskNode({ data }: { data: { label: string; taskType: string; moduleName?: string; color: string } }) {
   return (
     <div
-      className="rounded-lg border-2 px-4 py-2.5 min-w-[140px] max-w-[200px] bg-background shadow-sm"
+      className="rounded-lg border-2 px-4 py-2.5 min-w-[140px] max-w-[200px] bg-background shadow-sm relative"
       style={{ borderColor: data.color }}
     >
+      <Handle type="target" position={Position.Left} style={{ visibility: "hidden" }} />
       <div className="flex items-center gap-1.5 mb-0.5">
         <div className="w-2 h-2 rounded-sm" style={{ background: data.color }} />
         <span className="text-[9px] font-medium uppercase tracking-wider" style={{ color: data.color }}>
@@ -64,15 +70,17 @@ function TaskNode({ data }: { data: { label: string; taskType: string; moduleNam
       </div>
       <div className="text-xs font-semibold text-foreground leading-tight">{data.label}</div>
       {data.moduleName && (
-        <div className="text-[9px] mt-1 text-foreground-muted">◆ {data.moduleName}</div>
+        <div className="text-[9px] mt-1 text-muted-foreground">◆ {data.moduleName}</div>
       )}
+      <Handle type="source" position={Position.Right} style={{ visibility: "hidden" }} />
     </div>
   );
 }
 
 function GatewayNode({ data }: { data: { label: string; branches?: string[] } }) {
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1 relative">
+      <Handle type="target" position={Position.Left} style={{ visibility: "hidden" }} />
       <div
         className="w-12 h-12 flex items-center justify-center"
         style={{ transform: "rotate(45deg)" }}
@@ -92,6 +100,27 @@ function GatewayNode({ data }: { data: { label: string; branches?: string[] } })
       <span className="text-[10px] font-medium text-foreground max-w-[100px] text-center leading-tight mt-1">
         {data.label}
       </span>
+      <Handle type="source" position={Position.Right} style={{ visibility: "hidden" }} />
+    </div>
+  );
+}
+
+// ─── Failure node (red error boundary event) ─────────────────────────────────
+
+function FailureNode({ data }: { data: { label: string } }) {
+  return (
+    <div className="flex flex-col items-center gap-1 relative">
+      <Handle type="target" position={Position.Left} style={{ visibility: "hidden" }} />
+      <div
+        className="w-10 h-10 rounded-full border-[3px] flex items-center justify-center"
+        style={{ borderColor: "hsl(0 68% 50%)", background: "hsl(0 68% 96%)" }}
+      >
+        <span className="text-sm" style={{ color: "hsl(0 68% 50%)" }}>⚡</span>
+      </div>
+      <span className="text-[10px] font-medium text-foreground max-w-[100px] text-center leading-tight">
+        {data.label}
+      </span>
+      <Handle type="source" position={Position.Right} style={{ visibility: "hidden" }} />
     </div>
   );
 }
@@ -103,6 +132,7 @@ const nodeTypes = {
   endEvent: EndEventNode,
   task: TaskNode,
   gateway: GatewayNode,
+  failureEvent: FailureNode,
 };
 
 // ─── Step type metadata ──────────────────────────────────────────────────────
@@ -131,7 +161,6 @@ const X_START = 60;
 const X_GAP = 220;
 const Y_MAIN = 200;
 const Y_ALT = 500;
-const NODE_Y_SPACING = 100;
 
 // ─── Converter ───────────────────────────────────────────────────────────────
 
@@ -150,8 +179,6 @@ function caseIrToBpmnGraph(ir: CaseIR): { nodes: Node[]; edges: Edge[] } {
       label: ir.trigger.name || "Start",
       subLabel: ir.trigger.type !== "none" ? ir.trigger.type : undefined,
     },
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left,
   });
 
   let prevId = startId;
@@ -168,7 +195,7 @@ function caseIrToBpmnGraph(ir: CaseIR): { nodes: Node[]; edges: Edge[] } {
   });
 
   // Place main-flow steps
-  allSteps.forEach(({ step }, i) => {
+  allSteps.forEach(({ step }) => {
     const isDecision = step.type === "decision";
     const nodeId = `bpmn_${step.id}`;
     const moduleName = step.moduleRef
@@ -184,8 +211,6 @@ function caseIrToBpmnGraph(ir: CaseIR): { nodes: Node[]; edges: Edge[] } {
           label: step.name,
           branches: (step as DecisionStep).branches?.map(b => b.label),
         },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
       });
     } else {
       nodes.push({
@@ -198,8 +223,6 @@ function caseIrToBpmnGraph(ir: CaseIR): { nodes: Node[]; edges: Edge[] } {
           moduleName,
           color: STEP_COLORS[step.type] || "hsl(213 88% 42%)",
         },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
       });
     }
 
@@ -225,7 +248,7 @@ function caseIrToBpmnGraph(ir: CaseIR): { nodes: Node[]; edges: Edge[] } {
             source: nodeId,
             target: targetNodeId,
             type: "smoothstep",
-            label: br.label.replace(/[✅❌]/g, "").trim(),
+            label: br.label.replace(/[✅❌🔄⬆️🛑]/g, "").trim(),
             labelStyle: { fontSize: 10, fontWeight: 600 },
             markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
             style: {
@@ -241,9 +264,8 @@ function caseIrToBpmnGraph(ir: CaseIR): { nodes: Node[]; edges: Edge[] } {
     x += X_GAP;
   });
 
-  // End event (connect from last non-decision step)
+  // End event
   const endId = "bpmn_end";
-  // Find the last step in the main flow that isn't a decision (or connect from last anyway)
   const lastMainStep = allSteps[allSteps.length - 1];
   const lastMainNodeId = lastMainStep ? `bpmn_${lastMainStep.step.id}` : startId;
 
@@ -252,11 +274,8 @@ function caseIrToBpmnGraph(ir: CaseIR): { nodes: Node[]; edges: Edge[] } {
     type: "endEvent",
     position: { x, y: Y_MAIN + 5 },
     data: { label: ir.endEvent?.name || "End" },
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left,
   });
 
-  // Only connect if last step isn't a decision (decisions connect via branches)
   if (!lastMainStep || lastMainStep.step.type !== "decision") {
     edges.push({
       id: `e_${lastMainNodeId}_${endId}`,
@@ -274,29 +293,79 @@ function caseIrToBpmnGraph(ir: CaseIR): { nodes: Node[]; edges: Edge[] } {
     altStage.groups.forEach(group => {
       group.steps.forEach((step, si) => {
         const nodeId = `bpmn_${step.id}`;
+        const isDecision = step.type === "decision";
         const moduleName = step.moduleRef
           ? step.moduleRef.moduleId.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())
           : undefined;
 
-        // Only add if not already present (decision targets may already exist)
+        // Only add if not already present
         if (!nodes.find(n => n.id === nodeId)) {
-          nodes.push({
-            id: nodeId,
-            type: "task",
-            position: { x: altX + si * X_GAP, y: Y_ALT },
-            data: {
-              label: step.name,
-              taskType: STEP_LABELS[step.type] || step.type,
-              moduleName,
-              color: "hsl(0 68% 50%)",
-            },
-            sourcePosition: Position.Right,
-            targetPosition: Position.Left,
+          if (isDecision) {
+            nodes.push({
+              id: nodeId,
+              type: "gateway",
+              position: { x: altX + si * X_GAP, y: Y_ALT - 5 },
+              data: {
+                label: step.name,
+                branches: (step as DecisionStep).branches?.map(b => b.label),
+              },
+            });
+          } else {
+            nodes.push({
+              id: nodeId,
+              type: "task",
+              position: { x: altX + si * X_GAP, y: Y_ALT },
+              data: {
+                label: step.name,
+                taskType: STEP_LABELS[step.type] || step.type,
+                moduleName,
+                color: "hsl(0 68% 50%)",
+              },
+            });
+          }
+        }
+
+        // Connect decision branches in alt path
+        if (isDecision) {
+          const decStep = step as DecisionStep;
+          decStep.branches?.forEach((br, bi) => {
+            const targetNodeId = br.targetStepId ? `bpmn_${br.targetStepId}` : undefined;
+            if (targetNodeId) {
+              const isReject = br.label.includes("🛑") || br.label.toLowerCase().includes("close") || br.label.toLowerCase().includes("reject");
+              edges.push({
+                id: `e_altbranch_${step.id}_${bi}`,
+                source: nodeId,
+                target: targetNodeId,
+                type: "smoothstep",
+                label: br.label.replace(/[✅❌🔄⬆️🛑]/g, "").trim(),
+                labelStyle: { fontSize: 10, fontWeight: 600 },
+                markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
+                style: {
+                  stroke: isReject ? "hsl(0 68% 50%)" : "hsl(134 60% 42%)",
+                  strokeWidth: 2,
+                },
+              });
+            }
           });
         }
 
-        // Connect alt steps to end event
-        if (si === group.steps.length - 1) {
+        // Connect sequential alt steps (non-decision)
+        if (si > 0 && group.steps[si - 1].type !== "decision") {
+          const prevAltId = `bpmn_${group.steps[si - 1].id}`;
+          if (!edges.find(e => e.source === prevAltId && e.target === nodeId)) {
+            edges.push({
+              id: `e_alt_${group.steps[si - 1].id}_${step.id}`,
+              source: prevAltId,
+              target: nodeId,
+              type: "smoothstep",
+              markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
+              style: { stroke: "hsl(0 68% 50%)", strokeWidth: 2, strokeDasharray: "6 3" },
+            });
+          }
+        }
+
+        // Last step in alt group connects to end
+        if (si === group.steps.length - 1 && step.type !== "decision") {
           edges.push({
             id: `e_alt_${step.id}_end`,
             source: nodeId,
@@ -326,7 +395,6 @@ export default function BpmnDiagramView({ caseIr, onSelectStep }: BpmnDiagramVie
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (!onSelectStep || !node.id.startsWith("bpmn_")) return;
     const stepId = node.id.replace("bpmn_", "");
-    // Find the step in the IR
     const allStages = [...caseIr.stages, ...(caseIr.alternativePaths ?? [])];
     for (const stage of allStages) {
       for (const group of stage.groups) {
