@@ -137,6 +137,14 @@ export default function StudioPage() {
 
   useEffect(() => {
     if (routerState?.generatedIr || restoredIr || !templateId) return;
+
+    // Approval pipeline is a CaseIR, not BPMN XML
+    if (templateId === "approval_pipeline") {
+      setInitialIr({ ir: createApprovalPipelineCaseIR(), warnings: [] });
+      setLoading(false);
+      return;
+    }
+
     const xml = TEMPLATE_MAP[templateId];
     if (!xml) {
       setLoading(false);
