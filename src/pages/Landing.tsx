@@ -137,6 +137,8 @@ export default function Landing() {
   const handleTemplateClick = (template: Template) => {
     if (template.isDefault) {
       navigate("/create");
+    } else if (template.bpmnFile === "approval_pipeline") {
+      navigate(`/studio?template=approval_pipeline`);
     } else {
       navigate("/create", {
         state: { templateId: template.bpmnFile, templateName: template.name },
