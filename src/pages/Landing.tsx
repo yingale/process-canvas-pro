@@ -40,6 +40,13 @@ const templates: Template[] = [
       "Scheduled workflow that fetches emails, processes attachments in parallel, and sends notification emails upon completion",
     bpmnFile: "file_processing",
   },
+  {
+    id: "approval-pipeline",
+    name: "Approval Pipeline",
+    description:
+      "End-to-end approval workflow with AI processing, human review, reject & resubmit loops, escalation paths, and automated notifications",
+    bpmnFile: "approval_pipeline",
+  },
 ];
 
 interface Workflow {
