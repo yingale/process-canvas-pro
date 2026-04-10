@@ -178,6 +178,30 @@ function StepRow({ step, color, selected, onSelect, onContextMenu, onBoundaryCli
             </div>
           )}
           {step.description && <div className="text-[9px] mt-0.5 truncate italic text-foreground-subtle">{step.description}</div>}
+          {/* Decision branch pills */}
+          {step.type === "decision" && step.branches && step.branches.length > 0 && (
+            <div className="flex flex-col gap-0.5 mt-1.5">
+              {step.branches.map(br => (
+                <div key={br.id} className="flex items-center gap-1 text-[9px]">
+                  <div
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                    style={{ background: br.label.includes("✅") || br.label.toLowerCase().includes("yes") || br.label.toLowerCase().includes("approv") ? "hsl(134 60% 42%)" : "hsl(0 68% 50%)" }}
+                  />
+                  <span className="font-medium text-foreground truncate">{br.label}</span>
+                  {br.targetStepId && (
+                    <span className="branch-target-pill text-[8px] px-1 py-0 rounded font-mono truncate max-w-[80px]">
+                      → {br.targetStepId}
+                    </span>
+                  )}
+                </div>
+              ))}
+              {step.defaultBranchId && (
+                <div className="text-[8px] text-foreground-subtle italic mt-0.5">
+                  Default: {step.branches.find(b => b.id === step.defaultBranchId)?.label ?? step.defaultBranchId}
+                </div>
+              )}
+            </div>
+          )}
           {step.boundaryEvents && step.boundaryEvents.length > 0 && (
             <div className="flex items-center gap-1 mt-1 flex-wrap">
               {step.boundaryEvents.map(be => (

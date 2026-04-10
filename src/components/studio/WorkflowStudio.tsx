@@ -6,6 +6,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType, ModuleConfigField, FormTemplate, FormRef, ModuleRef } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
+import { createApprovalPipelineCaseIR } from "@/lib/sampleApprovalPipeline";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Toolbar from "./Toolbar";
