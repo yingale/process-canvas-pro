@@ -6,6 +6,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import type { CaseIR, SelectionTarget, JsonPatch, Step, StepType, BoundaryEventType, ModuleConfigField, FormTemplate, FormRef, ModuleRef } from "@/types/caseIr";
 import { importBpmn } from "@/lib/bpmnImporter";
+import { createApprovalPipelineCaseIR } from "@/lib/sampleApprovalPipeline";
 import { applyCaseIRPatch } from "@/lib/patchUtils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Toolbar from "./Toolbar";
@@ -88,6 +89,18 @@ function EmptyState({ onImport }: { onImport: (ir: CaseIR, w: string[]) => void 
           </div>
         )}
         <p className="text-xs text-foreground-subtle">Supports BPMN 2.0 · Camunda 7 · subProcess-based stage layout</p>
+        <div className="pt-2 border-t border-border">
+          <button
+            className="text-xs font-medium text-primary hover:underline flex items-center gap-1.5 mx-auto"
+            onClick={() => {
+              const ir = createApprovalPipelineCaseIR();
+              onImport(ir, []);
+            }}
+          >
+            <Workflow size={12} />
+            Load sample: Approval Pipeline (Email → AI → Approval → Extract)
+          </button>
+        </div>
       </div>
     </div>
   );
