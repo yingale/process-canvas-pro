@@ -40,6 +40,13 @@ const templates: Template[] = [
       "Scheduled workflow that fetches emails, processes attachments in parallel, and sends notification emails upon completion",
     bpmnFile: "file_processing",
   },
+  {
+    id: "approval-pipeline",
+    name: "Approval Pipeline",
+    description:
+      "End-to-end approval workflow with AI processing, human review, reject & resubmit loops, escalation paths, and automated notifications",
+    bpmnFile: "approval_pipeline",
+  },
 ];
 
 interface Workflow {
@@ -130,6 +137,8 @@ export default function Landing() {
   const handleTemplateClick = (template: Template) => {
     if (template.isDefault) {
       navigate("/create");
+    } else if (template.bpmnFile === "approval_pipeline") {
+      navigate(`/studio?template=approval_pipeline`);
     } else {
       navigate("/create", {
         state: { templateId: template.bpmnFile, templateName: template.name },

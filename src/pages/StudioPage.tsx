@@ -3,6 +3,7 @@ import { useSearchParams, useLocation } from "react-router-dom";
 import WorkflowStudio from "@/components/studio/WorkflowStudio";
 import { importBpmn } from "@/lib/bpmnImporter";
 import { EMAIL_FETCHER_BPMN } from "@/lib/sampleBpmn";
+import { createApprovalPipelineCaseIR } from "@/lib/sampleApprovalPipeline";
 import type { CaseIR, FormTemplate } from "@/types/caseIr";
 
 // Inline the file processing BPMN for template loading
@@ -136,6 +137,14 @@ export default function StudioPage() {
 
   useEffect(() => {
     if (routerState?.generatedIr || restoredIr || !templateId) return;
+
+    // Approval pipeline is a CaseIR, not BPMN XML
+    if (templateId === "approval_pipeline") {
+      setInitialIr({ ir: createApprovalPipelineCaseIR(), warnings: [] });
+      setLoading(false);
+      return;
+    }
+
     const xml = TEMPLATE_MAP[templateId];
     if (!xml) {
       setLoading(false);
