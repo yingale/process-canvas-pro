@@ -6,19 +6,21 @@ import { useState } from "react";
 import {
   Mail, FileSpreadsheet, Brain, Columns3, Send,
   ChevronDown, ChevronRight, GripVertical, ArrowRight,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import { AUTOMATION_NODES, type AutomationNodeDef } from "./automationNodes";
 import "./studio.css";
 
 const ICON_MAP: Record<string, LucideIcon> = {
-  Mail, FileSpreadsheet, Brain, Columns3, Send,
+  Mail, FileSpreadsheet, Brain, Columns3, Send, ShieldCheck,
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
   communication: "Communication",
   extraction: "Data Extraction",
   ai: "AI & Processing",
+  governance: "Governance",
   notification: "Notification",
 };
 
@@ -106,9 +108,13 @@ export default function NodesPanel() {
           <ArrowRight size={8} />
           <span className="px-1.5 py-0.5 rounded" style={{ background: "hsl(268 62% 52% / 0.12)" }}>AI Processor</span>
           <ArrowRight size={8} />
-          <span className="px-1.5 py-0.5 rounded" style={{ background: "hsl(152 68% 38% / 0.12)" }}>Column Extractor</span>
+          <span className="px-1.5 py-0.5 rounded" style={{ background: "hsl(45 90% 48% / 0.12)" }}>Approval</span>
           <ArrowRight size={8} />
-          <span className="px-1.5 py-0.5 rounded" style={{ background: "hsl(199 80% 42% / 0.12)" }}>Email Notification</span>
+          <span className="px-1.5 py-0.5 rounded" style={{ background: "hsl(152 68% 38% / 0.12)" }}>Column Extractor</span>
+        </div>
+        <div className="flex items-center gap-1 text-[8px] text-foreground-subtle mt-1">
+          <span className="text-[7px] text-muted-foreground">On reject →</span>
+          <span className="px-1.5 py-0.5 rounded" style={{ background: "hsl(0 70% 50% / 0.12)" }}>Failure / End</span>
         </div>
       </div>
     </div>

@@ -31,7 +31,7 @@ export interface AutomationNodeDef {
   icon: string; // lucide icon name
   color: string;
   topic: string; // Camunda external task topic
-  category: "communication" | "extraction" | "ai" | "notification";
+  category: "communication" | "extraction" | "ai" | "notification" | "governance";
   version: string;
   inputSchema: JsonSchemaObject;
   outputSchema: JsonSchemaObject;
