@@ -287,18 +287,68 @@ export default function StepPropertiesPanel({
         );
       })}
 
-      {step.type === "decision" && step.branches.length > 0 && (
+      {step.type === "decision" && (
         <div>
           <SectionHeader title="Branches" open={openGroups.has("branches")} onToggle={() => toggleGroup("branches")} />
           {openGroups.has("branches") && (
-            <div className="px-4 py-3 space-y-2">
-              {step.branches.map(branch => (
-                <div key={branch.id} className="branch-card rounded-lg border p-3 space-y-1.5">
-                  <div className="text-[11px] font-semibold text-foreground">{branch.label}</div>
-                  <div className="font-mono text-[10px] break-all text-foreground-muted">{branch.condition}</div>
-                  {branch.targetStepId && <div className="text-[10px] text-foreground-subtle">→ {branch.targetStepId}</div>}
-                </div>
-              ))}
+            <div className="px-4 py-3 space-y-3">
+              {(step.branches ?? []).map((branch, bi) => {
+                const allSteps: { id: string; name: string; lane: string }[] = [];
+                if (caseIr) {
+                  (caseIr.stages ?? []).forEach(st => st.groups.forEach(g => g.steps.forEach(s => {
+                    if (s.id !== step.id) allSteps.push({ id: s.id, name: s.name, lane: st.name });
+                  })));
+                  (caseIr.alternativePaths ?? []).forEach(st => st.groups.forEach(g => g.steps.forEach(s => {
+                    if (s.id !== step.id) allSteps.push({ id: s.id, name: s.name, lane: `Alt: ${st.name}` });
+                  })));
+                }
+                return (
+                  <div key={branch.id} className="branch-card rounded-lg border p-3 space-y-2.5">
+                    <Field label="Label">
+                      <TextInput
+                        value={branch.label}
+                        onChange={v => onPatch([{ op: "replace", path: `${basePath}/branches/${bi}/label`, value: v }])}
+                        placeholder="e.g. Approved"
+                      />
+                    </Field>
+                    <Field label="Condition">
+                      <TextInput
+                        value={branch.condition}
+                        onChange={v => onPatch([{ op: "replace", path: `${basePath}/branches/${bi}/condition`, value: v }])}
+                        placeholder="e.g. approved === true"
+                      />
+                    </Field>
+                    <Field label="Target Step">
+                      <select
+                        className="studio-select w-full text-[12px] rounded-md px-2.5 py-1.5"
+                        value={branch.targetStepId ?? ""}
+                        onChange={e => onPatch([{ op: "replace", path: `${basePath}/branches/${bi}/targetStepId`, value: e.target.value || undefined }])}
+                      >
+                        <option value="">— Next step (default) —</option>
+                        {allSteps.map(s => (
+                          <option key={s.id} value={s.id}>[{s.lane}] {s.name}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <button
+                      className="text-[10px] text-destructive hover:underline"
+                      onClick={() => onPatch([{ op: "remove", path: `${basePath}/branches/${bi}` }])}
+                    >
+                      Remove branch
+                    </button>
+                  </div>
+                );
+              })}
+              <button
+                className="text-[11px] text-primary hover:underline font-medium"
+                onClick={() => onPatch([{
+                  op: "add",
+                  path: `${basePath}/branches/-`,
+                  value: { id: `branch_${Date.now()}`, label: "New Branch", condition: "", targetStepId: "" },
+                }])}
+              >
+                + Add Branch
+              </button>
             </div>
           )}
         </div>
