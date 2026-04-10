@@ -60,14 +60,14 @@ export default function AutomationNodesDocsPage() {
   return (
     <ModuleDocLayout
       title="Automation Nodes — Full API Contract"
-      subtitle="Complete REST API specification with request/response JSON for all 9 endpoints, MongoDB data models, I/O mapping contracts, variable chaining, and Camunda integration."
+      subtitle="Complete REST API specification with request/response JSON for all 9 endpoints, MongoDB data models, I/O mapping contracts, variable chaining, and Camunda integration. Includes the Approval Gate node for human-in-the-loop workflows."
       badges={["REST API", "MongoDB", "Camunda Topics", "I/O Mapping", "Request/Response", "Variable Chaining"]}
       studioLink="/studio"
     >
       {/* ─── Section 1: Node Registry APIs ─── */}
       <section className="space-y-4">
         <h2 className="text-lg font-bold text-foreground">1. Node Registry APIs</h2>
-        <p className="text-sm text-muted-foreground">Static node definitions — read-only registry of all 5 automation nodes.</p>
+        <p className="text-sm text-muted-foreground">Static node definitions — read-only registry of all 6 automation nodes.</p>
 
         <EndpointSection
           method="GET"
@@ -230,9 +230,50 @@ export default function AutomationNodesDocsPage() {
         }
       },
       "defaultConfig": { "to": "", "cc": "", "subject": "", "body": "", "attachFileVariable": "", "fromAlias": "", "priority": "normal", "outputVariable": "emailNotificationResult" }
+    },
+    {
+      "id": "approval",
+      "name": "Approval Gate",
+      "description": "Human review decision gate — approve to continue or reject to fail/reroute",
+      "topic": "approval-review",
+      "category": "governance",
+      "icon": "shield-check",
+      "version": "1.0.0",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "inputVariable": { "type": "string", "description": "Variable from previous node to present for review" },
+          "approverRole": { "type": "string", "description": "Persona/role that should review" },
+          "approverEmail": { "type": "string", "description": "Specific reviewer email (overrides role)" },
+          "approvalType": { "type": "string", "enum": ["single","sequential","parallel"], "default": "single" },
+          "slaHours": { "type": "integer", "default": 24, "minimum": 1, "maximum": 720 },
+          "escalateTo": { "type": "string", "description": "Persona/email for escalation on SLA breach" },
+          "onReject": { "type": "string", "enum": ["terminate","reroute","return"], "default": "terminate" },
+          "rerouteTo": { "type": "string", "description": "Step ID when onReject = reroute" },
+          "instructions": { "type": "string", "description": "Instructions shown to reviewer" },
+          "outputVariable": { "type": "string", "default": "approvalResult" }
+        },
+        "required": ["inputVariable", "approverRole", "outputVariable"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "decision": { "type": "string", "description": "approved | rejected" },
+          "reviewerEmail": { "type": "string" },
+          "comments": { "type": "string" },
+          "decidedAt": { "type": "string" },
+          "escalated": { "type": "boolean" }
+        }
+      },
+      "defaultConfig": {
+        "inputVariable": "", "approverRole": "", "approverEmail": "",
+        "approvalType": "single", "slaHours": 24, "escalateTo": "",
+        "onReject": "terminate", "rerouteTo": "", "instructions": "",
+        "outputVariable": "approvalResult"
+      }
     }
   ],
-  "total": 5
+  "total": 6
 }`}
           statusCodes={`200 OK — List returned successfully
 401 Unauthorized — Missing or invalid Bearer token
@@ -743,7 +784,7 @@ Step 5: Email Notification
         name: { bsonType: "string", description: "Display name" },
         description: { bsonType: "string" },
         topic: { bsonType: "string", description: "Camunda External Task topic name" },
-        category: { enum: ["communication", "extraction", "ai", "notification"], description: "Node category" },
+        category: { enum: ["communication", "extraction", "ai", "notification", "governance"], description: "Node category" },
         icon: { bsonType: "string" },
         version: { bsonType: "string", pattern: "^\\\\d+\\\\.\\\\d+\\\\.\\\\d+$" },
         inputSchema: {
@@ -949,6 +990,7 @@ Alternative considered — fully embedded in workflow document:
 email-fetcher         │ email-fetcher-fetch        │ Poll mailbox, download attachments
 chunk-extractor       │ chunk-extractor-process     │ Parse file, split into row chunks
 ai-processor          │ ai-processor-run            │ Call LLM API with resolved prompt
+approval              │ approval-review             │ User task — pause for human decision
 column-extractor      │ column-extractor-extract    │ Filter columns, generate output file
 email-notification    │ email-notification-send     │ Send email with template + attachment`} />
           </CardContent>
@@ -983,7 +1025,7 @@ email-notification    │ email-notification-send     │ Send email with templa
       {/* ─── Section 6: Per-Node Config Reference ─── */}
       <section className="space-y-4">
         <h2 className="text-lg font-bold text-foreground">6. Per-Node Configuration Reference</h2>
-        <p className="text-sm text-muted-foreground">Complete configuration, runtime output, and chaining example for each of the 5 nodes.</p>
+        <p className="text-sm text-muted-foreground">Complete configuration, runtime output, and chaining example for each of the 6 nodes.</p>
 
         {/* Email Fetcher */}
         <DocCard>
@@ -1120,6 +1162,86 @@ email-notification    │ email-notification-send     │ Send email with templa
   "outputFilePath": "/storage/wf-001/step-4/invoice_summary.csv",
   "rowCount": 2,
   "extractedColumns": ["Invoice No", "Amount", "Due Date"]
+}`} />
+          </CardContent>
+        </DocCard>
+
+        {/* Approval Gate */}
+        <DocCard>
+          <CardHeader><CardTitle className="text-sm">🛡️ Approval Gate — Complete Config</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <CopyBlock label="POST Request — Create Instance" code={`POST /api/workflows/wf-001/steps/step-approval/nodes
+
+{
+  "nodeId": "approval",
+  "nodeType": "approval",
+  "config": {
+    "inputVariable": "aiProcessorResult",
+    "approverRole": "DataSteward",
+    "approverEmail": "",
+    "approvalType": "single",
+    "slaHours": 24,
+    "escalateTo": "admin@acme.com",
+    "onReject": "terminate",
+    "rerouteTo": "",
+    "instructions": "Review the AI-detected column names and first 10 rows. Approve if correct, reject if the data looks wrong."
+  },
+  "inputMappings": [
+    { "sourceVariable": "step-3", "sourceField": "aiResponse", "targetField": "reviewData" },
+    { "sourceVariable": "step-3", "sourceField": "columnNames", "targetField": "previewColumns" }
+  ],
+  "outputMappings": [
+    { "sourceField": "decision", "targetVariable": "step-4", "targetField": "approvalDecision" }
+  ]
+}`} />
+            <CopyBlock label="Runtime — Camunda User Task" code={`// Approval is a USER TASK, not an external task.
+// Camunda creates a task assigned to the approverRole persona.
+
+// Task Form Data (presented to reviewer):
+{
+  "reviewData": {
+    "columns": ["Invoice No", "Amount", "Due Date"],
+    "previewRows": [
+      { "Invoice No": "1234", "Amount": "5000.00", "Due Date": "2026-04-15" },
+      { "Invoice No": "1235", "Amount": "3200.50", "Due Date": "2026-04-20" }
+    ],
+    "totalRows": 1500,
+    "reasoning": "Selected financial summary columns"
+  },
+  "instructions": "Review the AI-detected column names and first 10 rows..."
+}
+
+// Reviewer submits decision via task form`} />
+            <CopyBlock label="Runtime Output (after reviewer decides)" code={`{
+  "decision": "approved",
+  "reviewerEmail": "steward@acme.com",
+  "comments": "Columns look correct. Proceed with full extraction.",
+  "decidedAt": "2026-04-06T14:30:00.000Z",
+  "escalated": false
+}`} />
+            <CopyBlock label="Rejection Flow" code={`// If reviewer rejects:
+{
+  "decision": "rejected",
+  "reviewerEmail": "steward@acme.com",
+  "comments": "Amount column has wrong format — needs currency prefix.",
+  "decidedAt": "2026-04-06T14:35:00.000Z",
+  "escalated": false
+}
+
+// onReject = "terminate" → workflow ends at error end event
+// onReject = "reroute"   → workflow jumps to rerouteTo step
+// onReject = "return"    → workflow loops back to AI Processor for retry`} />
+            <CopyBlock label="Escalation (SLA breach)" code={`// If no decision within slaHours (24h):
+// Camunda timer boundary event fires
+// Task reassigned to escalateTo persona/email
+// escalated flag set to true in output
+
+{
+  "decision": "approved",
+  "reviewerEmail": "admin@acme.com",
+  "comments": "Escalated — original reviewer did not respond.",
+  "decidedAt": "2026-04-07T14:30:00.000Z",
+  "escalated": true
 }`} />
           </CardContent>
         </DocCard>
