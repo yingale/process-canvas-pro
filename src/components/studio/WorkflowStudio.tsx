@@ -11,6 +11,7 @@ import { applyCaseIRPatch } from "@/lib/patchUtils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Toolbar from "./Toolbar";
 import LifecycleDiagram from "./LifecycleDiagram";
+import BpmnDiagramView from "./BpmnDiagramView";
 import PropertiesPanel from "./PropertiesPanel";
 import AiChatPanel from "./AiChatPanel";
 import NewFormDialog from "./NewFormDialog";
@@ -24,7 +25,7 @@ import BusinessRulesPanel from "./BusinessRulesPanel";
 import DataModelPanel from "./DataModelPanel";
 import DeploymentPanel from "./DeploymentPanel";
 import FormBuilderPanel from "./FormBuilderPanel";
-import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket, FormInput, MessageSquare, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket, FormInput, MessageSquare, PanelLeftClose, PanelLeftOpen, LayoutGrid, Diamond } from "lucide-react";
 import "./studio.css";
 
 function uid() { return `el_${Math.random().toString(36).slice(2, 8)}`; }
@@ -122,6 +123,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
   const [propsCollapsed, setPropsCollapsed] = useState(true);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("flow");
+  const [flowView, setFlowView] = useState<"lifecycle" | "bpmn">("lifecycle");
   const [formFields, setFormFields] = useState<ModuleConfigField[]>([]);
   const [newFormTarget, setNewFormTarget] = useState<{ stageId: string; groupId: string; stepId: string } | null>(null);
   const [nodeConfigTarget, setNodeConfigTarget] = useState<{ stepId: string; stageId: string; groupId: string } | null>(null);
