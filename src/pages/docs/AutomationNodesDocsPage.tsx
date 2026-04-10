@@ -1356,7 +1356,7 @@ INTERNAL_ERROR          │ 500  │ Unexpected server error`} />
           <CardHeader><CardTitle>Flow 1: Studio Page Load</CardTitle></CardHeader>
           <CardContent>
             <CopyBlock label="Sequence" code={`1. GET /api/nodes
-   → Load node registry (all 5 definitions) for the Nodes Panel palette
+   → Load node registry (all 6 definitions) for the Nodes Panel palette
    → Cached in-memory; called once on Studio mount
 
 2. GET /api/workflows/:wfId/node-configs
@@ -1542,7 +1542,7 @@ INTERNAL_ERROR          │ 500  │ Unexpected server error`} />
    PUT  /api/workflows/wf-001/steps/step-5/nodes/inst-005  → Save config + inputMappings
 
 ⑫ Export BPMN
-   GET  /api/workflows/wf-001/node-configs            → Fetch all 5 configs
+   GET  /api/workflows/wf-001/node-configs            → Fetch all 6 configs
    → Generate BPMN XML with 5 ServiceTasks + topics + mappings
 
 ═══════════════════════════════════════════════════════════════
@@ -2359,14 +2359,14 @@ if (llmResponse.tokensUsed > MAX_TOKEN_BUDGET) {
   □ Request/response logging with correlation IDs
 
 ✅ Database
-  □ nodeDefinitions collection seeded with all 5 node types
+  □ nodeDefinitions collection seeded with all 6 node types
   □ nodeInstanceConfigs collection with validators and indexes
   □ Compound unique index on (workflowId, stepId, nodeId)
   □ TTL index on soft-deleted records (if applicable)
   □ Backup strategy configured
 
 ✅ Camunda Integration
-  □ All 5 External Task workers implemented and registered
+  □ All 5 External Task workers + 1 User Task (Approval) implemented and registered
   □ Workers subscribe to correct topic names
   □ Variable resolution engine handles \${step.field} pattern
   □ Worker error handling with retry + incident creation
