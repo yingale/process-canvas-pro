@@ -213,7 +213,7 @@ export function createApprovalPipelineCaseIR(): CaseIR {
                 name: "⚡ Rejection Error",
                 type: "automation",
                 description: "Trigger failure node — logs the rejection and raises a BPMN error event",
-                tech: { topic: "error-handler", errorCode: "REJECTION_ERROR" },
+                tech: { topic: "error-handler" },
                 moduleRef: {
                   moduleId: "email-notification",
                   instanceConfig: {
