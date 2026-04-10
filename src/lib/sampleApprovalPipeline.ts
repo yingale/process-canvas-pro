@@ -1,6 +1,8 @@
 /**
  * Sample CaseIR: Approval Pipeline
- * Email Fetcher → Chunk Extractor → AI Processor → Decision (Approve?) → Column Extractor / Failure
+ * Email Fetcher → Chunk Extractor → AI Processor → Decision (Approve?) →
+ *   ✅ Approve → Send Email Notification → End
+ *   ❌ Reject → Failure Node (Error) → End
  */
 import type { CaseIR } from "@/types/caseIr";
 
@@ -17,6 +19,7 @@ export function createApprovalPipelineCaseIR(): CaseIR {
     endEvent: {
       id: "end_1",
       eventType: "none",
+      name: "Process Complete",
     },
     processProperties: {
       isExecutable: true,
@@ -176,16 +179,16 @@ export function createApprovalPipelineCaseIR(): CaseIR {
               },
               {
                 id: "step_notify_success",
-                name: "Send Success Email",
+                name: "Send Approval Email",
                 type: "automation",
-                description: "Notify team with extracted file",
+                description: "Send success notification email with extracted data to stakeholders",
                 tech: { topic: "email-notification-send" },
                 moduleRef: {
                   moduleId: "email-notification",
                   instanceConfig: {
-                    to: "team@company.com",
-                    subject: "Data extraction completed — ${columnExtractorResult.totalRows} rows",
-                    body: "The data extraction pipeline has completed successfully.",
+                    to: "team@company.com,${submitterEmail}",
+                    subject: "✅ Data extraction approved — ${columnExtractorResult.totalRows} rows extracted",
+                    body: "The data extraction pipeline has been approved and completed successfully.\n\nExtracted ${columnExtractorResult.totalRows} rows with ${columnExtractorResult.totalColumns} columns.\n\nPlease find the extracted file attached.",
                     attachFileVariable: "columnExtractorResult.outputFile",
                     outputVariable: "emailNotificationResult",
                   },
@@ -203,20 +206,20 @@ export function createApprovalPipelineCaseIR(): CaseIR {
         groups: [
           {
             id: "grp_fail",
-            name: "Rejection & Triage",
+            name: "Failure & Notification",
             steps: [
               {
                 id: "step_failure",
-                name: "Notify Submitter",
+                name: "⚡ Rejection Error",
                 type: "automation",
-                description: "Send rejection email with reason to original submitter",
-                tech: { topic: "email-notification-send" },
+                description: "Trigger failure node — logs the rejection and raises a BPMN error event",
+                tech: { topic: "error-handler" },
                 moduleRef: {
                   moduleId: "email-notification",
                   instanceConfig: {
-                    to: "${submitterEmail}",
-                    subject: "Data extraction rejected",
-                    body: "Your data extraction was rejected. Reason: ${approvalResult.comments}",
+                    to: "${submitterEmail},${adminEmail}",
+                    subject: "❌ Data extraction REJECTED — ${approvalResult.decision}",
+                    body: "Your data extraction request has been rejected.\n\nReason: ${approvalResult.comments}\nReviewer: ${approvalResult.reviewer}\n\nPlease review the feedback and resubmit if needed.",
                     outputVariable: "failureNotifyResult",
                   },
                 },
@@ -317,7 +320,7 @@ export function createApprovalPipelineCaseIR(): CaseIR {
                   moduleId: "email-notification",
                   instanceConfig: {
                     to: "${submitterEmail},${adminEmail}",
-                    subject: "Case permanently closed — ${caseIr.name}",
+                    subject: "🛑 Case permanently closed — ${caseIr.name}",
                     body: "This data extraction case has been permanently closed after admin review.",
                     outputVariable: "closeNotifyResult",
                   },
