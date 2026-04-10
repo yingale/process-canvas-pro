@@ -11,6 +11,7 @@ import { applyCaseIRPatch } from "@/lib/patchUtils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Toolbar from "./Toolbar";
 import LifecycleDiagram from "./LifecycleDiagram";
+import BpmnDiagramView from "./BpmnDiagramView";
 import PropertiesPanel from "./PropertiesPanel";
 import AiChatPanel from "./AiChatPanel";
 import NewFormDialog from "./NewFormDialog";
@@ -24,7 +25,7 @@ import BusinessRulesPanel from "./BusinessRulesPanel";
 import DataModelPanel from "./DataModelPanel";
 import DeploymentPanel from "./DeploymentPanel";
 import FormBuilderPanel from "./FormBuilderPanel";
-import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket, FormInput, MessageSquare, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket, FormInput, MessageSquare, PanelLeftClose, PanelLeftOpen, LayoutGrid, Diamond } from "lucide-react";
 import "./studio.css";
 
 function uid() { return `el_${Math.random().toString(36).slice(2, 8)}`; }
@@ -122,6 +123,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
   const [propsCollapsed, setPropsCollapsed] = useState(true);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("flow");
+  const [flowView, setFlowView] = useState<"lifecycle" | "bpmn">("lifecycle");
   const [formFields, setFormFields] = useState<ModuleConfigField[]>([]);
   const [newFormTarget, setNewFormTarget] = useState<{ stageId: string; groupId: string; stepId: string } | null>(null);
   const [nodeConfigTarget, setNodeConfigTarget] = useState<{ stepId: string; stageId: string; groupId: string } | null>(null);
@@ -738,48 +740,83 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
                     <TabsTrigger value="forms" className="text-xs gap-1 data-[state=active]:bg-muted"><FormInput size={12} /> Forms</TabsTrigger>
                   </TabsList>
                 </div>
-                <TabsContent value="flow" className="flex-1 overflow-hidden mt-0">
-                  <LifecycleDiagram
-                    caseIr={caseIr}
-                    selection={selection}
-                    onSelectTrigger={handleSelectTrigger}
-                    onSelectEndEvent={handleSelectEndEvent}
-                    onSelectProcess={handleSelectProcess}
-                    onSelectBoundaryEvent={handleSelectBoundaryEvent}
-                    onSelectStage={handleSelectStage}
-                    onSelectGroup={handleSelectGroup}
-                    onSelectStep={handleSelectStep}
-                    onAddStep={handleAddStep}
-                    onInsertModule={handleInsertModule}
-                    onAddGroup={handleAddGroup}
-                    onAddStage={handleAddStage}
-                    onDeleteStage={handleDeleteStage}
-                    onDeleteGroup={handleDeleteGroup}
-                    onDeleteStep={handleDeleteStep}
-                    onDuplicateStep={handleDuplicateStep}
-                    onDuplicateStage={handleDuplicateStage}
-                    onMoveStage={handleMoveStage}
-                    onMoveGroup={handleMoveGroup}
-                    onMoveStep={handleMoveStep}
-                    onAddBoundaryEvent={handleAddBoundaryEvent}
-                    onAddAltStage={handleAddAltStage}
-                    onAddAltGroup={handleAddAltGroup}
-                    onAddAltStep={handleAddAltStep}
-                    onDeleteAltStage={handleDeleteAltStage}
-                    onDeleteAltGroup={handleDeleteAltGroup}
-                    onDeleteAltStep={handleDeleteAltStep}
-                    onDuplicateAltStep={handleDuplicateAltStep}
-                    onDuplicateAltStage={handleDuplicateAltStage}
-                    onMoveAltStage={handleMoveAltStage}
-                    onMoveAltGroup={handleMoveAltGroup}
-                    onMoveAltStep={handleMoveAltStep}
-                    formTemplates={caseIr.formTemplates ?? []}
-                    onAttachForm={handleAttachForm}
-                    onCreateNewForm={handleCreateNewForm}
-                    onDropNewForm={handleDropNewForm}
-                    onDropNode={handleDropNode}
-                    onToggleStepPersona={handleToggleStepPersona}
-                  />
+                <TabsContent value="flow" className="flex-1 overflow-hidden mt-0 flex flex-col">
+                  {/* View toggle */}
+                  <div className="flex items-center gap-1 px-4 py-1.5 border-b flex-shrink-0">
+                    <span className="text-[10px] font-medium text-foreground-muted mr-1">View:</span>
+                    <button
+                      onClick={() => setFlowView("lifecycle")}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                        flowView === "lifecycle"
+                          ? "bg-primary text-primary-foreground"
+                          : "hover-btn text-foreground-muted"
+                      }`}
+                    >
+                      <LayoutGrid size={11} /> Lifecycle
+                    </button>
+                    <button
+                      onClick={() => setFlowView("bpmn")}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+                        flowView === "bpmn"
+                          ? "bg-primary text-primary-foreground"
+                          : "hover-btn text-foreground-muted"
+                      }`}
+                    >
+                      <Diamond size={11} /> BPMN
+                    </button>
+                  </div>
+                  {flowView === "lifecycle" ? (
+                    <div className="flex-1 overflow-hidden">
+                      <LifecycleDiagram
+                        caseIr={caseIr}
+                        selection={selection}
+                        onSelectTrigger={handleSelectTrigger}
+                        onSelectEndEvent={handleSelectEndEvent}
+                        onSelectProcess={handleSelectProcess}
+                        onSelectBoundaryEvent={handleSelectBoundaryEvent}
+                        onSelectStage={handleSelectStage}
+                        onSelectGroup={handleSelectGroup}
+                        onSelectStep={handleSelectStep}
+                        onAddStep={handleAddStep}
+                        onInsertModule={handleInsertModule}
+                        onAddGroup={handleAddGroup}
+                        onAddStage={handleAddStage}
+                        onDeleteStage={handleDeleteStage}
+                        onDeleteGroup={handleDeleteGroup}
+                        onDeleteStep={handleDeleteStep}
+                        onDuplicateStep={handleDuplicateStep}
+                        onDuplicateStage={handleDuplicateStage}
+                        onMoveStage={handleMoveStage}
+                        onMoveGroup={handleMoveGroup}
+                        onMoveStep={handleMoveStep}
+                        onAddBoundaryEvent={handleAddBoundaryEvent}
+                        onAddAltStage={handleAddAltStage}
+                        onAddAltGroup={handleAddAltGroup}
+                        onAddAltStep={handleAddAltStep}
+                        onDeleteAltStage={handleDeleteAltStage}
+                        onDeleteAltGroup={handleDeleteAltGroup}
+                        onDeleteAltStep={handleDeleteAltStep}
+                        onDuplicateAltStep={handleDuplicateAltStep}
+                        onDuplicateAltStage={handleDuplicateAltStage}
+                        onMoveAltStage={handleMoveAltStage}
+                        onMoveAltGroup={handleMoveAltGroup}
+                        onMoveAltStep={handleMoveAltStep}
+                        formTemplates={caseIr.formTemplates ?? []}
+                        onAttachForm={handleAttachForm}
+                        onCreateNewForm={handleCreateNewForm}
+                        onDropNewForm={handleDropNewForm}
+                        onDropNode={handleDropNode}
+                        onToggleStepPersona={handleToggleStepPersona}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex-1 overflow-hidden">
+                      <BpmnDiagramView
+                        caseIr={caseIr}
+                        onSelectStep={handleSelectStep}
+                      />
+                    </div>
+                  )}
                 </TabsContent>
                 <TabsContent value="personas" className="flex-1 overflow-auto mt-0">
                   <PersonasPanel caseIr={caseIr} onPatch={handlePatch} />
