@@ -14,7 +14,7 @@ import LifecycleDiagram from "./LifecycleDiagram";
 import BpmnDiagramView from "./BpmnDiagramView";
 import PropertiesPanel from "./PropertiesPanel";
 import AiChatPanel from "./AiChatPanel";
-import NewFormDialog from "./NewFormDialog";
+import FormBuilderDialog from "./FormBuilderDialog";
 import NodeConfigDialog from "./NodeConfigDialog";
 import type { IoMapping } from "./NodeConfigDialog";
 import NodesPanel from "./NodesPanel";
@@ -557,7 +557,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
 
   const [createdForm, setCreatedForm] = useState<{ id: string; name: string } | null>(null);
 
-  const handleCreateFormFromDialog = useCallback((formName: string) => {
+  const handleCreateFormFromDialog = useCallback((formName: string, fields?: ModuleConfigField[]) => {
     if (!caseIr || !newFormTarget) return;
     const { stageId, groupId, stepId } = newFormTarget;
 
@@ -581,7 +581,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
     const template: FormTemplate = {
       id: templateId,
       name: formName,
-      fields: [
+      fields: fields && fields.length > 0 ? fields : [
         { key: "firstName", label: "First Name", type: "string", required: true },
         { key: "lastName", label: "Last Name", type: "string", required: true },
       ],
@@ -877,9 +877,9 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
         )}
       </div>
 
-      {/* New Form Dialog for drag-drop */}
-      <NewFormDialog
-        open={!!newFormTarget}
+      {/* Form Builder Dialog for drag-drop */}
+      <FormBuilderDialog
+        open={!!newFormTarget && !createdForm}
         onClose={handleCloseFormDialog}
         targetStepName={
           newFormTarget && caseIr
@@ -895,23 +895,10 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
               })()
             : undefined
         }
-        onCreateForm={handleCreateFormFromDialog}
-        createdFormId={createdForm?.id}
-        createdFormName={createdForm?.name}
-        hasExistingForm={
-          newFormTarget && caseIr
-            ? (() => {
-                const allStages = [...caseIr.stages, ...(caseIr.alternativePaths ?? [])];
-                for (const s of allStages) {
-                  for (const g of s.groups) {
-                    const step = g.steps.find(st => st.id === newFormTarget.stepId);
-                    if (step?.formRef) return true;
-                  }
-                }
-                return false;
-              })()
-            : false
-        }
+        onSave={(name, fields) => {
+          handleCreateFormFromDialog(name, fields);
+          handleCloseFormDialog();
+        }}
       />
 
       {/* Node Config Dialog for drag-drop */}
