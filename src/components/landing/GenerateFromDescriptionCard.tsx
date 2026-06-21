@@ -6,7 +6,8 @@ export default function GenerateFromDescriptionCard() {
   const navigate = useNavigate();
 
   return (
-    <div className="landing-template-card">
+    <Can perm="workflow.create">
+      <div className="landing-template-card">
       <div className="landing-template-preview">
         <div className="landing-template-preview-lines">
           <div className="landing-template-line landing-template-line--long" />
@@ -30,12 +31,11 @@ export default function GenerateFromDescriptionCard() {
         <p className="landing-template-desc">
           Describe your workflow in plain English and let AI generate a complete BPMN process for you automatically.
         </p>
-        <Can perm="workflow.create">
-          <button className="landing-create-btn" onClick={() => navigate("/create")}>
-            Describe
-          </button>
-        </Can>
+        <button className="landing-create-btn" onClick={() => navigate("/create")}>
+          Describe
+        </button>
       </div>
     </div>
+    </Can>
   );
 }
