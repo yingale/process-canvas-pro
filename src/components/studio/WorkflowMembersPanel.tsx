@@ -233,8 +233,47 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
               <div className="flex items-center gap-2"><UserPlus className="h-4 w-4" /><span className="font-medium text-sm">Add a member</span></div>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <div className="md:col-span-2">
-                  <Label className="text-xs">Email</Label>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
+                  <Label className="text-xs">User</Label>
+                  {(() => {
+                    const memberIds = new Set(members.map((m) => m.user_id));
+                    const available = allUsers.filter((u) => !memberIds.has(u.id));
+                    const selected = allUsers.find((u) => u.id === selectedUserId);
+                    return (
+                      <Popover open={userPickerOpen} onOpenChange={setUserPickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                            <span className="truncate">
+                              {selected ? (selected.name ? `${selected.name} · ${selected.email}` : selected.email) : "Select a user…"}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search by name or email…" />
+                            <CommandList>
+                              <CommandEmpty>No users found.</CommandEmpty>
+                              <CommandGroup>
+                                {available.map((u) => (
+                                  <CommandItem
+                                    key={u.id}
+                                    value={`${u.name ?? ""} ${u.email}`}
+                                    onSelect={() => { setSelectedUserId(u.id); setUserPickerOpen(false); }}
+                                  >
+                                    <Check className={cn("mr-2 h-4 w-4", selectedUserId === u.id ? "opacity-100" : "opacity-0")} />
+                                    <div className="flex flex-col">
+                                      <span className="text-sm">{u.name ?? u.email}</span>
+                                      {u.name && <span className="text-xs text-muted-foreground">{u.email}</span>}
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    );
+                  })()}
                 </div>
                 <div>
                   <Label className="text-xs">Role</Label>
