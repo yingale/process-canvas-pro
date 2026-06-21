@@ -1,11 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { MessageSquarePlus } from "lucide-react";
+import { Can } from "@/components/authz/Can";
 
 export default function GenerateFromDescriptionCard() {
   const navigate = useNavigate();
 
   return (
-    <div className="landing-template-card">
+    <Can perm="workflow.create">
+      <div className="landing-template-card">
       <div className="landing-template-preview">
         <div className="landing-template-preview-lines">
           <div className="landing-template-line landing-template-line--long" />
@@ -34,5 +36,6 @@ export default function GenerateFromDescriptionCard() {
         </button>
       </div>
     </div>
+    </Can>
   );
 }

@@ -14,6 +14,15 @@ export function AuthzProvider({ children }: { children: ReactNode }) {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const clearContext = useCallback(() => {
+    setUser(null);
+    setPermissions(new Set());
+    setPersonas([]);
+    setTeams([]);
+    setRoles([]);
+    setPolicies([]);
+  }, []);
+
   const loadContext = useCallback(async (userId: string, email: string) => {
     // Profile
     const { data: profile } = await supabase
@@ -103,20 +112,24 @@ export function AuthzProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     const { data: { user: u } } = await supabase.auth.getUser();
     if (u) await loadContext(u.id, u.email ?? "");
-  }, [loadContext]);
+    else clearContext();
+  }, [clearContext, loadContext]);
 
   useEffect(() => {
     let mounted = true;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
+      setLoading(true);
+      clearContext();
       if (session?.user) {
         // Defer to avoid deadlock in Supabase listener
-        setTimeout(() => { loadContext(session.user.id, session.user.email ?? ""); }, 0);
+        setTimeout(async () => {
+          await loadContext(session.user.id, session.user.email ?? "");
+          if (mounted) setLoading(false);
+        }, 0);
       } else {
-        setUser(null);
-        setPermissions(new Set());
-        setPersonas([]); setTeams([]); setRoles([]); setPolicies([]);
+        setLoading(false);
       }
     });
 
@@ -127,7 +140,7 @@ export function AuthzProvider({ children }: { children: ReactNode }) {
     });
 
     return () => { mounted = false; subscription.unsubscribe(); };
-  }, [loadContext]);
+  }, [clearContext, loadContext]);
 
   const value = useMemo<AuthzContextValue>(() => ({
     user, permissions, personas, teams, roles, loading,

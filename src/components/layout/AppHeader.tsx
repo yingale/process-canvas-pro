@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { recordAudit } from "@/lib/authz/audit";
 import { toast } from "sonner";
+import { useAuthz } from "@/contexts/AuthzContext";
 import "../studio/studio.css";
 
 const ROUTE_LABELS: Record<string, string> = {
@@ -41,6 +42,7 @@ export default function AppHeader() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuthz();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -76,7 +78,7 @@ export default function AppHeader() {
             <div className="app-header-avatar">
               <User size={14} />
             </div>
-            <span>Admin</span>
+            <span>{user?.name || user?.email || "Profile"}</span>
             <ChevronDown size={12} style={{ opacity: 0.6 }} />
           </button>
 

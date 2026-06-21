@@ -9,6 +9,7 @@ interface CanProps {
 }
 
 export function Can({ perm, resource, fallback = null, children }: CanProps) {
-  const { can } = useAuthz();
+  const { loading, can } = useAuthz();
+  if (loading) return <>{fallback}</>;
   return <>{can(perm, resource) ? children : fallback}</>;
 }

@@ -1,9 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search, Download, Settings as SettingsIcon,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import PageLoader from "@/components/layout/PageLoader";
+import { Can } from "@/components/authz/Can";
+import { supabase } from "@/integrations/supabase/client";
 import "../components/studio/studio.css";
 
 interface Workflow {
@@ -24,6 +27,7 @@ interface WorkflowResponse {
 }
 
 export default function AllWorkflows() {
+  const navigate = useNavigate();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -37,7 +41,7 @@ export default function AllWorkflows() {
 
   const fetchWorkflows = useCallback(async () => {
     setLoading(true);
-    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const { data: { session } } = await supabase.auth.getSession();
     const params = new URLSearchParams({
       page: String(page),
       pageSize: String(pageSize),
@@ -51,12 +55,14 @@ export default function AllWorkflows() {
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-workflows?${params}`,
         {
           headers: {
-            apikey: anonKey,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
             "Content-Type": "application/json",
           },
         }
       );
       const json: WorkflowResponse = await res.json();
+      if (!res.ok) throw new Error((json as { error?: string }).error ?? "Failed to fetch workflows");
       setWorkflows(json.data ?? []);
       setTotalPages(json.totalPages ?? 1);
       setTotal(json.total ?? 0);
@@ -115,6 +121,11 @@ export default function AllWorkflows() {
               <Download size={14} />
               <span>Export</span>
             </button>
+            <Can perm="workflow.create">
+              <button className="landing-create-btn" onClick={() => navigate("/create")}>
+                Create
+              </button>
+            </Can>
             <div className="landing-search-box">
               <Search size={14} />
               <input
