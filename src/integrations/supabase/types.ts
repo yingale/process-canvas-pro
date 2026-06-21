@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_events: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_personas: string[]
+          actor_teams: string[]
+          actor_user_id: string | null
+          decision: Database["public"]["Enums"]["authz_decision"] | null
+          id: string
+          ip: string | null
+          metadata: Json
+          reason: string | null
+          resource_id: string | null
+          resource_type: string | null
+          ts: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_personas?: string[]
+          actor_teams?: string[]
+          actor_user_id?: string | null
+          decision?: Database["public"]["Enums"]["authz_decision"] | null
+          id?: string
+          ip?: string | null
+          metadata?: Json
+          reason?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+          ts?: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_personas?: string[]
+          actor_teams?: string[]
+          actor_user_id?: string | null
+          decision?: Database["public"]["Enums"]["authz_decision"] | null
+          id?: string
+          ip?: string | null
+          metadata?: Json
+          reason?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+          ts?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       node_instance_configs: {
         Row: {
           config: Json
@@ -61,6 +112,201 @@ export type Database = {
           },
         ]
       }
+      permissions: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          resource: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          resource: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          resource?: string
+        }
+        Relationships: []
+      }
+      persona_roles: {
+        Row: {
+          created_at: string
+          persona_id: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string
+          persona_id: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string
+          persona_id?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_roles_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persona_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personas: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      policies: {
+        Row: {
+          action: string
+          condition: Json
+          created_at: string
+          effect: Database["public"]["Enums"]["policy_effect"]
+          enabled: boolean
+          id: string
+          name: string
+          priority: number
+          resource_pattern: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          condition?: Json
+          created_at?: string
+          effect: Database["public"]["Enums"]["policy_effect"]
+          enabled?: boolean
+          id?: string
+          name: string
+          priority?: number
+          resource_pattern?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          condition?: Json
+          created_at?: string
+          effect?: Database["public"]["Enums"]["policy_effect"]
+          enabled?: boolean
+          id?: string
+          name?: string
+          priority?: number
+          resource_pattern?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          attributes: Json
+          created_at: string
+          email: string
+          id: string
+          name: string | null
+          status: Database["public"]["Enums"]["user_status"]
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          attributes?: Json
+          created_at?: string
+          email: string
+          id: string
+          name?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          attributes?: Json
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string | null
+          status?: Database["public"]["Enums"]["user_status"]
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      resources: {
+        Row: {
+          attributes: Json
+          created_at: string
+          external_id: string | null
+          id: string
+          name: string
+          tenant_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          attributes?: Json
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          name: string
+          tenant_id?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          attributes?: Json
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          name?: string
+          tenant_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reusable_modules: {
         Row: {
           allowed_personas: string[] | null
@@ -99,6 +345,169 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          created_at: string
+          permission_id: string
+          role_id: string
+        }
+        Insert: {
+          created_at?: string
+          permission_id: string
+          role_id: string
+        }
+        Update: {
+          created_at?: string
+          permission_id?: string
+          role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      teams: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_personas: {
+        Row: {
+          created_at: string
+          persona_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          persona_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          persona_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_personas_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_teams: {
+        Row: {
+          created_at: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_teams_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workflow_business_rules: {
         Row: {
@@ -362,10 +771,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "designer" | "reviewer" | "viewer"
+      authz_decision: "ALLOW" | "DENY"
+      policy_effect: "ALLOW" | "DENY"
+      user_status: "ACTIVE" | "INACTIVE" | "SUSPENDED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -492,6 +910,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "designer", "reviewer", "viewer"],
+      authz_decision: ["ALLOW", "DENY"],
+      policy_effect: ["ALLOW", "DENY"],
+      user_status: ["ACTIVE", "INACTIVE", "SUSPENDED"],
+    },
   },
 } as const
