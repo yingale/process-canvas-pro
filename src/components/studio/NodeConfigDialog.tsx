@@ -193,7 +193,7 @@ export default function NodeConfigDialog({
             setConfig(data.config as unknown as Record<string, unknown>);
             setInputMappings((data.input_mappings as unknown as IoMapping[]) || []);
             setOutputMappings((data.output_mappings as unknown as IoMapping[]) || []);
-            const p = (data as { personas?: NodeRaci }).personas;
+            const p = (data as unknown as { personas?: NodeRaci }).personas;
             if (p && typeof p === "object") {
               setRaci({
                 responsible: Array.isArray(p.responsible) ? p.responsible : [],
