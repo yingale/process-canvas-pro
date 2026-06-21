@@ -26,6 +26,7 @@ import type { Step } from "@/types/caseIr";
 import type { AutomationNodeDef, NodeIoField } from "./automationNodes";
 import { getNodeDef } from "./automationNodes";
 import { supabase } from "@/integrations/supabase/client";
+import NodeRaciSection, { EMPTY_RACI, type NodeRaci } from "./NodeRaciSection";
 
 interface NodeConfigDialogProps {
   open: boolean;
@@ -163,12 +164,12 @@ export default function NodeConfigDialog({
   const [config, setConfig] = useState<Record<string, unknown>>({});
   const [inputMappings, setInputMappings] = useState<IoMapping[]>([]);
   const [outputMappings, setOutputMappings] = useState<IoMapping[]>([]);
+  const [raci, setRaci] = useState<NodeRaci>(EMPTY_RACI);
   const [saving, setSaving] = useState(false);
 
   // Initialize config from step's existing instanceConfig
   useEffect(() => {
     if (!currentStep?.moduleRef || !nodeDef) return;
-    // Use defaultConfig as base, overlay with existing instanceConfig
     const initial: Record<string, unknown> = { ...nodeDef.defaultConfig };
     const existing = currentStep.moduleRef!.instanceConfig;
     for (const key of Object.keys(initial)) {
@@ -177,8 +178,8 @@ export default function NodeConfigDialog({
     setConfig(initial);
     setInputMappings([]);
     setOutputMappings([]);
+    setRaci(EMPTY_RACI);
 
-    // Load existing config from DB
     if (workflowId && currentStep.id && nodeDef.id) {
       supabase
         .from("node_instance_configs")
@@ -192,6 +193,15 @@ export default function NodeConfigDialog({
             setConfig(data.config as unknown as Record<string, unknown>);
             setInputMappings((data.input_mappings as unknown as IoMapping[]) || []);
             setOutputMappings((data.output_mappings as unknown as IoMapping[]) || []);
+            const p = (data as { personas?: NodeRaci }).personas;
+            if (p && typeof p === "object") {
+              setRaci({
+                responsible: Array.isArray(p.responsible) ? p.responsible : [],
+                accountable: p.accountable ?? null,
+                consulted: Array.isArray(p.consulted) ? p.consulted : [],
+                informed: Array.isArray(p.informed) ? p.informed : [],
+              });
+            }
           }
         });
     }
@@ -213,7 +223,6 @@ export default function NodeConfigDialog({
     if (!currentStep || !nodeDef) return;
     setSaving(true);
     try {
-      // Upsert to DB
       const payload = {
         workflow_id: workflowId,
         step_id: currentStep.id,
@@ -222,6 +231,7 @@ export default function NodeConfigDialog({
         config,
         input_mappings: inputMappings,
         output_mappings: outputMappings,
+        personas: raci,
       };
 
       await supabase
@@ -235,7 +245,7 @@ export default function NodeConfigDialog({
     } finally {
       setSaving(false);
     }
-  }, [currentStep, nodeDef, workflowId, config, inputMappings, outputMappings, onSave, onClose]);
+  }, [currentStep, nodeDef, workflowId, config, inputMappings, outputMappings, raci, onSave, onClose]);
 
   if (!nodeDef || !currentStep) return null;
 
