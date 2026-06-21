@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search, Download, Settings as SettingsIcon,
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
@@ -26,6 +27,7 @@ interface WorkflowResponse {
 }
 
 export default function AllWorkflows() {
+  const navigate = useNavigate();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -120,7 +122,7 @@ export default function AllWorkflows() {
               <span>Export</span>
             </button>
             <Can perm="workflow.create">
-              <button className="landing-create-btn" onClick={() => window.location.assign("/create")}>
+              <button className="landing-create-btn" onClick={() => navigate("/create")}>
                 Create
               </button>
             </Can>
