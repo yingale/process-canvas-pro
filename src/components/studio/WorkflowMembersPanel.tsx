@@ -12,7 +12,10 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, UserPlus, ShieldAlert, Users, Layers, ScrollText } from "lucide-react";
+import { Trash2, UserPlus, ShieldAlert, Users, Layers, ScrollText, Check, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkflowRole, invalidateWorkflowRole } from "@/hooks/use-workflow-role";
 import { toast } from "sonner";
@@ -44,10 +47,12 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
   const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
   const [personas, setPersonas] = useState<{ id: string; name: string }[]>([]);
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
+  const [allUsers, setAllUsers] = useState<{ id: string; email: string; name: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
 
   // add-member form
-  const [email, setEmail] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [userPickerOpen, setUserPickerOpen] = useState(false);
   const [roleValue, setRoleValue] = useState<string>("template:"); // "template:<id>" or "custom:<id>"
   const [personaId, setPersonaId] = useState<string>("__none__");
   const [teamId, setTeamId] = useState<string>("__none__");
@@ -55,7 +60,7 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [mRes, tRes, crRes, pRes, teamsRes] = await Promise.all([
+    const [mRes, tRes, crRes, pRes, teamsRes, uRes] = await Promise.all([
       supabase.from("workflow_members")
         .select("id,user_id,role,template_id,custom_role_id,persona_id,team_id,profiles:user_id(email,name)")
         .eq("workflow_id", workflowId),
@@ -63,6 +68,7 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
       supabase.from("workflow_custom_roles").select("id,name").eq("workflow_id", workflowId).order("name"),
       supabase.from("personas").select("id,name").order("name"),
       supabase.from("teams").select("id,name").order("name"),
+      supabase.from("profiles").select("id,email,name").order("email"),
     ]);
     setMembers(
       ((mRes.data ?? []) as unknown as Array<Member & { profiles: { email: string; name: string | null } | null }>)
@@ -77,6 +83,7 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
     setCustomRoles((crRes.data ?? []) as CustomRole[]);
     setPersonas((pRes.data ?? []) as { id: string; name: string }[]);
     setTeams((teamsRes.data ?? []) as { id: string; name: string }[]);
+    setAllUsers((uRes.data ?? []) as { id: string; email: string; name: string | null }[]);
     if (tRes.data?.[0] && !roleValue.startsWith("template:") && !roleValue.startsWith("custom:")) {
       setRoleValue(`template:${tRes.data[0].id}`);
     } else if (roleValue === "template:" && tRes.data?.[0]) {
@@ -113,12 +120,14 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
   };
 
   const add = useCallback(async () => {
-    if (!email.trim()) return;
+    if (!selectedUserId) return;
+    const prof = allUsers.find((u) => u.id === selectedUserId);
+    if (!prof) { toast.error("Pick a user."); return; }
+    if (members.some((m) => m.user_id === selectedUserId)) {
+      toast.error("User is already a member."); return;
+    }
     setBusy(true);
     try {
-      const { data: prof, error: profErr } = await supabase
-        .from("profiles").select("id,email").ilike("email", email.trim()).maybeSingle();
-      if (profErr || !prof) { toast.error("No user with that email. They must sign up first."); return; }
       const parsed = parseRole(roleValue);
       const { error } = await supabase.from("workflow_members").insert({
         workflow_id: workflowId,
@@ -135,12 +144,12 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
         decision: "ALLOW", metadata: { email: prof.email, role: parsed.legacy, template_id: parsed.template_id, custom_role_id: parsed.custom_role_id },
       });
       toast.success(`Added ${prof.email}`);
-      setEmail("");
+      setSelectedUserId("");
       setPersonaId("__none__"); setTeamId("__none__");
       invalidateWorkflowRole(workflowId);
       await load();
     } finally { setBusy(false); }
-  }, [email, roleValue, personaId, teamId, workflowId, load, templates]);
+  }, [selectedUserId, allUsers, members, roleValue, personaId, teamId, workflowId, load, templates]);
 
   const updateMember = useCallback(async (id: string, patch: Record<string, unknown>) => {
     const { error } = await supabase.from("workflow_members").update(patch as never).eq("id", id);
@@ -224,8 +233,47 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
               <div className="flex items-center gap-2"><UserPlus className="h-4 w-4" /><span className="font-medium text-sm">Add a member</span></div>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <div className="md:col-span-2">
-                  <Label className="text-xs">Email</Label>
-                  <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
+                  <Label className="text-xs">User</Label>
+                  {(() => {
+                    const memberIds = new Set(members.map((m) => m.user_id));
+                    const available = allUsers.filter((u) => !memberIds.has(u.id));
+                    const selected = allUsers.find((u) => u.id === selectedUserId);
+                    return (
+                      <Popover open={userPickerOpen} onOpenChange={setUserPickerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                            <span className="truncate">
+                              {selected ? (selected.name ? `${selected.name} · ${selected.email}` : selected.email) : "Select a user…"}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search by name or email…" />
+                            <CommandList>
+                              <CommandEmpty>No users found.</CommandEmpty>
+                              <CommandGroup>
+                                {available.map((u) => (
+                                  <CommandItem
+                                    key={u.id}
+                                    value={`${u.name ?? ""} ${u.email}`}
+                                    onSelect={() => { setSelectedUserId(u.id); setUserPickerOpen(false); }}
+                                  >
+                                    <Check className={cn("mr-2 h-4 w-4", selectedUserId === u.id ? "opacity-100" : "opacity-0")} />
+                                    <div className="flex flex-col">
+                                      <span className="text-sm">{u.name ?? u.email}</span>
+                                      {u.name && <span className="text-xs text-muted-foreground">{u.email}</span>}
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    );
+                  })()}
                 </div>
                 <div>
                   <Label className="text-xs">Role</Label>
@@ -253,7 +301,7 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button onClick={add} disabled={busy || !email.trim()}>Add</Button>
+                <Button onClick={add} disabled={busy || !selectedUserId}>Add</Button>
               </div>
             </div>
           )}
