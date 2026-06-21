@@ -18,6 +18,7 @@ Deno.serve(async (req) => {
     const search = url.searchParams.get("search") || "";
     const sortBy = url.searchParams.get("sortBy") || "updated_at";
     const sortDir = url.searchParams.get("sortDir") || "desc";
+    const token = req.headers.get("Authorization")?.replace("Bearer ", "") ?? "";
 
     // Validate sort column
     const allowedSortColumns = ["name", "updated_at", "owner", "type", "status", "created_at"];
@@ -29,12 +30,36 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authData.user) {
+      return new Response(JSON.stringify({ error: "Invalid session" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = authData.user.id;
+    const email = authData.user.email ?? "";
+    const { data: appRoles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    const isAdmin = (appRoles ?? []).some((row) => row.role === "admin");
+
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
     let query = supabase
       .from("workflows")
       .select("*", { count: "exact" });
+
+    if (!isAdmin) {
+      query = query.eq("owner", email);
+    }
 
     if (search.trim()) {
       query = query.or(
