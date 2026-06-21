@@ -61,7 +61,7 @@ export default function AuditLogTable({ workflowId }: Props) {
     if (actorFilter) q = q.ilike("actor_email", `%${actorFilter}%`);
     if (actionFilter) q = q.ilike("action", `%${actionFilter}%`);
     if (resourceFilter) q = q.ilike("resource_type", `%${resourceFilter}%`);
-    if (decisionFilter !== "__any__") q = q.eq("decision", decisionFilter);
+    if (decisionFilter !== "__any__") q = q.eq("decision", decisionFilter as "ALLOW" | "DENY");
 
     const { data, count } = await q;
     setRows((data ?? []) as unknown as AuditRow[]);
@@ -107,7 +107,6 @@ export default function AuditLogTable({ workflowId }: Props) {
             <SelectItem value="__any__">Any decision</SelectItem>
             <SelectItem value="ALLOW">Allow</SelectItem>
             <SelectItem value="DENY">Deny</SelectItem>
-            <SelectItem value="ERROR">Error</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex gap-1">
