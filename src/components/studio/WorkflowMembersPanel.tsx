@@ -47,10 +47,12 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
   const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
   const [personas, setPersonas] = useState<{ id: string; name: string }[]>([]);
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([]);
+  const [allUsers, setAllUsers] = useState<{ id: string; email: string; name: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
 
   // add-member form
-  const [email, setEmail] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [userPickerOpen, setUserPickerOpen] = useState(false);
   const [roleValue, setRoleValue] = useState<string>("template:"); // "template:<id>" or "custom:<id>"
   const [personaId, setPersonaId] = useState<string>("__none__");
   const [teamId, setTeamId] = useState<string>("__none__");
