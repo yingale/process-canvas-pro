@@ -25,7 +25,9 @@ import BusinessRulesPanel from "./BusinessRulesPanel";
 import DataModelPanel from "./DataModelPanel";
 import DeploymentPanel from "./DeploymentPanel";
 import FormBuilderPanel from "./FormBuilderPanel";
-import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket, FormInput, MessageSquare, PanelLeftClose, PanelLeftOpen, LayoutGrid, Diamond } from "lucide-react";
+import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket, FormInput, MessageSquare, PanelLeftClose, PanelLeftOpen, LayoutGrid, Diamond, UserCog, Eye } from "lucide-react";
+import WorkflowMembersPanel from "./WorkflowMembersPanel";
+import { useWorkflowRole } from "@/hooks/use-workflow-role";
 import "./studio.css";
 
 function uid() { return `el_${Math.random().toString(36).slice(2, 8)}`; }
@@ -108,6 +110,7 @@ function EmptyState({ onImport }: { onImport: (ir: CaseIR, w: string[]) => void 
 }
 
 interface WorkflowStudioProps {
+  workflowId?: string;
   initialCaseIr?: CaseIR | null;
   initialWarnings?: string[];
   pendingFormTemplate?: { template: FormTemplate; stepBasePath: string };
@@ -116,7 +119,9 @@ interface WorkflowStudioProps {
   onModuleConfigConsumed?: () => void;
 }
 
-export default function WorkflowStudio({ initialCaseIr, initialWarnings, pendingFormTemplate, onFormTemplateConsumed, pendingModuleConfig, onModuleConfigConsumed }: WorkflowStudioProps = {}) {
+export default function WorkflowStudio({ workflowId, initialCaseIr, initialWarnings, pendingFormTemplate, onFormTemplateConsumed, pendingModuleConfig, onModuleConfigConsumed }: WorkflowStudioProps = {}) {
+  const { role: wfRole, canEdit: wfCanEdit } = useWorkflowRole(workflowId);
+  const readOnly = !!workflowId && !wfCanEdit;
   const [caseIr, setCaseIr] = useState<CaseIR | null>(initialCaseIr ?? null);
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [warnings, setWarnings] = useState<string[]>(initialWarnings ?? []);
@@ -729,7 +734,7 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
             </div>
             <div className="flex-1 overflow-hidden flex flex-col">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden">
-                <div className="border-b px-4 flex-shrink-0">
+                <div className="border-b px-4 flex-shrink-0 flex items-center justify-between">
                   <TabsList className="bg-transparent h-9 gap-1">
                     <TabsTrigger value="flow" className="text-xs gap-1 data-[state=active]:bg-muted"><Workflow size={12} /> Flow</TabsTrigger>
                     <TabsTrigger value="personas" className="text-xs gap-1 data-[state=active]:bg-muted"><Shield size={12} /> Personas</TabsTrigger>
@@ -738,7 +743,16 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
                     <TabsTrigger value="data" className="text-xs gap-1 data-[state=active]:bg-muted"><Database size={12} /> Data</TabsTrigger>
                     <TabsTrigger value="deploy" className="text-xs gap-1 data-[state=active]:bg-muted"><Rocket size={12} /> Deploy</TabsTrigger>
                     <TabsTrigger value="forms" className="text-xs gap-1 data-[state=active]:bg-muted"><FormInput size={12} /> Forms</TabsTrigger>
+                    {workflowId && (
+                      <TabsTrigger value="members" className="text-xs gap-1 data-[state=active]:bg-muted"><UserCog size={12} /> Members</TabsTrigger>
+                    )}
                   </TabsList>
+                  {workflowId && wfRole && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      {readOnly && <Eye size={11} />}
+                      <span>Your role: <span className="font-medium text-foreground">{wfRole.replace("_", " ")}</span></span>
+                    </div>
+                  )}
                 </div>
                 <TabsContent value="flow" className="flex-1 overflow-hidden mt-0 flex flex-col">
                   {/* View toggle */}
@@ -857,6 +871,11 @@ export default function WorkflowStudio({ initialCaseIr, initialWarnings, pending
                     }}
                   />
                 </TabsContent>
+                {workflowId && (
+                  <TabsContent value="members" className="flex-1 overflow-auto mt-0">
+                    <WorkflowMembersPanel workflowId={workflowId} />
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
             {/* Nodes Panel (between diagram and properties) */}

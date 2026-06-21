@@ -169,7 +169,11 @@ export default function AllWorkflows() {
                 <tr><td colSpan={5} className="landing-table-empty">No workflows found</td></tr>
               ) : (
                 workflows.map((w) => (
-                  <tr key={w.id}>
+                  <tr
+                    key={w.id}
+                    onClick={() => navigate(`/studio?workflow=${w.id}`)}
+                    style={{ cursor: "pointer" }}
+                  >
                     <td>
                       <div className="landing-table-name-cell">
                         <div className="landing-table-icon"><SettingsIcon size={14} /></div>

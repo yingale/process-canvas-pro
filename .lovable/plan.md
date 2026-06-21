@@ -1,127 +1,110 @@
-# Enterprise Authorization Platform — Implementation Plan (Lovable Cloud auth)
 
-Auth swap: **Lovable Cloud (Supabase) email/password + Google** replaces Okta. Everything else from the PDF spec stays. Storage moves from MongoDB → **Supabase Postgres** (it's already wired and gives us RLS for free as a second enforcement layer).
+# Per-Workflow Authorization + RACI Personas on Nodes
 
-## Scope of this build (Phase 1)
+Rebuilds authorization around **per-workflow membership** instead of global roles. Ships in one pass: DB + RLS + edge functions + Studio UI.
 
-Foundation only — model, engine, seed data, admin UI shell, and login. Task routing, advanced ABAC policies UI, and full enforcement sweep come in follow-up phases.
+---
 
-1. Supabase auth (email/password + Google) + `profiles` with user attributes
-2. Postgres schema: users/teams/personas/roles/permissions/policies/resources/audit + join tables
-3. Seed permission catalog + 4 system roles + 4 starter personas
-4. `authorize()` server function with **Deny → Allow → Default Deny** evaluation
-5. Audit writer (login, CRUD, authz decisions)
-6. Admin pages: Users, Teams, Personas, Roles, Policies, Audit
-7. Frontend `useAuthz()` + `<Can>` + sidebar nav filtering
-8. Auth pages: `/auth` (login/signup), `/reset-password`
+## 1. Authorization model
 
-## Database schema
+**Three layers:**
+
+| Layer | Who | Scope |
+|---|---|---|
+| Platform | `super_admin` (the first signup) | Everything, everywhere |
+| Workflow | `workflow_admin`, `designer`, `approver`, `viewer` | One workflow each |
+| Node | RACI persona assignments | One activity each |
+
+**Rules:**
+- Creating a workflow auto-inserts the creator as `workflow_admin` for that workflow.
+- A non-super-admin user sees a workflow **only if** they have any membership row for it (creator or assigned). No "public/org" tab.
+- Only `super_admin` or that workflow's `workflow_admin` can add/remove members, change roles, assign personas/teams on that workflow.
+- A user can be `workflow_admin` on A, `viewer` on B, `approver` on C simultaneously.
+- `viewer` is truly read-only: no node drag, no property edit, no deploy, no settings.
+
+---
+
+## 2. Database changes
+
+New table:
 
 ```text
-profiles(id PK→auth.users, email, name, status, attributes jsonb, tenant_id, created_at)
-teams(id, name, tenant_id)
-personas(id, name, description, tenant_id)
-roles(id, name, description, tenant_id, is_system)
-permissions(id, key UNIQUE, resource, action, description)         -- catalog
-resources(id, type, name, attributes jsonb, tenant_id)              -- registry
-policies(id, effect ENUM(ALLOW,DENY), action, resource_pattern, condition jsonb, priority, tenant_id)
-user_teams(user_id, team_id)
-user_personas(user_id, persona_id)
-persona_roles(persona_id, role_id)
-role_permissions(role_id, permission_id)
-user_roles(user_id, role app_role)                                  -- platform-level (admin gate)
-audit_events(id, actor_user_id, actor_personas[], actor_teams[],
-             resource_type, resource_id, action, decision, reason,
-             ip, user_agent, ts, metadata jsonb)                    -- append-only
+workflow_members
+  workflow_id  -> workflows.id
+  user_id      -> auth.users.id
+  role         (workflow_admin | designer | approver | viewer)
+  persona_id   nullable -> personas.id
+  team_id      nullable -> teams.id
+  added_by     -> auth.users.id
+  unique(workflow_id, user_id)
 ```
 
-- All tables `tenant_id` default `'default'` for future multi-tenant.
-- RLS on every table; `has_role(uid,'admin')` security-definer used in policies (avoids recursion).
-- `audit_events` is insert-only for `authenticated`; no update/delete grants.
+New security-definer functions:
+- `is_super_admin(uid)` — wraps `has_role(uid, 'admin')`
+- `workflow_role(uid, wf_id)` returns the role text, or null
+- `can_manage_workflow(uid, wf_id)` = super_admin OR workflow_admin
+- `can_edit_workflow(uid, wf_id)` = super_admin OR admin/designer
+- `can_view_workflow(uid, wf_id)` = membership exists OR super_admin
 
-## Permission catalog (seeded)
+Trigger on `workflows` INSERT: insert `{workflow_id, creator, workflow_admin}` into `workflow_members`.
 
-Dot notation per spec:
-- `navigation.view.{dashboard,workflowStudio,templates,instances,audit,admin}`
-- `workflow.{create,read,update,delete,clone,publish,archive}` + `workflow.deploy.{nonprod,prod}`
-- `workflowInstance.{read,retry,restart,cancel,forceComplete}`
-- `node.{add,edit,delete,execute,read}`
-- `template.{create,edit,delete,publish,read}`
-- `user.{create,read,update,delete}`, `persona.assign`, `team.assign`
-- `team.{create,update,delete,read}`
-- `audit.{read,export}`
-
-Single source of truth: `src/lib/authz/permissionCatalog.ts` — used by seed migration AND the role editor UI.
-
-## Authorization Engine
-
-Lives in `src/lib/authz/authorize.ts` (callable from React, edge functions, and supabase RPC).
-
-```ts
-authorize({ userId, action, resource? }): { allowed, reason, matched }
+Migrate node-instance RACI: add a JSONB `personas` column to `node_instance_configs`:
+```json
+{ "responsible": ["personaId"], "accountable": "personaId",
+  "consulted": ["personaId"], "informed": ["personaId"] }
 ```
 
-Sequence (per spec):
-1. Load user + teams + personas + roles + permissions (one query w/ joins, cached per request)
-2. Evaluate DENY policies → if any match, deny
-3. Evaluate ALLOW policies + role permissions (wildcard aware: `workflow.*`, `*`)
-4. Default deny
-5. `audit_events.insert(...)` always
+**RLS rewrite** (all use the new helpers, no recursion):
+- `workflows` SELECT/UPDATE/DELETE → `can_view_workflow` / `can_manage_workflow`
+- `workflow_personas`, `workflow_team_members`, `workflow_business_rules`, `workflow_data_model`, `workflow_deployments`, `node_instance_configs`, `reusable_modules` → gated by `can_view_workflow` (read) and `can_edit_workflow` (write); deploy gated by `can_manage_workflow`
+- `workflow_members` → readable by any member of that workflow; writable only by `can_manage_workflow`
 
-Condition evaluator: tiny JSON-AST safe evaluator over `user.*`, `resource.*`, `env.*`. Example: `{"and":[{"==":["user.attributes.department","Platform"]},{"==":["user.attributes.employmentType","Employee"]}]}`.
+---
 
-Also exposed as **edge function** `POST /authorize` for non-React callers (Mastra agents, future services).
+## 3. Edge functions
 
-## Frontend integration
+- `list-workflows` — drop service-role bypass. Use the caller's JWT. RLS filters automatically.
+- `create-workflow` — after insert, trigger seeds the admin membership. Function just returns id.
+- New `manage-workflow-members` — list/add/update/remove members, enforces `can_manage_workflow` server-side.
 
-- `src/contexts/AuthzContext.tsx` — fetches `{user, teams, personas, roles, permissions}` once after login, exposes `can(action, resource?)`.
-- `src/components/authz/Can.tsx` — `<Can perm="workflow.deploy.prod">…</Can>`
-- `src/hooks/useAuthz.ts` — `{ can, cannot, roles, personas, teams }`
-- `AppSidebar` filters items via `navigation.view.*`
-- Studio toolbar / NodesPanel / PropertiesPanel / DeploymentPanel / TeamPanel / PersonasPanel — every mutating button wrapped in `<Can>` or `disabled={!can(...)}`
-- Protected route wrapper redirects to `/auth` if unauthenticated
+---
 
-## Auth pages
+## 4. Frontend
 
-- `/auth` — Email/password tabs + Google button (Lovable Cloud)
-- `/reset-password` — required for password reset flow
-- First user to sign up gets `admin` role automatically (bootstrap); after that, admins invite others
+**Routing (`App.tsx`):** every workflow route gets a `requireWorkflowAccess` wrapper that 404s on miss.
 
-## Admin pages (new)
+**Permission utility:** replace flat `can(perm)` with `canOnWorkflow(wfId, action)` driven by a new `useWorkflowRole(wfId)` hook that calls `workflow_role` via RPC and caches per workflow.
 
-- `/admin/users` — list, status, attributes (country/department/employmentType), assign personas + teams
-- `/admin/teams`
-- `/admin/personas` — assign roles
-- `/admin/roles` — assign permissions from catalog
-- `/admin/policies` — DENY/ALLOW editor with condition builder and "test evaluate" button
-- `/admin/audit` — filter by actor/action/resource/decision/date, CSV export (gated by `audit.export`)
+**Action gating** in Studio toolbar, node context menus, deploy button, settings, personas/teams tabs — wrap with `<CanOnWorkflow wfId action="edit|manage|deploy">`.
 
-All admin pages gated by `navigation.view.admin` + relevant `*.manage` permissions.
+**New Members tab** on each workflow (visible only to admins): add user, pick persona + team + role, remove.
 
-## Audit producers (always-on)
+**RACI on nodes:** Studio properties panel gets a "Personas (RACI)" section with four pickers (R/A/C/I) populated from that workflow's personas. Persisted in `node_instance_configs.personas`. BPMN export writes to `camunda:property` extension elements for round-trip.
 
-- Auth state changes (login, logout, signup, password reset)
-- Every `authorize()` call (allow + deny both)
-- All admin CRUD (users/teams/personas/roles/policies)
-- Workflow create/update/delete/deploy + node CRUD (hooks added at existing patch dispatch site)
+**Profile page:** already pulls from `useAuthz()`. Add a "My Workflows" section grouped by role.
 
-## Seed data shipped in migration
+**All Workflows list:** server already filters; just remove the "Create" button for users with no `workflow.create` global perm (kept as a platform perm — anyone authenticated can create, becoming admin of their own).
 
-Roles (system, non-deletable): `Admin`, `Designer`, `Reviewer`, `Viewer`
-Personas: `Platform Administrator`, `Workflow Designer`, `Workflow Reviewer`, `Read Only Auditor`
-Each persona pre-mapped to its matching role. Permission catalog fully seeded.
+---
 
-## What's NOT in Phase 1 (explicit deferral)
+## 5. Migration of existing data
 
-- Task Routing service (persona+team → least-loaded user) and Studio "Assigned Persona / Eligible Teams" step panel
-- Multi-tenant activation (tenant_id stays `'default'`)
-- Hierarchical teams/personas, delegation, time-based access, SoD, policy versioning, access certification
-- Field-level form/data permissions
+- Seed `workflow_members` from existing `workflows.created_by` → role `workflow_admin`.
+- Existing `workflow_personas` / `workflow_team_members` rows are kept as-is (they remain the assignment source); a one-time backfill inserts a `viewer` membership for any user referenced there who isn't already a member.
 
-These will be Phase 2 once the foundation is in place.
+---
 
-## Open questions
+## 6. Out of scope (deliberately)
 
-1. **First-user bootstrap** — auto-admin the first signup (recommended for solo setup) or require seeded admin email in the migration?
-2. **Auto-confirm email** for signups in dev? (Default: off, matching production behavior.)
-3. **Google OAuth** — enable in Phase 1, or email/password only for now?
+- Custom per-workflow role definitions (sticking to the 4 fixed roles).
+- Granular per-node permission overrides beyond RACI display.
+- Audit log UI (events are still written to `audit_events`).
+
+---
+
+## Technical notes
+
+- Helpers are `SECURITY DEFINER` with `SET search_path = public` to avoid the recursive-RLS trap on `workflow_members`.
+- `workflow_members` itself uses simple `user_id = auth.uid()` SELECT plus a definer-function policy for admin writes — no self-reference in policies.
+- Frontend `useWorkflowRole` uses React Query with `['wfRole', wfId, userId]` and invalidates on any `manage-workflow-members` mutation.
+- BPMN export adds `<camunda:property name="raci.responsible" value="..."/>` etc. inside `extensionElements`; importer reads them back.

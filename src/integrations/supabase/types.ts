@@ -74,6 +74,7 @@ export type Database = {
           node_id: string
           node_type: string
           output_mappings: Json
+          personas: Json
           step_id: string
           updated_at: string
           workflow_id: string
@@ -86,6 +87,7 @@ export type Database = {
           node_id: string
           node_type: string
           output_mappings?: Json
+          personas?: Json
           step_id: string
           updated_at?: string
           workflow_id: string
@@ -98,6 +100,7 @@ export type Database = {
           node_id?: string
           node_type?: string
           output_mappings?: Json
+          personas?: Json
           step_id?: string
           updated_at?: string
           workflow_id?: string
@@ -644,6 +647,64 @@ export type Database = {
           },
         ]
       }
+      workflow_members: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          id: string
+          persona_id: string | null
+          role: string
+          team_id: string | null
+          updated_at: string
+          user_id: string
+          workflow_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          persona_id?: string | null
+          role: string
+          team_id?: string | null
+          updated_at?: string
+          user_id: string
+          workflow_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          persona_id?: string | null
+          role?: string
+          team_id?: string | null
+          updated_at?: string
+          user_id?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_members_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_members_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_personas: {
         Row: {
           created_at: string
@@ -737,6 +798,7 @@ export type Database = {
         Row: {
           bpmn_template: string | null
           created_at: string
+          created_by: string | null
           id: string
           name: string
           owner: string
@@ -747,6 +809,7 @@ export type Database = {
         Insert: {
           bpmn_template?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
           name: string
           owner?: string
@@ -757,6 +820,7 @@ export type Database = {
         Update: {
           bpmn_template?: string | null
           created_at?: string
+          created_by?: string | null
           id?: string
           name?: string
           owner?: string
@@ -771,6 +835,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_edit_workflow: {
+        Args: { _uid: string; _wf: string }
+        Returns: boolean
+      }
+      can_manage_workflow: {
+        Args: { _uid: string; _wf: string }
+        Returns: boolean
+      }
+      can_view_workflow: {
+        Args: { _uid: string; _wf: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -778,6 +854,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _uid: string }; Returns: boolean }
+      workflow_role: { Args: { _uid: string; _wf: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "designer" | "reviewer" | "viewer"
