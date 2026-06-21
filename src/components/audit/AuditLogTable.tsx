@@ -37,6 +37,39 @@ function toCsv(rows: AuditRow[]): string {
   return [cols.join(","), ...rows.map((r) => cols.map((c) => esc((r as any)[c])).join(","))].join("\n");
 }
 
+function FragmentRow({ r, expanded, onToggle, decisionBadge }: {
+  r: AuditRow; expanded: boolean; onToggle: () => void; decisionBadge: (d: string | null) => React.ReactNode;
+}) {
+  return (
+    <>
+      <tr className="border-t hover:bg-muted/30 cursor-pointer" onClick={onToggle}>
+        <td className="px-2 py-1.5">{expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}</td>
+        <td className="px-2 py-1.5 font-mono text-[11px]">{new Date(r.ts).toLocaleString()}</td>
+        <td className="px-2 py-1.5">{r.actor_email ?? r.actor_user_id ?? "—"}</td>
+        <td className="px-2 py-1.5"><code className="text-[11px]">{r.action}</code></td>
+        <td className="px-2 py-1.5">
+          {r.resource_type && <Badge variant="outline" className="text-[10px] mr-1">{r.resource_type}</Badge>}
+          <span className="text-[11px] text-muted-foreground">{r.resource_id}</span>
+        </td>
+        <td className="px-2 py-1.5">{decisionBadge(r.decision)}</td>
+        <td className="px-2 py-1.5 text-[11px] text-muted-foreground">{r.ip ?? "—"}</td>
+      </tr>
+      {expanded && (
+        <tr className="bg-muted/20">
+          <td></td>
+          <td colSpan={6} className="px-2 py-2">
+            {r.reason && <div className="mb-1"><span className="text-[10px] uppercase text-muted-foreground">Reason: </span>{r.reason}</div>}
+            <pre className="text-[10px] font-mono bg-background border rounded p-2 overflow-auto max-h-48">
+              {JSON.stringify(r.metadata ?? {}, null, 2)}
+            </pre>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+
 export default function AuditLogTable({ workflowId }: Props) {
   const [rows, setRows] = useState<AuditRow[]>([]);
   const [total, setTotal] = useState(0);
