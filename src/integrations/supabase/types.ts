@@ -30,6 +30,7 @@ export type Database = {
           resource_type: string | null
           ts: string
           user_agent: string | null
+          workflow_id: string | null
         }
         Insert: {
           action: string
@@ -46,6 +47,7 @@ export type Database = {
           resource_type?: string | null
           ts?: string
           user_agent?: string | null
+          workflow_id?: string | null
         }
         Update: {
           action?: string
@@ -62,8 +64,73 @@ export type Database = {
           resource_type?: string | null
           ts?: string
           user_agent?: string | null
+          workflow_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audit_events_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      node_access_rules: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          effect: string
+          enabled: boolean
+          expression: Json
+          id: string
+          name: string
+          priority: number
+          step_id: string
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          effect: string
+          enabled?: boolean
+          expression?: Json
+          id?: string
+          name: string
+          priority?: number
+          step_id: string
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          effect?: string
+          enabled?: boolean
+          expression?: Json
+          id?: string
+          name?: string
+          priority?: number
+          step_id?: string
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "node_access_rules_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       node_instance_configs: {
         Row: {
@@ -556,6 +623,54 @@ export type Database = {
           },
         ]
       }
+      workflow_custom_roles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          permissions: Json
+          template_id: string | null
+          updated_at: string
+          workflow_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          permissions?: Json
+          template_id?: string | null
+          updated_at?: string
+          workflow_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          permissions?: Json
+          template_id?: string | null
+          updated_at?: string
+          workflow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_custom_roles_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_role_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_custom_roles_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_data_model: {
         Row: {
           created_at: string
@@ -651,10 +766,12 @@ export type Database = {
         Row: {
           added_by: string | null
           created_at: string
+          custom_role_id: string | null
           id: string
           persona_id: string | null
           role: string
           team_id: string | null
+          template_id: string | null
           updated_at: string
           user_id: string
           workflow_id: string
@@ -662,10 +779,12 @@ export type Database = {
         Insert: {
           added_by?: string | null
           created_at?: string
+          custom_role_id?: string | null
           id?: string
           persona_id?: string | null
           role: string
           team_id?: string | null
+          template_id?: string | null
           updated_at?: string
           user_id: string
           workflow_id: string
@@ -673,15 +792,24 @@ export type Database = {
         Update: {
           added_by?: string | null
           created_at?: string
+          custom_role_id?: string | null
           id?: string
           persona_id?: string | null
           role?: string
           team_id?: string | null
+          template_id?: string | null
           updated_at?: string
           user_id?: string
           workflow_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "workflow_members_custom_role_id_fkey"
+            columns: ["custom_role_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_custom_roles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workflow_members_persona_id_fkey"
             columns: ["persona_id"]
@@ -697,6 +825,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "workflow_members_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_role_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "workflow_members_workflow_id_fkey"
             columns: ["workflow_id"]
             isOneToOne: false
@@ -704,6 +839,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      workflow_permission_catalog: {
+        Row: {
+          category: string
+          description: string | null
+          key: string
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          category?: string
+          description?: string | null
+          key: string
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          category?: string
+          description?: string | null
+          key?: string
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       workflow_personas: {
         Row: {
@@ -745,6 +904,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      workflow_role_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_builtin: boolean
+          key: string
+          name: string
+          permissions: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_builtin?: boolean
+          key: string
+          name: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_builtin?: boolean
+          key?: string
+          name?: string
+          permissions?: Json
+          updated_at?: string
+        }
+        Relationships: []
       }
       workflow_team_members: {
         Row: {
@@ -854,7 +1046,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_workflow_perm: {
+        Args: { _perm: string; _uid: string; _wf: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _uid: string }; Returns: boolean }
+      workflow_permissions: {
+        Args: { _uid: string; _wf: string }
+        Returns: string[]
+      }
       workflow_role: { Args: { _uid: string; _wf: string }; Returns: string }
     }
     Enums: {

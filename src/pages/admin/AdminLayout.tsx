@@ -1,13 +1,14 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Users, Building2, UserCircle, ShieldCheck, FileWarning, ScrollText } from "lucide-react";
+import { Users, Building2, UserCircle, ShieldCheck, FileWarning, ScrollText, Layers } from "lucide-react";
 
 const tabs = [
-  { to: "/admin/users",    icon: Users,        label: "Users" },
-  { to: "/admin/teams",    icon: Building2,    label: "Teams" },
-  { to: "/admin/personas", icon: UserCircle,   label: "Personas" },
-  { to: "/admin/roles",    icon: ShieldCheck,  label: "Roles" },
-  { to: "/admin/policies", icon: FileWarning,  label: "Policies" },
-  { to: "/admin/audit",    icon: ScrollText,   label: "Audit Log" },
+  { to: "/admin/users",          icon: Users,        label: "Users" },
+  { to: "/admin/teams",          icon: Building2,    label: "Teams" },
+  { to: "/admin/personas",       icon: UserCircle,   label: "Personas" },
+  { to: "/admin/roles",          icon: ShieldCheck,  label: "Roles" },
+  { to: "/admin/role-templates", icon: Layers,       label: "Role Templates" },
+  { to: "/admin/policies",       icon: FileWarning,  label: "Policies" },
+  { to: "/admin/audit",          icon: ScrollText,   label: "Audit Log" },
 ];
 
 export default function AdminLayout() {
