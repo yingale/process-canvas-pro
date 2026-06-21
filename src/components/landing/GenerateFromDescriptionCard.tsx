@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { MessageSquarePlus } from "lucide-react";
+import { Can } from "@/components/authz/Can";
 
 export default function GenerateFromDescriptionCard() {
   const navigate = useNavigate();
@@ -29,9 +30,11 @@ export default function GenerateFromDescriptionCard() {
         <p className="landing-template-desc">
           Describe your workflow in plain English and let AI generate a complete BPMN process for you automatically.
         </p>
-        <button className="landing-create-btn" onClick={() => navigate("/create")}>
-          Describe
-        </button>
+        <Can perm="workflow.create">
+          <button className="landing-create-btn" onClick={() => navigate("/create")}>
+            Describe
+          </button>
+        </Can>
       </div>
     </div>
   );
