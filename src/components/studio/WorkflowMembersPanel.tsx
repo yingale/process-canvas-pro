@@ -288,6 +288,11 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
                       {personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  {personas.length === 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      No personas yet. Create them in <a href="/admin/personas" className="underline">Admin → Personas</a>.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs">Team</Label>
