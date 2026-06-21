@@ -60,7 +60,7 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [mRes, tRes, crRes, pRes, teamsRes] = await Promise.all([
+    const [mRes, tRes, crRes, pRes, teamsRes, uRes] = await Promise.all([
       supabase.from("workflow_members")
         .select("id,user_id,role,template_id,custom_role_id,persona_id,team_id,profiles:user_id(email,name)")
         .eq("workflow_id", workflowId),
@@ -68,6 +68,7 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
       supabase.from("workflow_custom_roles").select("id,name").eq("workflow_id", workflowId).order("name"),
       supabase.from("personas").select("id,name").order("name"),
       supabase.from("teams").select("id,name").order("name"),
+      supabase.from("profiles").select("id,email,name").order("email"),
     ]);
     setMembers(
       ((mRes.data ?? []) as unknown as Array<Member & { profiles: { email: string; name: string | null } | null }>)
