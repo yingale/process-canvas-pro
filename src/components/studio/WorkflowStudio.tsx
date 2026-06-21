@@ -120,7 +120,7 @@ interface WorkflowStudioProps {
 }
 
 export default function WorkflowStudio({ workflowId, initialCaseIr, initialWarnings, pendingFormTemplate, onFormTemplateConsumed, pendingModuleConfig, onModuleConfigConsumed }: WorkflowStudioProps = {}) {
-  const { role: wfRole, canEdit: wfCanEdit, canManage: wfCanManage } = useWorkflowRole(workflowId);
+  const { role: wfRole, canEdit: wfCanEdit } = useWorkflowRole(workflowId);
   const readOnly = !!workflowId && !wfCanEdit;
   const [caseIr, setCaseIr] = useState<CaseIR | null>(initialCaseIr ?? null);
   const [selection, setSelection] = useState<SelectionTarget>(null);
