@@ -27,6 +27,7 @@ import type { AutomationNodeDef, NodeIoField } from "./automationNodes";
 import { getNodeDef } from "./automationNodes";
 import { supabase } from "@/integrations/supabase/client";
 import NodeRaciSection, { EMPTY_RACI, type NodeRaci } from "./NodeRaciSection";
+import NodeAccessRulesSection from "./NodeAccessRulesSection";
 
 interface NodeConfigDialogProps {
   open: boolean;
@@ -407,6 +408,8 @@ export default function NodeConfigDialog({
                   <>
                     <Separator />
                     <NodeRaciSection workflowId={workflowId} value={raci} onChange={setRaci} />
+                    <Separator />
+                    <NodeAccessRulesSection workflowId={workflowId} stepId={currentStep.id} />
                   </>
                 )}
               </div>
