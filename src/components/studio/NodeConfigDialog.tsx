@@ -402,6 +402,13 @@ export default function NodeConfigDialog({
                     </div>
                   ))}
                 </div>
+
+                {workflowId && (
+                  <>
+                    <Separator />
+                    <NodeRaciSection workflowId={workflowId} value={raci} onChange={setRaci} />
+                  </>
+                )}
               </div>
             </ScrollArea>
 
