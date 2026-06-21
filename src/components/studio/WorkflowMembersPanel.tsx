@@ -12,7 +12,10 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, UserPlus, ShieldAlert, Users, Layers, ScrollText } from "lucide-react";
+import { Trash2, UserPlus, ShieldAlert, Users, Layers, ScrollText, Check, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkflowRole, invalidateWorkflowRole } from "@/hooks/use-workflow-role";
 import { toast } from "sonner";
