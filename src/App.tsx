@@ -76,6 +76,7 @@ const App = () => (
                 <Route path="personas" element={<AdminPersonasPage />} />
                 <Route path="roles" element={<AdminRolesPage />} />
                 <Route path="policies" element={<AdminPoliciesPage />} />
+                <Route path="role-templates" element={<AdminRoleTemplatesPage />} />
                 <Route path="audit" element={<AdminAuditPage />} />
               </Route>
             </Route>
