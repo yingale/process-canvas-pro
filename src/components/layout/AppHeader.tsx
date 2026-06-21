@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Settings, User, LogOut, ChevronDown, ChevronRight, Home } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { recordAudit } from "@/lib/authz/audit";
+import { toast } from "sonner";
 import "../studio/studio.css";
 
 const ROUTE_LABELS: Record<string, string> = {
@@ -88,7 +91,17 @@ export default function AppHeader() {
               <div className="app-header-dropdown-divider" />
               <button
                 className="app-header-dropdown-item app-header-dropdown-item--danger"
-                onClick={() => { setOpen(false); }}
+                onClick={async () => {
+                  setOpen(false);
+                  try {
+                    await recordAudit({ action: "auth.logout", decision: "ALLOW" });
+                    await supabase.auth.signOut();
+                    toast.success("Signed out");
+                  } catch (e) {
+                    console.error(e);
+                  }
+                  navigate("/auth", { replace: true });
+                }}
               >
                 <LogOut size={14} /> Logout
               </button>
