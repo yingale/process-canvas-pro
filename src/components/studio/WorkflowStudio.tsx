@@ -871,6 +871,11 @@ export default function WorkflowStudio({ workflowId, initialCaseIr, initialWarni
                     }}
                   />
                 </TabsContent>
+                {workflowId && (
+                  <TabsContent value="members" className="flex-1 overflow-auto mt-0">
+                    <WorkflowMembersPanel workflowId={workflowId} />
+                  </TabsContent>
+                )}
               </Tabs>
             </div>
             {/* Nodes Panel (between diagram and properties) */}
