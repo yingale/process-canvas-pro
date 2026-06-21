@@ -49,14 +49,14 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/" element={<Landing />} />
-              <Route path="/create" element={<CreateWorkflowWizard />} />
-              <Route path="/create/case-view-config" element={<CaseViewConfigPage />} />
-              <Route path="/studio" element={<StudioPage />} />
-              <Route path="/studio/form-builder" element={<FormBuilderPage />} />
-              <Route path="/studio/module-config" element={<ModuleConfigPage />} />
-              <Route path="/templates" element={<AllTemplates />} />
-              <Route path="/workflows" element={<AllWorkflows />} />
+              <Route path="/" element={<ProtectedRoute perm="navigation.view.dashboard"><Landing /></ProtectedRoute>} />
+              <Route path="/create" element={<ProtectedRoute perm="workflow.create"><CreateWorkflowWizard /></ProtectedRoute>} />
+              <Route path="/create/case-view-config" element={<ProtectedRoute perm="workflow.create"><CaseViewConfigPage /></ProtectedRoute>} />
+              <Route path="/studio" element={<ProtectedRoute perm="workflow.update"><StudioPage /></ProtectedRoute>} />
+              <Route path="/studio/form-builder" element={<ProtectedRoute perm="workflow.update"><FormBuilderPage /></ProtectedRoute>} />
+              <Route path="/studio/module-config" element={<ProtectedRoute perm="workflow.update"><ModuleConfigPage /></ProtectedRoute>} />
+              <Route path="/templates" element={<ProtectedRoute perm="navigation.view.templates"><AllTemplates /></ProtectedRoute>} />
+              <Route path="/workflows" element={<ProtectedRoute perm="navigation.view.workflowStudio"><AllWorkflows /></ProtectedRoute>} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/docs" element={<TechDocsPage />} />
               <Route path="/docs/form-builder" element={<FormBuilderDocsPage />} />
