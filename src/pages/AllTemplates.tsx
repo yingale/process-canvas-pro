@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Star, Plus, Settings as SettingsIcon } from "lucide-react";
 import GenerateFromDescriptionCard from "@/components/landing/GenerateFromDescriptionCard";
 import PageLoader from "@/components/layout/PageLoader";
+import { Can } from "@/components/authz/Can";
 import "../components/studio/studio.css";
 
 interface Template {
@@ -109,12 +110,14 @@ export default function AllTemplates() {
                 </div>
               </div>
               <p className="landing-template-desc">{t.description}</p>
-              <button
-                className="landing-create-btn"
-                onClick={() => handleTemplateClick(t)}
-              >
-                Create
-              </button>
+              <Can perm="workflow.create">
+                <button
+                  className="landing-create-btn"
+                  onClick={() => handleTemplateClick(t)}
+                >
+                  Create
+                </button>
+              </Can>
             </div>
           </div>
         ))}
