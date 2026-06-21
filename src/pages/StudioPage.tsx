@@ -77,6 +77,8 @@ export default function StudioPage() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const templateId = searchParams.get("template");
+  const workflowId = searchParams.get("workflow");
+
 
   // Check for AI-generated IR passed via router state
   const routerState = location.state as {
@@ -166,6 +168,7 @@ export default function StudioPage() {
 
   return (
     <WorkflowStudio
+      workflowId={workflowId ?? undefined}
       initialCaseIr={initialIr?.ir}
       initialWarnings={initialIr?.warnings}
       pendingFormTemplate={pendingFormTemplate ?? undefined}

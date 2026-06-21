@@ -25,7 +25,9 @@ import BusinessRulesPanel from "./BusinessRulesPanel";
 import DataModelPanel from "./DataModelPanel";
 import DeploymentPanel from "./DeploymentPanel";
 import FormBuilderPanel from "./FormBuilderPanel";
-import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket, FormInput, MessageSquare, PanelLeftClose, PanelLeftOpen, LayoutGrid, Diamond } from "lucide-react";
+import { Upload, FileText, Workflow, Shield, Users, Scale, Database, Rocket, FormInput, MessageSquare, PanelLeftClose, PanelLeftOpen, LayoutGrid, Diamond, UserCog, Eye } from "lucide-react";
+import WorkflowMembersPanel from "./WorkflowMembersPanel";
+import { useWorkflowRole } from "@/hooks/use-workflow-role";
 import "./studio.css";
 
 function uid() { return `el_${Math.random().toString(36).slice(2, 8)}`; }
@@ -108,6 +110,7 @@ function EmptyState({ onImport }: { onImport: (ir: CaseIR, w: string[]) => void 
 }
 
 interface WorkflowStudioProps {
+  workflowId?: string;
   initialCaseIr?: CaseIR | null;
   initialWarnings?: string[];
   pendingFormTemplate?: { template: FormTemplate; stepBasePath: string };
@@ -116,7 +119,9 @@ interface WorkflowStudioProps {
   onModuleConfigConsumed?: () => void;
 }
 
-export default function WorkflowStudio({ initialCaseIr, initialWarnings, pendingFormTemplate, onFormTemplateConsumed, pendingModuleConfig, onModuleConfigConsumed }: WorkflowStudioProps = {}) {
+export default function WorkflowStudio({ workflowId, initialCaseIr, initialWarnings, pendingFormTemplate, onFormTemplateConsumed, pendingModuleConfig, onModuleConfigConsumed }: WorkflowStudioProps = {}) {
+  const { role: wfRole, canEdit: wfCanEdit, canManage: wfCanManage } = useWorkflowRole(workflowId);
+  const readOnly = !!workflowId && !wfCanEdit;
   const [caseIr, setCaseIr] = useState<CaseIR | null>(initialCaseIr ?? null);
   const [selection, setSelection] = useState<SelectionTarget>(null);
   const [warnings, setWarnings] = useState<string[]>(initialWarnings ?? []);
