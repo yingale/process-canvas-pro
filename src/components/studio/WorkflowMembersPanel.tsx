@@ -301,7 +301,7 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button onClick={add} disabled={busy || !email.trim()}>Add</Button>
+                <Button onClick={add} disabled={busy || !selectedUserId}>Add</Button>
               </div>
             </div>
           )}
