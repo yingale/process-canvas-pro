@@ -34,6 +34,7 @@ import AdminPersonasPage from "./pages/admin/AdminPersonasPage";
 import AdminRolesPage from "./pages/admin/AdminRolesPage";
 import AdminPoliciesPage from "./pages/admin/AdminPoliciesPage";
 import AdminAuditPage from "./pages/admin/AdminAuditPage";
+import AdminRoleTemplatesPage from "./pages/admin/AdminRoleTemplatesPage";
 import AdminLayout from "./pages/admin/AdminLayout";
 
 const queryClient = new QueryClient();
