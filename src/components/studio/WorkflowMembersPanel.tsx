@@ -120,12 +120,14 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
   };
 
   const add = useCallback(async () => {
-    if (!email.trim()) return;
+    if (!selectedUserId) return;
+    const prof = allUsers.find((u) => u.id === selectedUserId);
+    if (!prof) { toast.error("Pick a user."); return; }
+    if (members.some((m) => m.user_id === selectedUserId)) {
+      toast.error("User is already a member."); return;
+    }
     setBusy(true);
     try {
-      const { data: prof, error: profErr } = await supabase
-        .from("profiles").select("id,email").ilike("email", email.trim()).maybeSingle();
-      if (profErr || !prof) { toast.error("No user with that email. They must sign up first."); return; }
       const parsed = parseRole(roleValue);
       const { error } = await supabase.from("workflow_members").insert({
         workflow_id: workflowId,
@@ -142,12 +144,12 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
         decision: "ALLOW", metadata: { email: prof.email, role: parsed.legacy, template_id: parsed.template_id, custom_role_id: parsed.custom_role_id },
       });
       toast.success(`Added ${prof.email}`);
-      setEmail("");
+      setSelectedUserId("");
       setPersonaId("__none__"); setTeamId("__none__");
       invalidateWorkflowRole(workflowId);
       await load();
     } finally { setBusy(false); }
-  }, [email, roleValue, personaId, teamId, workflowId, load, templates]);
+  }, [selectedUserId, allUsers, members, roleValue, personaId, teamId, workflowId, load, templates]);
 
   const updateMember = useCallback(async (id: string, patch: Record<string, unknown>) => {
     const { error } = await supabase.from("workflow_members").update(patch as never).eq("id", id);
