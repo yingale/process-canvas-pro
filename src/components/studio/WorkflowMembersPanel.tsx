@@ -83,6 +83,7 @@ export default function WorkflowMembersPanel({ workflowId }: Props) {
     setCustomRoles((crRes.data ?? []) as CustomRole[]);
     setPersonas((pRes.data ?? []) as { id: string; name: string }[]);
     setTeams((teamsRes.data ?? []) as { id: string; name: string }[]);
+    setAllUsers((uRes.data ?? []) as { id: string; email: string; name: string | null }[]);
     if (tRes.data?.[0] && !roleValue.startsWith("template:") && !roleValue.startsWith("custom:")) {
       setRoleValue(`template:${tRes.data[0].id}`);
     } else if (roleValue === "template:" && tRes.data?.[0]) {
