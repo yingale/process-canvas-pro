@@ -1,110 +1,146 @@
 
-# Per-Workflow Authorization + RACI Personas on Nodes
+# Custom Roles, Node ABAC, and Audit Log UI
 
-Rebuilds authorization around **per-workflow membership** instead of global roles. Ships in one pass: DB + RLS + edge functions + Studio UI.
-
----
-
-## 1. Authorization model
-
-**Three layers:**
-
-| Layer | Who | Scope |
-|---|---|---|
-| Platform | `super_admin` (the first signup) | Everything, everywhere |
-| Workflow | `workflow_admin`, `designer`, `approver`, `viewer` | One workflow each |
-| Node | RACI persona assignments | One activity each |
-
-**Rules:**
-- Creating a workflow auto-inserts the creator as `workflow_admin` for that workflow.
-- A non-super-admin user sees a workflow **only if** they have any membership row for it (creator or assigned). No "public/org" tab.
-- Only `super_admin` or that workflow's `workflow_admin` can add/remove members, change roles, assign personas/teams on that workflow.
-- A user can be `workflow_admin` on A, `viewer` on B, `approver` on C simultaneously.
-- `viewer` is truly read-only: no node drag, no property edit, no deploy, no settings.
+Three independent features, one ship.
 
 ---
 
-## 2. Database changes
+## 1. Custom workflow roles
+
+Two layers, both usable from the same picker:
+
+**Layer A — Global role templates** (managed by super admin under `/admin/role-templates`):
+```text
+workflow_role_templates
+  id, key, name, description
+  permissions (jsonb array of permission keys)
+  is_builtin (bool)   -- the 4 fixed roles are seeded as builtin
+```
+Workflow admins can pick any template when adding a member.
+
+**Layer B — Per-workflow custom roles** (managed inside each workflow's Members tab, "Roles" sub-tab):
+```text
+workflow_custom_roles
+  id, workflow_id, name, description
+  template_id (nullable)        -- optional: cloned from a template
+  permissions (jsonb array)     -- overridden permission set
+```
+A workflow admin can clone a template and tweak permissions, or build from scratch.
+
+**Membership update:** `workflow_members.role` becomes nullable text, plus two new optional FKs:
+- `template_id → workflow_role_templates.id`
+- `custom_role_id → workflow_custom_roles.id`
+
+If `custom_role_id` is set, its permissions win. Else `template_id`. Else the legacy `role` text (kept for backward compat — the 4 builtin templates map 1:1 to it).
+
+**Helper functions** updated:
+- `workflow_permissions(uid, wf_id) returns text[]` — returns the resolved permission keys for that user on that workflow.
+- `has_workflow_perm(uid, wf_id, perm)` — convenience boolean.
+- `can_view/edit/manage_workflow` keep working: they now check the resolved permission set (`workflow.view`, `workflow.edit`, `workflow.manage`).
+
+**Permission catalog** (seeded into a `workflow_permissions_catalog` table for UI listing):
+```
+workflow.view, workflow.edit, workflow.delete, workflow.deploy, workflow.manage_members,
+workflow.manage_roles, workflow.manage_rules, workflow.edit_forms, workflow.edit_data_model,
+node.execute, node.approve, node.edit, audit.view
+```
+
+**Builtin template seeds:**
+- `workflow_admin` → all
+- `designer` → view/edit/edit_forms/edit_data_model/edit_rules/node.edit
+- `approver` → view/node.approve
+- `viewer` → view
+
+**UI:**
+- `/admin/role-templates` → CRUD page (super admin only). Permission checkboxes from catalog.
+- Studio → Members tab → "Roles" sub-tab → CRUD custom roles for this workflow, clone-from-template button.
+- Members add/edit form: role picker shows both global templates and this workflow's custom roles in two groups.
+
+---
+
+## 2. ABAC node-level rules
 
 New table:
-
 ```text
-workflow_members
-  workflow_id  -> workflows.id
-  user_id      -> auth.users.id
-  role         (workflow_admin | designer | approver | viewer)
-  persona_id   nullable -> personas.id
-  team_id      nullable -> teams.id
-  added_by     -> auth.users.id
-  unique(workflow_id, user_id)
+node_access_rules
+  id, workflow_id, step_id           -- step_id is the Case IR step id
+  name, description
+  effect (allow | deny)
+  action (view | edit | execute | approve)
+  expression (jsonb)                 -- structured condition tree
+  priority int                       -- lower = evaluated first
+  enabled bool
 ```
 
-New security-definer functions:
-- `is_super_admin(uid)` — wraps `has_role(uid, 'admin')`
-- `workflow_role(uid, wf_id)` returns the role text, or null
-- `can_manage_workflow(uid, wf_id)` = super_admin OR workflow_admin
-- `can_edit_workflow(uid, wf_id)` = super_admin OR admin/designer
-- `can_view_workflow(uid, wf_id)` = membership exists OR super_admin
-
-Trigger on `workflows` INSERT: insert `{workflow_id, creator, workflow_admin}` into `workflow_members`.
-
-Migrate node-instance RACI: add a JSONB `personas` column to `node_instance_configs`:
+**Expression DSL** (JSON, easy to render and evaluate):
 ```json
-{ "responsible": ["personaId"], "accountable": "personaId",
-  "consulted": ["personaId"], "informed": ["personaId"] }
+{ "all": [
+  { "fact": "user.persona",    "op": "in",    "value": ["cfo","finance_lead"] },
+  { "any": [
+    { "fact": "case.amount",   "op": ">=",    "value": 10000 },
+    { "fact": "case.priority", "op": "==",    "value": "high" }
+  ]},
+  { "fact": "user.role",       "op": "!=",    "value": "viewer" }
+]}
 ```
 
-**RLS rewrite** (all use the new helpers, no recursion):
-- `workflows` SELECT/UPDATE/DELETE → `can_view_workflow` / `can_manage_workflow`
-- `workflow_personas`, `workflow_team_members`, `workflow_business_rules`, `workflow_data_model`, `workflow_deployments`, `node_instance_configs`, `reusable_modules` → gated by `can_view_workflow` (read) and `can_edit_workflow` (write); deploy gated by `can_manage_workflow`
-- `workflow_members` → readable by any member of that workflow; writable only by `can_manage_workflow`
+Supported facts:
+- `user.id`, `user.email`, `user.role`, `user.persona`, `user.team`, `user.permission`
+- `case.<dataField>` — any field from the workflow's data model
+- `node.id`, `node.type`, `time.now`, `time.dayOfWeek`
+
+Supported ops: `==`, `!=`, `>`, `>=`, `<`, `<=`, `in`, `not_in`, `contains`, `matches` (regex).
+
+Combinators: `all`, `any`, `not`.
+
+**Evaluator:** pure TS function `evaluateRule(expr, context)` shipped in `src/lib/abac/`. Used both:
+- in the Studio property panel preview ("would this rule allow you?"), and
+- by the runtime worker before executing node logic.
+
+**Persistence helper:** the existing `node_instance_configs.personas` (RACI) stays unchanged. New rules live in their own table so they're query-able and listable per workflow.
+
+**UI:**
+- `NodeConfigDialog` gets a new **Access Rules** tab beside RACI: list of rules for this node, "Add rule" opens a visual rule builder.
+- Rule builder: drag-style nested groups (all/any/not), `fact → op → value` rows. No raw JSON unless user clicks "Advanced".
+- Per workflow, a top-level "Rules" tab (in Studio) lists all node rules with filter by node.
 
 ---
 
-## 3. Edge functions
+## 3. Audit log UI
 
-- `list-workflows` — drop service-role bypass. Use the caller's JWT. RLS filters automatically.
-- `create-workflow` — after insert, trigger seeds the admin membership. Function just returns id.
-- New `manage-workflow-members` — list/add/update/remove members, enforces `can_manage_workflow` server-side.
+**Backend:** `audit_events` already exists. Add helper view `audit_events_with_actor` joining `profiles` for email/name. RLS:
+- Super admin sees all.
+- Workflow admin sees rows where `workflow_id = ?` and `can_manage_workflow(uid, workflow_id)`.
 
----
+**Frontend:**
+- **Global** — `/admin/audit` (already routed; currently a stub). Rebuild as a filterable table:
+  - filters: actor (search by email), action, resource type, workflow, date range
+  - columns: when · who · action · resource · workflow · IP · details (expand JSON)
+  - pagination, CSV export
+- **Per-workflow** — new "Audit" sub-tab in Studio Members area, scoped to that workflow.
 
-## 4. Frontend
+Both views share one component `<AuditLogTable workflowId?={id} />` to avoid duplication.
 
-**Routing (`App.tsx`):** every workflow route gets a `requireWorkflowAccess` wrapper that 404s on miss.
-
-**Permission utility:** replace flat `can(perm)` with `canOnWorkflow(wfId, action)` driven by a new `useWorkflowRole(wfId)` hook that calls `workflow_role` via RPC and caches per workflow.
-
-**Action gating** in Studio toolbar, node context menus, deploy button, settings, personas/teams tabs — wrap with `<CanOnWorkflow wfId action="edit|manage|deploy">`.
-
-**New Members tab** on each workflow (visible only to admins): add user, pick persona + team + role, remove.
-
-**RACI on nodes:** Studio properties panel gets a "Personas (RACI)" section with four pickers (R/A/C/I) populated from that workflow's personas. Persisted in `node_instance_configs.personas`. BPMN export writes to `camunda:property` extension elements for round-trip.
-
-**Profile page:** already pulls from `useAuthz()`. Add a "My Workflows" section grouped by role.
-
-**All Workflows list:** server already filters; just remove the "Create" button for users with no `workflow.create` global perm (kept as a platform perm — anyone authenticated can create, becoming admin of their own).
+**Emit more events:** wire `audit_events` inserts (via a tiny `auditLog()` helper) on:
+- member add/remove/role-change
+- custom-role create/update/delete
+- node rule create/update/delete
+- workflow create/delete/deploy
 
 ---
 
-## 5. Migration of existing data
+## Migrations
 
-- Seed `workflow_members` from existing `workflows.created_by` → role `workflow_admin`.
-- Existing `workflow_personas` / `workflow_team_members` rows are kept as-is (they remain the assignment source); a one-time backfill inserts a `viewer` membership for any user referenced there who isn't already a member.
+One migration, in order: tables → grants → RLS → seed builtin templates and permission catalog → upgrade helper functions.
 
----
+## Out of scope (deliberately, this turn)
 
-## 6. Out of scope (deliberately)
-
-- Custom per-workflow role definitions (sticking to the 4 fixed roles).
-- Granular per-node permission overrides beyond RACI display.
-- Audit log UI (events are still written to `audit_events`).
-
----
+- Runtime enforcement of ABAC rules inside the external worker (the evaluator is shipped, calling it from the worker is a separate Mastra-side change).
+- Audit log retention / archival.
 
 ## Technical notes
 
-- Helpers are `SECURITY DEFINER` with `SET search_path = public` to avoid the recursive-RLS trap on `workflow_members`.
-- `workflow_members` itself uses simple `user_id = auth.uid()` SELECT plus a definer-function policy for admin writes — no self-reference in policies.
-- Frontend `useWorkflowRole` uses React Query with `['wfRole', wfId, userId]` and invalidates on any `manage-workflow-members` mutation.
-- BPMN export adds `<camunda:property name="raci.responsible" value="..."/>` etc. inside `extensionElements`; importer reads them back.
+- All new tables: `GRANT` to authenticated, RLS that delegates to `can_manage_workflow` / `is_super_admin`. Role templates table is readable by all authenticated users (so the picker works).
+- `workflow_role` RPC keeps returning the legacy text role for back-compat; new RPC `workflow_permissions` returns the resolved permission set.
+- `useWorkflowRole` hook gains `permissions: string[]` and `hasPerm(key)`.
+- `<CanOnWorkflow>` gets `permission="..."` as an alternative to `action`.
