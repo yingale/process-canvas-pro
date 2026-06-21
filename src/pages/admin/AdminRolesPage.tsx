@@ -67,11 +67,11 @@ export default function AdminRolesPage() {
     const ops: Promise<unknown>[] = [];
     if (addKeys.length) {
       const rows = addKeys.map(k => keyToId.get(k)).filter((x): x is string => !!x).map(permission_id => ({ role_id: editing.id, permission_id }));
-      if (rows.length) ops.push(supabase.from("role_permissions").insert(rows));
+      if (rows.length) ops.push(Promise.resolve(supabase.from("role_permissions").insert(rows)));
     }
     if (delKeys.length) {
       const ids = delKeys.map(k => keyToId.get(k)).filter((x): x is string => !!x);
-      if (ids.length) ops.push(supabase.from("role_permissions").delete().eq("role_id", editing.id).in("permission_id", ids));
+      if (ids.length) ops.push(Promise.resolve(supabase.from("role_permissions").delete().eq("role_id", editing.id).in("permission_id", ids)));
     }
     await Promise.all(ops);
     await recordAudit({ action: "role.update", decision: "ALLOW", resource_type: "role", resource_id: editing.id, metadata: { added: addKeys, removed: delKeys } });

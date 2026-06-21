@@ -45,10 +45,10 @@ export default function AdminPoliciesPage() {
 
     const payload = {
       name: editing.name.trim(),
-      effect: editing.effect ?? "DENY",
+      effect: (editing.effect ?? "DENY") as "ALLOW" | "DENY",
       action: editing.action.trim(),
       resource_pattern: editing.resource_pattern?.trim() || null,
-      condition: cond,
+      condition: cond as unknown as never,
       priority: editing.priority ?? 100,
       enabled: editing.enabled ?? true,
     };

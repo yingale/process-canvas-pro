@@ -57,8 +57,8 @@ export default function AdminPersonasPage() {
     const add = [...selRoles].filter(x => !cur.has(x));
     const remove = [...cur].filter(x => !selRoles.has(x));
     const ops: Promise<unknown>[] = [];
-    if (add.length) ops.push(supabase.from("persona_roles").insert(add.map(role_id => ({ persona_id: editing.id, role_id }))));
-    if (remove.length) ops.push(supabase.from("persona_roles").delete().eq("persona_id", editing.id).in("role_id", remove));
+    if (add.length) ops.push(Promise.resolve(supabase.from("persona_roles").insert(add.map(role_id => ({ persona_id: editing.id, role_id })))));
+    if (remove.length) ops.push(Promise.resolve(supabase.from("persona_roles").delete().eq("persona_id", editing.id).in("role_id", remove)));
     await Promise.all(ops);
     await recordAudit({ action: "persona.update", decision: "ALLOW", resource_type: "persona", resource_id: editing.id, metadata: { added: add, removed: remove } });
     toast.success("Persona updated");

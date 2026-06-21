@@ -62,10 +62,10 @@ export default function AdminUsersPage() {
     const delT = [...curT].filter(x => !selTeams.has(x));
 
     const ops: Promise<unknown>[] = [];
-    if (addP.length) ops.push(supabase.from("user_personas").insert(addP.map(persona_id => ({ user_id: editing.id, persona_id }))));
-    if (delP.length) ops.push(supabase.from("user_personas").delete().eq("user_id", editing.id).in("persona_id", delP));
-    if (addT.length) ops.push(supabase.from("user_teams").insert(addT.map(team_id => ({ user_id: editing.id, team_id }))));
-    if (delT.length) ops.push(supabase.from("user_teams").delete().eq("user_id", editing.id).in("team_id", delT));
+    if (addP.length) ops.push(Promise.resolve(supabase.from("user_personas").insert(addP.map(persona_id => ({ user_id: editing.id, persona_id })))));
+    if (delP.length) ops.push(Promise.resolve(supabase.from("user_personas").delete().eq("user_id", editing.id).in("persona_id", delP)));
+    if (addT.length) ops.push(Promise.resolve(supabase.from("user_teams").insert(addT.map(team_id => ({ user_id: editing.id, team_id })))));
+    if (delT.length) ops.push(Promise.resolve(supabase.from("user_teams").delete().eq("user_id", editing.id).in("team_id", delT)));
     await Promise.all(ops);
 
     await recordAudit({ action: "user.update", decision: "ALLOW", resource_type: "user", resource_id: editing.id,
