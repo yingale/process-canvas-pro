@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import GenerateFromDescriptionCard from "@/components/landing/GenerateFromDescriptionCard";
 import PageLoader from "@/components/layout/PageLoader";
+import { Can } from "@/components/authz/Can";
+import { supabase } from "@/integrations/supabase/client";
 
 import "../components/studio/studio.css";
 
@@ -81,7 +83,7 @@ export default function Landing() {
 
   const fetchWorkflows = useCallback(async () => {
     setLoading(true);
-    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const { data: { session } } = await supabase.auth.getSession();
     const params = new URLSearchParams({
       page: String(page),
       pageSize: String(pageSize),
@@ -95,12 +97,14 @@ export default function Landing() {
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-workflows?${params}`,
         {
           headers: {
-            apikey: anonKey,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
             "Content-Type": "application/json",
           },
         }
       );
       const json: WorkflowResponse = await res.json();
+      if (!res.ok) throw new Error((json as { error?: string }).error ?? "Failed to fetch workflows");
       setWorkflows(json.data ?? []);
       setTotalPages(json.totalPages ?? 1);
       setTotal(json.total ?? 0);
@@ -213,12 +217,14 @@ export default function Landing() {
                   </div>
                 </div>
                 <p className="landing-template-desc">{t.description}</p>
+              <Can perm="workflow.create">
                 <button
                   className="landing-create-btn"
                   onClick={() => handleTemplateClick(t)}
                 >
                   Create
                 </button>
+              </Can>
               </div>
             </div>
           ))}
