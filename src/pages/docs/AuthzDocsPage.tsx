@@ -184,7 +184,6 @@ export default function AuthzDocsPage() {
     <ModuleDocLayout
       title="Authorization — RBAC · ABAC · Personas · Teams"
       subtitle="End-to-end reference for how identity, permissions, and policies flow from the database to the React UI and the workflow runtime."
-      category="Security"
       badges={["RBAC", "ABAC", "Personas", "Teams", "Per-Workflow Roles", "Audit"]}
     >
       {/* Overview */}
