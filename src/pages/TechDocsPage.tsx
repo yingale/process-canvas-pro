@@ -14,6 +14,7 @@ const MODULE_SUMMARIES = [
   { name: "Automation Nodes", category: "Integration", desc: "5-node automation pipeline — Email Fetcher, Chunk Extractor, AI Processor, Column Extractor, Email Notification", searchKey: "Automation Nodes", docPath: "/docs/automation-nodes" },
   { name: "Camunda Topics & Processor", category: "Runtime", desc: "External Task Workers, topic subscriptions, variable resolution engine, BPMN XML generation, error handling & retry strategy", searchKey: "Camunda Topics", docPath: "/docs/camunda-topics" },
   { name: "RBAC — Access Control", category: "Security", desc: "Okta JWT auth, per-workflow roles (admin/editor/executor/viewer), MongoDB role mapping, permission middleware, audit logging", searchKey: "RBAC", docPath: "/docs/rbac" },
+  { name: "Authorization (RBAC + ABAC)", category: "Security", desc: "Full reference: personas, teams, per-workflow roles, ABAC rule DSL, RLS helpers, audit pipeline — wired to this project's actual tables and hooks", searchKey: "RBAC", docPath: "/docs/authorization" },
 ];
 
 function stripBranding(content: string): string {

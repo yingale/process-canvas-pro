@@ -23,6 +23,7 @@ import ApprovalDocsPage from "./pages/docs/ApprovalDocsPage";
 import AutomationNodesDocsPage from "./pages/docs/AutomationNodesDocsPage";
 import CamundaTopicsDocsPage from "./pages/docs/CamundaTopicsDocsPage";
 import RbacDocsPage from "./pages/docs/RbacDocsPage";
+import AuthzDocsPage from "./pages/docs/AuthzDocsPage";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="/docs/automation-nodes" element={<AutomationNodesDocsPage />} />
               <Route path="/docs/camunda-topics" element={<CamundaTopicsDocsPage />} />
               <Route path="/docs/rbac" element={<RbacDocsPage />} />
+              <Route path="/docs/authorization" element={<AuthzDocsPage />} />
               <Route path="/admin" element={<ProtectedRoute perm="navigation.view.admin"><AdminLayout /></ProtectedRoute>}>
                 <Route index element={<AdminUsersPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
